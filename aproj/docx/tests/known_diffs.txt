@@ -1,0 +1,25 @@
+# known_diffs.txt — 已知差异列表
+# 格式: 行号<TAB>差异描述子串
+# render_diff 比对时，匹配到这些子串的差异会被标记为 [KNOWN]
+#
+# 说明:
+# - 图片、页眉页脚、浮动对象、脚注等尚未在 aproj 中实现，属于预期差异
+# - 字体度量差异 (stb_truetype vs 系统字体) 可能导致位置/尺寸微小偏差
+# - 随着 aproj 功能完善，逐步删除对应条目
+
+# 图片 Frame (aproj 尚未实现图片解析)
+IMAGE_FRAME
+
+# 页眉/页脚 (aproj 尚未实现)
+Header
+Footer
+
+# 浮动对象 (aproj 尚未实现 SwFlyFrame)
+FlyFrame
+
+# 脚注/尾注 (aproj 尚未实现)
+Footnote
+Endnote
+
+# 分栏 (aproj 尚未实现)
+Column
