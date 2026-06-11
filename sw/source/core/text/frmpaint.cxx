@@ -38,6 +38,7 @@
 #include <flyfrm.hxx>
 #include "redlnitr.hxx"
 #include <redline.hxx>
+#include "paint_listener.hxx"
 #include <swmodule.hxx>
 #include <tabfrm.hxx>
 #include <numrule.hxx>
@@ -687,6 +688,12 @@ void SwTextFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
             OSL_ENSURE( false, "+SwTextFrame::PaintSwFrame: missing format information" );
             return;
         }
+    }
+
+    // --- 渲染指令记录: TEXT_FRAME ---
+    if (SwPaintEventListener::Get().IsLogging())
+    {
+        SwPaintEventListener::Get().OnTextFrame(this);
     }
 
     // tdf140219-2.odt text frame with only fly portions and a follow is not

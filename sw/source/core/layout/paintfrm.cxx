@@ -64,6 +64,7 @@
 #include <ptqueue.hxx>
 #include <noteurl.hxx>
 #include "virtoutp.hxx"
+#include "paint_listener.hxx"
 #include <lineinfo.hxx>
 #include <dbg_lay.hxx>
 #include <docsh.hxx>
@@ -3372,6 +3373,12 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
                 }
                 gProp.pBLines.reset(new BorderLines);
 
+                // --- 渲染指令记录: PAGE_START ---
+                SwPaintEventListener::Get().OnPageStart(
+                    pPage->GetPhyPageNum(),
+                    static_cast<int>(pPage->getFrameArea().Width()),
+                    static_cast<int>(pPage->getFrameArea().Height()));
+
                 aPaintRect.Intersection_( aRect );
 
                 if ( bExtraData &&
@@ -3584,6 +3591,9 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
                 }
             }
         }
+
+        // --- 渲染指令记录: PAGE_END ---
+        SwPaintEventListener::Get().OnPageEnd(pPage->GetPhyPageNum());
 
         OSL_ENSURE( !pPage->GetNext() || pPage->GetNext()->IsPageFrame(),
                 "Neighbour of page is not a page." );

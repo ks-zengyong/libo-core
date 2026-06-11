@@ -42,6 +42,7 @@
 #include <DocumentLayoutManager.hxx>
 #include <DocumentRedlineManager.hxx>
 #include <ndindex.hxx>
+#include "paint_listener.hxx"
 
 SwLayVout     *SwRootFrame::s_pVout = nullptr;
 bool           SwRootFrame::s_isInPaint = false;
@@ -435,6 +436,9 @@ SwRootFrame::SwRootFrame( SwFrameFormat *pFormat, SwViewShell * pSh ) :
     setRootFrame( this );
 
     s_pLast = this;
+
+    // 检查环境变量 SW_RENDER_LOG，如有则启动渲染指令记录
+    SwPaintEventListener::Get().CheckEnvAndStart();
 }
 
 void SwRootFrame::Init( SwFrameFormat* pFormat )

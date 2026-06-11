@@ -365,6 +365,7 @@ $(eval $(call gb_Library_add_exception_objects,sw,\
     sw/source/core/layout/pagechg \
     sw/source/core/layout/pagedesc \
     sw/source/core/layout/paintfrm \
+    sw/source/core/layout/paint_listener \
     sw/source/core/layout/sectfrm \
     sw/source/core/layout/softpagebreak \
     sw/source/core/layout/sortedobjs \
