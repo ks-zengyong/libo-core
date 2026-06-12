@@ -115,6 +115,12 @@ private:
     std::map<int, std::vector<NumLevelDef>> abstractNumDefs_; // abstractNumId → levels
     std::string docDir_;
 
+    // 主题字体映射：minorHAnsi → "Calibri" 等
+    std::map<std::string, std::string> themeFonts_;
+
+    // 解析主题文件
+    void ParseTheme();
+
     // 当前解析状态
     SwTextNode* curTextNode_ = nullptr;
     SwTextFormatColl* curStyle_ = nullptr;

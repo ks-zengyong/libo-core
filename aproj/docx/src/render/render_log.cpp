@@ -406,18 +406,34 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
 
                         const char* fontName = pFont ? pFont->c_str() : "";
                         int fontSize = pSize ? std::stoi(*pSize) : 24;
-                        uint32_t fontColor
-                            = pColor ? static_cast<uint32_t>(std::stoul(*pColor)) : 0;
+                        // DOCX 颜色是十六进制字符串（如 "FFFFFF"），需要以 16 进制解析
+                        uint32_t fontColor = 0;
+                        if (pColor && !pColor->empty())
+                        {
+                            try
+                            {
+                                fontColor = static_cast<uint32_t>(std::stoul(*pColor, nullptr, 16));
+                            }
+                            catch (...)
+                            {
+                                fontColor = 0;
+                            }
+                        }
                         // 与 VCL 层一致：FontWeight::Bold=700, FontWeight::Normal=400
                         // 截断为 uint8_t：700→188, 400→144
                         uint8_t fontWeight = (pWeight && *pWeight == "bold") ? 188 : 144;
                         uint8_t fontItalic = (pItalic && *pItalic == "italic") ? 1 : 0;
 
+                        // 获取段落样式名（需要持久化字符串）
+                        std::string sStyleName = pTextNode->GetStyleName();
+                        const char* styleName
+                            = sStyleName.empty() ? nullptr : StoreString(sStyleName.c_str());
+
                         SwRect aArea = pTextFrame->getFrameArea();
-                        BuildTextFrameInstruction(*this, pn, aArea.Left(), aArea.Top(),
-                                                  aArea.Width(), aArea.Height(), rText.c_str(),
-                                                  static_cast<int>(rText.size()), fontName,
-                                                  fontSize, fontColor, fontWeight, fontItalic, "");
+                        BuildTextFrameInstruction(
+                            *this, pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height(),
+                            rText.c_str(), static_cast<int>(rText.size()), fontName, fontSize,
+                            fontColor, fontWeight, fontItalic, styleName);
                     }
 
                     // VCL 层：PaintSwFrame 输出 SET_FONT + TEXT_RUN

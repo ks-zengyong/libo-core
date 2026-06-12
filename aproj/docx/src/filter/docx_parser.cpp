@@ -34,6 +34,9 @@ bool DocxParser::Read(const std::string& filePath, SwDoc& doc)
         rels_ = ParseRelationships(xml);
     }
 
+    // 2.5 解析主题（字体映射）
+    ParseTheme();
+
     // 3. 解析样式
     it = entries_.find("word/styles.xml");
     if (it != entries_.end())
@@ -146,6 +149,79 @@ std::map<std::string, std::string> DocxParser::ParseRelationships(const std::str
 }
 
 //===----------------------------------------------------------------------===//
+// ParseTheme: 解析主题文件，提取字体映射
+//===----------------------------------------------------------------------===//
+
+void DocxParser::ParseTheme()
+{
+    // 查找主题文件（通过关系文件或直接查找）
+    std::string themePath;
+    for (auto & [ id, target ] : rels_)
+    {
+        if (target.find("theme/theme") != std::string::npos)
+        {
+            themePath = "word/" + target;
+            break;
+        }
+    }
+    if (themePath.empty())
+        themePath = "word/theme/theme1.xml";
+
+    auto it = entries_.find(themePath);
+    if (it == entries_.end())
+        return;
+
+    std::string xml(it->second.data.begin(), it->second.data.end());
+    pugi::xml_document xmlDoc;
+    if (!xmlDoc.load_string(xml.c_str()))
+        return;
+
+    auto root = xmlDoc.child("a:theme");
+    if (!root)
+        return;
+
+    auto themeElements = root.child("a:themeElements");
+    if (!themeElements)
+        return;
+
+    auto fontScheme = themeElements.child("a:fontScheme");
+    if (!fontScheme)
+        return;
+
+    // 解析 majorFont（标题字体）
+    auto majorFont = fontScheme.child("a:majorFont");
+    if (majorFont)
+    {
+        auto latin = majorFont.child("a:latin");
+        if (latin)
+        {
+            std::string typeface = latin.attribute("typeface").as_string();
+            if (!typeface.empty())
+            {
+                themeFonts_["majorHAnsi"] = typeface;
+                themeFonts_["majorAscii"] = typeface;
+            }
+        }
+    }
+
+    // 解析 minorFont（正文字体）
+    auto minorFont = fontScheme.child("a:minorFont");
+    if (minorFont)
+    {
+        auto latin = minorFont.child("a:latin");
+        if (latin)
+        {
+            std::string typeface = latin.attribute("typeface").as_string();
+            if (!typeface.empty())
+            {
+                themeFonts_["minorHAnsi"] = typeface;
+                themeFonts_["minorAscii"] = typeface;
+            }
+        }
+    }
+}
+
+//===----------------------------------------------------------------------===//
 // ParseStyles: 解析样式
 //===----------------------------------------------------------------------===//
 
@@ -162,26 +238,67 @@ void DocxParser::ParseStyles(SwDoc& doc)
 
     auto root = xmlDoc.child("w:styles");
 
-    // 解析 docDefaults
+    // 解析 docDefaults（文档默认字体属性）
+    StyleDef defaultStyle;
+    defaultStyle.name = "Normal";
+    defaultStyle.type = "paragraph";
+    defaultStyle.isDefault = true;
+
     auto docDefaults = root.child("w:docDefaults");
     if (docDefaults)
     {
-        // 解析默认段落属性
         auto rPrDefault = docDefaults.child("w:rPrDefault");
         if (rPrDefault)
         {
             auto rPr = rPrDefault.child("w:rPr");
             if (rPr)
             {
-                // 解析默认字体
                 auto rFonts = rPr.child("w:rFonts");
                 if (rFonts)
                 {
-                    // 存储默认字体
+                    std::string font = rFonts.attribute("w:ascii").as_string();
+                    // 如果没有直接字体名，尝试解析主题引用
+                    if (font.empty())
+                    {
+                        std::string themeFont = rFonts.attribute("w:asciiTheme").as_string();
+                        if (!themeFont.empty())
+                        {
+                            auto it = themeFonts_.find(themeFont);
+                            if (it != themeFonts_.end())
+                                font = it->second;
+                        }
+                    }
+                    if (!font.empty())
+                        defaultStyle.fontName = font;
+                }
+                auto sz = rPr.child("w:sz");
+                if (sz)
+                {
+                    defaultStyle.fontSize = sz.attribute("w:val").as_int(22);
+                }
+                auto b = rPr.child("w:b");
+                if (b)
+                {
+                    defaultStyle.bold = true;
+                }
+                auto i = rPr.child("w:i");
+                if (i)
+                {
+                    defaultStyle.italic = true;
+                }
+                auto color = rPr.child("w:color");
+                if (color)
+                {
+                    defaultStyle.color = color.attribute("w:val").as_string();
                 }
             }
         }
     }
+    // LO headless 模式默认颜色为白色 (windowText → 0xFFFFFF)
+    if (defaultStyle.color.empty())
+        defaultStyle.color = "FFFFFF";
+    // 存储默认样式（使用 styleId="1" 作为 key，与 DOCX 一致）
+    styles_["1"] = defaultStyle;
 
     // 解析每个样式
     for (auto style : root.children("w:style"))
@@ -268,6 +385,17 @@ void DocxParser::ParseStyles(SwDoc& doc)
             if (rFonts)
             {
                 def.fontName = rFonts.attribute("w:ascii").as_string();
+                // 如果没有直接字体名，尝试解析主题引用
+                if (def.fontName.empty())
+                {
+                    std::string themeFont = rFonts.attribute("w:asciiTheme").as_string();
+                    if (!themeFont.empty())
+                    {
+                        auto it = themeFonts_.find(themeFont);
+                        if (it != themeFonts_.end())
+                            def.fontName = it->second;
+                    }
+                }
             }
 
             auto sz = rPr.child("w:sz");
@@ -295,6 +423,18 @@ void DocxParser::ParseStyles(SwDoc& doc)
             }
         }
 
+        // 合并默认样式属性（保留默认颜色等）
+        auto it = styles_.find(styleId);
+        if (it != styles_.end())
+        {
+            // 如果已有默认样式，合并属性
+            if (def.color.empty() && !it->second.color.empty())
+                def.color = it->second.color;
+            if (def.fontName.empty() && !it->second.fontName.empty())
+                def.fontName = it->second.fontName;
+            if (def.fontSize <= 0 && it->second.fontSize > 0)
+                def.fontSize = it->second.fontSize;
+        }
         styles_[styleId] = def;
 
         // 创建 SwTextFormatColl
@@ -305,6 +445,31 @@ void DocxParser::ParseStyles(SwDoc& doc)
             if (!def.alignment.empty())
             {
                 pColl->SetAttr(RES_PARATR_ADJUST, def.alignment);
+            }
+        }
+    }
+
+    // 解析样式继承链（basedOn）
+    // 对应 LibreOffice 的样式继承：w:pStyle → basedOn → docDefaults
+    for (auto & [ id, def ] : styles_)
+    {
+        if (!def.basedOn.empty())
+        {
+            auto it = styles_.find(def.basedOn);
+            if (it != styles_.end())
+            {
+                const StyleDef& parent = it->second;
+                // 继承父样式的属性（如果当前样式没有设置）
+                if (def.fontName.empty() && !parent.fontName.empty())
+                    def.fontName = parent.fontName;
+                if (def.fontSize <= 0 && parent.fontSize > 0)
+                    def.fontSize = parent.fontSize;
+                if (!def.bold && parent.bold)
+                    def.bold = parent.bold;
+                if (!def.italic && parent.italic)
+                    def.italic = parent.italic;
+                if (def.color.empty() && !parent.color.empty())
+                    def.color = parent.color;
             }
         }
     }
@@ -501,10 +666,62 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
     SwTextNode* pTextNode = rNodes.MakeTextNode(*pInsertAfter, pColl);
 
     // 解析段落属性
+    std::string sStyleId;
     auto pPr = pNode.child("w:pPr");
     if (pPr)
     {
         ParseParagraphProps(pPr, pTextNode);
+        // 获取段落样式 ID
+        auto pStyle = pPr.child("w:pStyle");
+        if (pStyle)
+            sStyleId = pStyle.attribute("w:val").as_string();
+
+        // 段落级 w:rPr 是段落的默认字符格式
+        // OOXML 优先级：Run w:rPr > 段落 w:rPr > 段落样式 > 文档默认值
+        auto pPrRPr = pPr.child("w:rPr");
+        if (pPrRPr)
+        {
+            ParseRunProps(pPrRPr, pTextNode);
+        }
+    }
+
+    // 从段落样式继承字体属性（如果 Run 属性未覆盖）
+    // 对应 LibreOffice 的样式继承链：w:pStyle → basedOn → docDefaults
+    const StyleDef* pStyleDef = nullptr;
+    if (!sStyleId.empty())
+    {
+        auto it = styles_.find(sStyleId);
+        if (it != styles_.end())
+            pStyleDef = &it->second;
+    }
+    // 如果没有显式样式，查找默认段落样式
+    if (!pStyleDef)
+    {
+        for (auto & [ id, def ] : styles_)
+        {
+            if (def.type == "paragraph" && def.isDefault)
+            {
+                pStyleDef = &def;
+                break;
+            }
+        }
+    }
+    if (pStyleDef)
+    {
+        // 存储样式显示名（而非 ID）
+        pTextNode->SetStyleName(pStyleDef->name);
+
+        // 应用样式的字体属性（作为默认值，Run 属性会覆盖）
+        if (!pStyleDef->fontName.empty() && !pTextNode->GetAttr(RES_CHRATR_FONT))
+            pTextNode->SetAttr(RES_CHRATR_FONT, pStyleDef->fontName);
+        if (pStyleDef->fontSize > 0 && !pTextNode->GetAttr(RES_CHRATR_FONTSIZE))
+            pTextNode->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(pStyleDef->fontSize));
+        if (pStyleDef->bold && !pTextNode->GetAttr(RES_CHRATR_WEIGHT))
+            pTextNode->SetAttr(RES_CHRATR_WEIGHT, "bold");
+        if (pStyleDef->italic && !pTextNode->GetAttr(RES_CHRATR_POSTURE))
+            pTextNode->SetAttr(RES_CHRATR_POSTURE, "italic");
+        if (!pStyleDef->color.empty() && !pTextNode->GetAttr(RES_CHRATR_COLOR))
+            pTextNode->SetAttr(RES_CHRATR_COLOR, pStyleDef->color);
     }
 
     // 解析文本内容和 Run 属性
@@ -516,14 +733,18 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
 
         if (name == "w:r")
         {
-            // 解析 Run 属性（取第一个 Run 的属性应用到文本节点）
-            auto rPr = child.child("w:rPr");
-            if (rPr && !bRunPropsApplied)
+            // 只有当 Run 包含文本时才应用其属性（跳过纯图片/绘图的 Run）
+            std::string runText = ParseRunText(child);
+            if (!runText.empty())
             {
-                ParseRunProps(rPr, pTextNode);
-                bRunPropsApplied = true;
+                auto rPr = child.child("w:rPr");
+                if (rPr && !bRunPropsApplied)
+                {
+                    ParseRunProps(rPr, pTextNode);
+                    bRunPropsApplied = true;
+                }
             }
-            text += ParseRunText(child);
+            text += runText;
         }
         else if (name == "w:hyperlink")
         {
@@ -631,14 +852,19 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
         int left = ind.attribute("w:left").as_int(0);
         int right = ind.attribute("w:right").as_int(0);
         int firstLine = ind.attribute("w:firstLine").as_int(0);
-        // 存储缩进属性
+        // 存储左缩进
+        pNode->SetAttr(RES_PARATR_INDENT, std::to_string(left));
     }
 
-    // 分页
+    // 分页（w:val="0" 表示不分页，缺少 w:val 或 w:val="1" 表示分页）
     auto pageBreakBefore = pPrNode.child("w:pageBreakBefore");
     if (pageBreakBefore)
     {
-        pNode->SetAttr(RES_BREAK, "page");
+        std::string val = pageBreakBefore.attribute("w:val").as_string("1");
+        if (val != "0" && val != "false")
+        {
+            pNode->SetAttr(RES_BREAK, "page");
+        }
     }
 
     // 与下段同页
@@ -657,6 +883,38 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
         if (numId && ilvl)
         {
             // 存储编号属性
+        }
+    }
+
+    // 节属性（w:sectPr 在 w:pPr 内定义节的页面设置）
+    auto sectPr = pPrNode.child("w:sectPr");
+    if (sectPr)
+    {
+        // 更新默认页面描述符
+        SwPageDesc* pDesc = pNode->GetDoc().GetDefaultPageDesc();
+        if (pDesc)
+        {
+            // 页面尺寸
+            auto pgSz = sectPr.child("w:pgSz");
+            if (pgSz)
+            {
+                int w = pgSz.attribute("w:w").as_int(11906);
+                int h = pgSz.attribute("w:h").as_int(16838);
+                pDesc->SetPageWidth(w);
+                pDesc->SetPageHeight(h);
+            }
+
+            // 页面边距
+            auto pgMar = sectPr.child("w:pgMar");
+            if (pgMar)
+            {
+                pDesc->SetTopMargin(pgMar.attribute("w:top").as_int(1440));
+                pDesc->SetBottomMargin(pgMar.attribute("w:bottom").as_int(1440));
+                pDesc->SetLeftMargin(pgMar.attribute("w:left").as_int(1800));
+                pDesc->SetRightMargin(pgMar.attribute("w:right").as_int(1800));
+                pDesc->SetHeaderMargin(pgMar.attribute("w:header").as_int(720));
+                pDesc->SetFooterMargin(pgMar.attribute("w:footer").as_int(720));
+            }
         }
     }
 }
@@ -821,6 +1079,12 @@ void DocxParser::ParseSectionProps(pugi::xml_node sectPrNode, SwDoc& doc)
         pDesc->SetHeaderMargin(pgMar.attribute("w:header").as_int(720));
         pDesc->SetFooterMargin(pgMar.attribute("w:footer").as_int(720));
     }
+
+    // DEBUG
+    std::cout << "[ParseSectionProps] PageDesc: w=" << pDesc->GetPageWidth()
+              << " h=" << pDesc->GetPageHeight() << " L=" << pDesc->GetLeftMargin()
+              << " R=" << pDesc->GetRightMargin() << " T=" << pDesc->GetTopMargin()
+              << " B=" << pDesc->GetBottomMargin() << std::endl;
 }
 
 //===----------------------------------------------------------------------===//
@@ -897,6 +1161,17 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode)
     if (rFonts)
     {
         std::string font = rFonts.attribute("w:ascii").as_string();
+        // 如果没有直接字体名，尝试解析主题引用
+        if (font.empty())
+        {
+            std::string themeFont = rFonts.attribute("w:asciiTheme").as_string();
+            if (!themeFont.empty())
+            {
+                auto it = themeFonts_.find(themeFont);
+                if (it != themeFonts_.end())
+                    font = it->second;
+            }
+        }
         if (!font.empty())
         {
             pNode->SetAttr(RES_CHRATR_FONT, font);

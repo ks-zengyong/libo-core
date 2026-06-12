@@ -6,6 +6,7 @@
 #include "../core/doc.h"
 #include "../core/format.h"
 #include <cassert>
+#include <iostream>
 
 //===----------------------------------------------------------------------===//
 // MakeFrames: 为节点范围创建 Frame 树
@@ -34,9 +35,24 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
     if (!pParent)
     {
         // 如果没有 Body，创建一个
+        // 对应 LibreOffice SwPageFrame 构造函数：Body 尺寸 = 页面打印区域尺寸
         auto* pBody = new SwBodyFrame(pPage);
         pBody->InsertBehind(pPage, nullptr);
+        // 设置 Body 的 frame area 和 print area 与页面打印区域一致
+        const SwRect& rPrtArea = pPage->getFramePrintArea();
+        SwRect aBodyRect(pPage->getFrameArea().Left() + rPrtArea.Left(),
+                         pPage->getFrameArea().Top() + rPrtArea.Top(), rPrtArea.Width(),
+                         rPrtArea.Height());
+        pBody->setFrameArea(aBodyRect);
+        pBody->setFramePrintArea(aBodyRect);
         pParent = pBody;
+
+        // DEBUG
+        std::cerr << "[MakeFrames] Body created: " << aBodyRect.Left() << "," << aBodyRect.Top()
+                  << " " << aBodyRect.Width() << "x" << aBodyRect.Height() << std::endl;
+        std::cerr << "[MakeFrames] Body print area: " << pBody->getFramePrintArea().Left() << ","
+                  << pBody->getFramePrintArea().Top() << " " << pBody->getFramePrintArea().Width()
+                  << "x" << pBody->getFramePrintArea().Height() << std::endl;
     }
 
     SwFrame* pSibling = nullptr;
@@ -50,6 +66,36 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
         SwNode* pNode = rNodes[i];
         if (!pNode)
             continue;
+
+        // 检测分页：如果文本节点有 RES_BREAK="page" 属性，创建新页面
+        if (pNode->IsTextNode())
+        {
+            SwTextNode* pTextNode = static_cast<SwTextNode*>(pNode);
+            const std::string* pBreak = pTextNode->GetAttr(RES_BREAK);
+            if (pBreak && *pBreak == "page" && pSibling != nullptr)
+            {
+                // 创建新页面
+                SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+                pPage = InsertNewPage(pRoot, pDesc);
+                pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                pSibling = nullptr;
+            }
+        }
+
+        // 溢出预检测：在创建 Frame 前检查是否需要新页面
+        if (pNode->IsTextNode() && pPage && pSibling)
+        {
+            SwTwips nFrameBottom
+                = pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height();
+            SwTwips nPageBottom = pPage->getFrameArea().Top() + pPage->getFrameArea().Height();
+            if (nFrameBottom > nPageBottom - 276) // 留一行余量
+            {
+                SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+                pPage = InsertNewPage(pRoot, pDesc);
+                pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                pSibling = nullptr;
+            }
+        }
 
         MakeFramesForNode(*pNode, pParent, pSibling);
 
@@ -89,9 +135,8 @@ SwRootFrame* InitLayout(SwDoc& rDoc)
     // 创建第一个页面
     SwPageFrame* pPage = new SwPageFrame(pRoot);
     pPage->SetPhyPageNum(1);
-    pPage->PreparePage();
 
-    // 设置页面尺寸
+    // 设置页面尺寸（在 PreparePage 之前，这样 Body 能继承正确的 print area）
     if (pDesc)
     {
         SwRect aPageRect(0, 0, pDesc->GetPageWidth(), pDesc->GetPageHeight());
@@ -103,6 +148,9 @@ SwRootFrame* InitLayout(SwDoc& rDoc)
                         pDesc->GetPageHeight() - pDesc->GetTopMargin() - pDesc->GetBottomMargin());
         pPage->setFramePrintArea(aPrtRect);
     }
+
+    // 在设置完页面尺寸后创建 Body（PreparePage 会继承正确的 print area）
+    pPage->PreparePage();
 
     // 将页面插入到根 Frame
     pPage->InsertBehind(pRoot, nullptr);
@@ -124,26 +172,35 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling)
     if (rNode.IsTextNode())
     {
         // 创建文本 Frame
+        // 对应 LibreOffice：TextFrame 使用页面绝对坐标，宽度 = 页面宽度
         SwTextNode* pTextNode = static_cast<SwTextNode*>(&rNode);
         auto* pFrame = new SwTextFrame(pTextNode, pParent);
         pFrame->InsertBehind(pParent, pSibling);
 
-        // 设置 Frame 区域：使用父容器的打印区域宽度，高度基于文本行数估算
-        const SwRect& rPrtArea = pParent->getFramePrintArea();
-        SwTwips nWidth = rPrtArea.Width();
-        if (nWidth <= 0)
-            nWidth = pParent->getFrameArea().Width();
-        if (nWidth <= 0)
-            nWidth = 9360; // 默认约 16.5cm
+        // 获取页面尺寸（向上查找 PageFrame）
+        SwTwips nPageWidth = 11906; // 默认 A4
+        SwPageFrame* pPage = nullptr;
+        {
+            SwFrame* pF = pParent;
+            while (pF && !pF->IsPageFrame())
+                pF = pF->GetUpper();
+            if (pF)
+            {
+                pPage = static_cast<SwPageFrame*>(pF);
+                nPageWidth = pPage->getFrameArea().Width();
+            }
+        }
 
-        // 估算文本高度：行数 × 行高（默认 276 twips ≈ 12pt × 1.15 行距）
+        // 估算文本高度：行高 = 字号 × 14.0 twips/半点（与 LibreOffice 一致）
         const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
         int nFontSize = pSize ? std::stoi(*pSize) : 22; // 半点
-        SwTwips nLineHeight = static_cast<SwTwips>(nFontSize) * 10 * 115 / 100; // 半点→twips×行距
+        // 半点→twips：字号 × 14.0
+        SwTwips nLineHeight = static_cast<SwTwips>(nFontSize) * 14;
         if (nLineHeight < 200)
             nLineHeight = 276;
 
         // 计算 Y 位置：紧跟在前一个 Frame 之后
+        // LibreOffice 的 TextFrame frameArea 从页面顶部开始（不是从边距开始）
         SwTwips nY = 0;
         if (pSibling)
         {
@@ -151,12 +208,26 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling)
         }
         else
         {
-            // 第一个子 Frame，从父容器的打印区域顶部开始
-            nY = pParent->getFrameArea().Top() + rPrtArea.Top();
+            // 第一个子 Frame，从页面顶部开始（与 LibreOffice 对称）
+            nY = pPage ? pPage->getFrameArea().Top() : 0;
         }
 
-        SwRect aFrameArea(pParent->getFrameArea().Left() + rPrtArea.Left(), nY, nWidth,
-                          nLineHeight);
+        // TextFrame: x = 段落缩进（页面坐标从 0 开始）
+        // 与 LibreOffice 的 SwTextFrame::getFrameArea() 对称
+        SwTwips nIndent = 0;
+        const std::string* pIndent = pTextNode->GetAttr(RES_PARATR_INDENT);
+        if (pIndent)
+        {
+            try
+            {
+                nIndent = std::stoi(*pIndent);
+            }
+            catch (...)
+            {
+                nIndent = 0;
+            }
+        }
+        SwRect aFrameArea(nIndent, nY, nPageWidth, nLineHeight);
         pFrame->setFrameArea(aFrameArea);
     }
     else if (rNode.IsTableNode())
@@ -272,9 +343,8 @@ SwPageFrame* InsertNewPage(SwRootFrame* pRoot, SwPageDesc* pDesc)
     auto* pPage = new SwPageFrame(pRoot);
     sal_uInt16 nPageNum = pRoot->GetPageNum() + 1;
     pPage->SetPhyPageNum(nPageNum);
-    pPage->PreparePage();
 
-    // 设置页面尺寸
+    // 设置页面尺寸（在 PreparePage 之前，这样 Body 能继承正确的 print area）
     if (pDesc)
     {
         SwRect aPageRect(0, 0, pDesc->GetPageWidth(), pDesc->GetPageHeight());
@@ -285,6 +355,9 @@ SwPageFrame* InsertNewPage(SwRootFrame* pRoot, SwPageDesc* pDesc)
                         pDesc->GetPageHeight() - pDesc->GetTopMargin() - pDesc->GetBottomMargin());
         pPage->setFramePrintArea(aPrtRect);
     }
+
+    // 在设置完页面尺寸后创建 Body
+    pPage->PreparePage();
 
     // 插入到根 Frame
     SwPageFrame* pLastPage = pRoot->GetLastPage();

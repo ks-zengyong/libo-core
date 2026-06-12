@@ -174,6 +174,7 @@ enum SwAttrWhich : sal_uInt16
     RES_PARATR_TABSTOP,
     RES_PARATR_HYPHENZONE,
     RES_PARATR_DROP, // 首字下沉
+    RES_PARATR_INDENT, // 段落缩进（左缩进 twips）
     RES_PARATR_END,
 
     // 字符属性

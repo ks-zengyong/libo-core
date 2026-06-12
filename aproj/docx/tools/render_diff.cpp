@@ -219,7 +219,7 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
         if (fields.size() >= 9)
             inst.fontSize = parseInt(fields[8]);
         if (fields.size() >= 10)
-            inst.fontColor = parseHex(fields[9]);
+            inst.fontColor = parseInt(fields[9]); // 十进制格式（0xRRGGBB 的十进制表示）
         if (fields.size() >= 11)
             inst.fontWeight = parseInt(fields[10]);
         if (fields.size() >= 12)

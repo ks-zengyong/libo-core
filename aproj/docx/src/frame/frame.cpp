@@ -342,11 +342,23 @@ SwPageFrame::~SwPageFrame() = default;
 void SwPageFrame::PreparePage()
 {
     // 创建页面结构（Body、Header、Footer）
-    // 简化实现：只创建 Body
+    // 对应 LibreOffice SwPageFrame 构造函数：
+    //   pBodyFrame->ChgSize(getFramePrintArea().SSize());
+    //   pBodyFrame->Paste(this);
+    // Body 的 frame area 位于页面打印区域位置，print area 从 (0,0) 开始
     if (!GetLower())
     {
         auto* pBody = new SwBodyFrame(this);
         pBody->InsertBehind(this, nullptr);
+        // Body 的 frame area = 页面的打印区域（绝对坐标）
+        const SwRect& rPrtArea = getFramePrintArea();
+        SwRect aBodyRect(getFrameArea().Left() + rPrtArea.Left(),
+                         getFrameArea().Top() + rPrtArea.Top(), rPrtArea.Width(),
+                         rPrtArea.Height());
+        pBody->setFrameArea(aBodyRect);
+        // Body 的 print area 从 (0,0) 开始（相对于 Body 自身）
+        SwRect aBodyPrtRect(0, 0, rPrtArea.Width(), rPrtArea.Height());
+        pBody->setFramePrintArea(aBodyPrtRect);
     }
 }
 

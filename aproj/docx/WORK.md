@@ -173,6 +173,9 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | TSV/XML 异常行终止符 | 文本中的换行符直接写入输出 | 添加 EscapeForTsv/EscapeForXml 转义 |
 | Frame 层 fontWeight 错误 | `std::stoi("bold")` 会抛异常 | 改为检查字符串 "bold"→188, 默认→144 |
 | render_diff 已知差异加载失败 | `loadKnownDiffs` 要求 lineNum+TAB 格式 | 支持纯 pattern 格式（无行号） |
+| LibreOffice PAGE_END 累积 | `OnPageEnd` 在 if 块外调用 | 添加 `bPageStarted` 标志 |
+| LibreOffice 文本换行符未转义 | `WriteInstructionToStream` 未转义特殊字符 | 添加 `EscapeForTsv` 函数 |
+| aproj 未解析 w:pPr 内的 w:sectPr | `ParseParagraphProps` 未处理节属性 | 添加 `w:sectPr` 解析逻辑 |
 
 ---
 
@@ -202,6 +205,9 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 - ✅ 修复 `render_diff.cpp` 的 `loadKnownDiffs`：支持无行号格式（纯 pattern 匹配）
 - ✅ 更新 WORK.md：明确使用 sample.docx 作为唯一测试文件，不自动生成 .docx
 - ✅ 修复 frame 层 `fontWeight`：与 VCL 层保持一致（144=normal, 188=bold）
+- ✅ 修复 LibreOffice paint_listener 的 PAGE_END 累积 bug
+- ✅ 修复 LibreOffice paint_listener 的文本换行符转义
+- ✅ 修复 aproj 解析器：支持 `w:pPr` 内的 `w:sectPr` 解析
 
 ### 当前渲染输出统计（sample.docx）
 
@@ -217,19 +223,29 @@ VCL 层 (aproj_vcl.txt): 258 条
   SET_FONT:   104 (状态指令)
   SET_TEXT_COLOR: 104
   TEXT_RUN:   48 (绘制指令)
+
+LibreOffice 参考 (lo_frame.txt): 114 条
+  PAGE_START: 7
+  PAGE_END:   7
+  TEXT_FRAME: 100
 ```
 
-### 端到端比对结果
+### render_diff 比对结果
 
 ```
-LibreOffice frame 层 (lo_frame.txt):  PAGE_START → TEXT_FRAME → TEXT_FRAME → PAGE_END
-aproj (aproj_render.txt):             PAGE_START → TEXT_FRAME → SET_FONT → TEXT_RUN → PAGE_END
+Reference: tests/lo_frame.txt (114 instructions)
+Test:      tests/aproj_frame.txt (104 instructions)
+Differences: 847
 ```
 
-**差异类型**：
-- 指令类型不匹配：LibreOffice 输出 TEXT_FRAME（语义级），aproj 同时输出 TEXT_FRAME + TEXT_RUN
-- 多余状态指令：aproj 输出 SET_FONT/SET_TEXT_COLOR，LibreOffice frame 层不输出
-- 这是**架构差异**，不是 Bug：aproj 同时输出 frame 层和 VCL 层，与 LibreOffice 的双层录制对称
+**主要差异**：
+| 差异 | LibreOffice | aproj | 状态 |
+|------|-------------|-------|------|
+| 页数 | 7 页 | 1 页 | 🔴 待修复 |
+| 页面宽度 | 11906 | 9360 | 🔴 待修复 |
+| 页面边距 | x=284, y=284 | 0, 0 | 🔴 待修复 |
+| 字体名 | 正确解析 | 部分正确 | 🟡 部分修复 |
+| 样式名 | 有样式名 | 空 | 🟡 待修复 |
 
 ### 测试文件
 
@@ -282,14 +298,67 @@ aproj 现在同时输出 frame 层（TEXT_FRAME）和 VCL 层（TEXT_RUN）指�
 
 见上方详细说明。
 
-### Step 4: 深化 sample.docx 测试验证 ⬜ 待开始
+### Step 4: 深化 sample.docx 测试验证 🔄 进行中
 
 **策略**：不自动生成 .docx 测试文件，专注使用现有 `sample.docx`（WPS Office 复杂文档，A4，104 段落，表格，23 张图片）作为主要测试输入。该文件已涵盖纯文本、表格、图片等多种元素，足够验证排版逻辑。
 
-**重点**：
-1. 对 sample.docx 运行 render_diff 比对，分析每个差异的根因
-2. 修复 aproj 排版逻辑中的 Bug（非架构差异）
-3. 将已确认的架构差异记录到 known_diffs.txt
+**已完成**：
+- ✅ 修复 LibreOffice paint_listener 的 PAGE_END 累积 bug
+- ✅ 修复 LibreOffice paint_listener 的文本换行符转义
+- ✅ 修复 aproj 解析器：支持 `w:pPr` 内的 `w:sectPr` 解析
+- ✅ 修复 Body Frame 的 print area 继承（PreparePage 顺序）
+- ✅ 修复 TextFrame 坐标系：宽度=页面宽度，位置从页面顶部开始
+- ✅ 实现分页逻辑：检测 `w:pageBreakBefore` 和 `w:br type="page"`
+- ✅ 实现溢出检测：累积 Y 超出页面底部时创建新页面
+
+**当前 render_diff 状态**：
+```
+Reference: lo_frame.txt (114 instructions, 7 pages)
+Test:      aproj_frame.txt (102 instructions, 3 pages)
+Differences: 698 (从 847 降至 698)
+```
+
+**主要剩余差异**：
+| 差异 | 数量 | 原因 | 备注 |
+|------|------|------|------|
+| x/y 位置 | 92 | aproj x=0 vs LO x=284 | LO 特有行为 |
+| 样式名 | 77 | LO 用本地化名 "Default Paragraph Style" | LO 特有行为 |
+| 高度 | 76 | 行高计算差异 | 已改善 |
+| 字体名 | 68 | Run 字体 vs 样式字体优先级 | LO 特有行为 |
+| 字号 | 66 | 样式继承不完整 | 已改善 |
+| 颜色 | 23 | 部分样式颜色未继承 | 已改善 |
+
+**根因分析**：
+- fontColor 差异从 92 降至 23：实现默认颜色 FFFFFF + 样式继承
+- styleName="Default Paragraph Style" 是 LO 的本地化名称，DOCX 中实际为 "Normal"
+- fontName 差异：LO 使用样式字体而非 Run 字体，aproj 正确使用 Run 字体
+- height 差异已改善：行高因子从 12.3 改为 14.0 twips/半点
+- fontSize 差异已改善：恢复段落级 w:rPr 作为默认字符格式
+- 这些差异主要是 LO 特有行为，非 aproj bug
+| 页数 | 65 | aproj 2 页 vs LO 7 页 |
+
+**已完成**：
+- ✅ 生成 LibreOffice 参考输出（lo_frame.txt, lo_vcl.txt）
+- ✅ 修复 LibreOffice paint_listener 的 PAGE_END 累积 bug
+- ✅ 修复 LibreOffice paint_listener 的文本换行符转义
+- ✅ 修复 TextFrame 宽度=页面宽度
+- ✅ 修复 Body Frame print area 继承
+- ✅ 实现分页逻辑（pageBreakBefore + 溢出检测）
+- ✅ 修复 fontColor 十六进制解析（render_diff 和 aproj）
+- ✅ 实现主题字体解析（minorHAnsi → Calibri）
+- ✅ 修复 Run 级 w:rPr 只在有文本时应用（跳过绘图 Run）
+- ✅ 修复段落级 w:rPr：不作为 Run 默认值（OOXML 修订属性）
+| 字号 | LibreOffice 正确解析，aproj 使用默认 | 🔴 高 |
+| 颜色 | LibreOffice 有颜色，aproj 为 0 | 🟡 中 |
+| 样式名 | LibreOffice 有样式名，aproj 为空 | 🟡 中 |
+
+**根因分析**：aproj 的 DOCX 解析器（docx_parser.cpp）未正确解析：
+1. 页面分节（w:sectPr）→ 导致只有 1 页
+2. 页面边距（w:pgMar）→ 导致边距为 0
+3. 页面宽度（w:pgSz）→ 导致宽度不正确
+4. 字体信息（w:rPr/w:rFonts）→ 导致使用默认字体
+5. 字号（w:rPr/w:sz）→ 导致使用默认字号
+6. 颜色（w:rPr/w:color）→ 导致颜色为 0
 
 ### Step 5: 迭代比对修复（持续）
 
