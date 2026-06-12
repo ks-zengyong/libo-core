@@ -19,6 +19,39 @@
 // 格式化工具 — 与 LibreOffice 完全一致的 TSV 输出
 //===----------------------------------------------------------------------===//
 
+// 转义字符串中的换行符和制表符，确保 TSV 每条指令一行
+static std::string EscapeForTsv(const char* s)
+{
+    if (!s)
+        return "";
+    std::string result;
+    for (unsigned char c = *s; *s; c = *(++s))
+    {
+        switch (c)
+        {
+            case '\n':
+                result += "\\n";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            case '"':
+                result += "\\\"";
+                break;
+            default:
+                if (c < 0x20)
+                    result += " "; // 替换其他控制字符为空格
+                else
+                    result += c;
+                break;
+        }
+    }
+    return result;
+}
+
 void RenderLogger::WriteInstructionToStream(std::ostream& out, const RenderInstruction& inst)
 {
     out << RenderCmdTypeName(inst.type);
@@ -34,12 +67,11 @@ void RenderLogger::WriteInstructionToStream(std::ostream& out, const RenderInstr
         case RenderCmdType::TEXT_LINE:
         case RenderCmdType::TEXT_RUN:
             out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
-                << "\t" << inst.height << "\t\"" << (inst.text ? inst.text : "") << "\""
-                << "\t" << (inst.fontName ? inst.fontName : "") << "\t" << inst.fontSize << "\t"
+                << "\t" << inst.height << "\t\"" << EscapeForTsv(inst.text) << "\""
+                << "\t" << EscapeForTsv(inst.fontName) << "\t" << inst.fontSize << "\t"
                 << inst.fontColor << "\t" << static_cast<int>(inst.fontWeight) << "\t"
                 << static_cast<int>(inst.fontItalic) << "\t" << static_cast<int>(inst.underline)
-                << "\t" << static_cast<int>(inst.strikeout) << "\t"
-                << (inst.styleName ? inst.styleName : "");
+                << "\t" << static_cast<int>(inst.strikeout) << "\t" << EscapeForTsv(inst.styleName);
             break;
         case RenderCmdType::TABLE_FRAME:
         case RenderCmdType::TABLE_ROW:
@@ -499,6 +531,48 @@ void RenderLogger::WriteVclLayerToFile(const std::string& filePath)
     file.close();
 }
 
+// 转义 XML 属性值中的特殊字符
+static std::string EscapeForXml(const std::string& s)
+{
+    std::string result;
+    result.reserve(s.size());
+    for (unsigned char c : s)
+    {
+        switch (c)
+        {
+            case '&':
+                result += "&amp;";
+                break;
+            case '<':
+                result += "&lt;";
+                break;
+            case '>':
+                result += "&gt;";
+                break;
+            case '"':
+                result += "&quot;";
+                break;
+            case '\n':
+                result += "&#10;";
+                break;
+            case '\r':
+                result += "&#13;";
+                break;
+            case '\t':
+                result += "&#9;";
+                break;
+            default:
+                // XML 1.0 只允许 #x9, #xA, #xD, #x20-#xD7FF, #xE000-#xFFFD
+                if (c < 0x20 && c != 0x09 && c != 0x0A && c != 0x0D)
+                    result += " "; // 替换其他控制字符为空格
+                else
+                    result += c;
+                break;
+        }
+    }
+    return result;
+}
+
 //===----------------------------------------------------------------------===//
 // DumpFrameTreeXml: 将 Frame 树转储为 XML
 //===----------------------------------------------------------------------===//
@@ -550,7 +624,7 @@ void DumpFrameTreeXml(SwRootFrame* pRoot, const std::string& filePath)
                             std::string txt = pTN->GetText();
                             if (txt.size() > 30)
                                 txt = txt.substr(0, 30) + "...";
-                            file << " text=\"" << txt << "\"";
+                            file << " text=\"" << EscapeForXml(txt) << "\"";
                         }
                     }
                     if (pF->IsLayoutFrame() && static_cast<SwLayoutFrame*>(pF)->GetLower())
@@ -630,7 +704,10 @@ void DumpNodesXml(SwDoc& doc, const std::string& filePath)
         if (pNode->IsTextNode())
         {
             SwTextNode* pTextNode = static_cast<SwTextNode*>(pNode);
-            file << " text=\"" << pTextNode->GetText() << "\"";
+            std::string txt = pTextNode->GetText();
+            if (txt.size() > 100)
+                txt = txt.substr(0, 100) + "...";
+            file << " text=\"" << EscapeForXml(txt) << "\"";
         }
 
         file << " />\n";
