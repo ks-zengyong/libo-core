@@ -10,6 +10,7 @@
  */
 
 #include "meta_to_instruction.hxx"
+#include "instruction_builder.h"
 #include <osl/diagnose.hxx>
 #include <rtl/string.hxx>
 
@@ -126,34 +127,16 @@ void MetaToInstructionConverter::ConvertAction(const MetaAction* pAction,
             break;
         }
         case MetaActionType::PUSH:
-        {
-            RenderInstruction inst;
-            RenderInstruction_clear(&inst);
-            inst.type = RenderCmdType::PUSH;
-            inst.pageNum = pageNum;
-            rSink.OnInstruction(inst);
+            BuildPushInstruction(rSink, pageNum);
             break;
-        }
         case MetaActionType::POP:
-        {
-            RenderInstruction inst;
-            RenderInstruction_clear(&inst);
-            inst.type = RenderCmdType::POP;
-            inst.pageNum = pageNum;
-            rSink.OnInstruction(inst);
+            BuildPopInstruction(rSink, pageNum);
             break;
-        }
         case MetaActionType::CLIPREGION:
         case MetaActionType::ISECTRECTCLIPREGION:
         case MetaActionType::ISECTREGIONCLIPREGION:
-        {
-            RenderInstruction inst;
-            RenderInstruction_clear(&inst);
-            inst.type = RenderCmdType::SET_CLIP_REGION;
-            inst.pageNum = pageNum;
-            rSink.OnInstruction(inst);
+            BuildSetClipRegionInstruction(rSink, pageNum);
             break;
-        }
         default:
             // 其他动作（MAPMODE, RASTEROP, WALLPAPER 等）暂不转换
             break;
@@ -165,16 +148,12 @@ void MetaToInstructionConverter::ConvertAction(const MetaAction* pAction,
 void MetaToInstructionConverter::EmitText(const Point& rPt, const OUString& rText, sal_Int32 nIndex,
                                           sal_Int32 nLen, RenderInstructionSink& rSink, int pageNum)
 {
-    // 提取子串
     OUString aSubText = rText.copy(nIndex, nLen);
     OString utf8Text = OUStringToOString(aSubText, RTL_TEXTENCODING_UTF8);
 
-    // 字体属性
     OString fontName = OUStringToOString(m_aCurrentFont.GetFamilyName(), RTL_TEXTENCODING_UTF8);
     const Size& rSize = m_aCurrentFont.GetFontSize();
-    // FontSize Width/Height 是 1/100mm，转换为半点 (1pt = 20twips, 1半点=10twips)
-    // 但 Writer 使用 twips，所以直接用 Height (已经是 twips 单位)
-    int fontSize = static_cast<int>(rSize.Height() / 10); // twips → 半点
+    int fontSize = static_cast<int>(rSize.Height() / 10);
 
     FontWeight eWeight = m_aCurrentFont.GetWeight();
     uint8_t fontWeight = (eWeight >= WEIGHT_BOLD) ? 700 : 400;
@@ -186,88 +165,41 @@ void MetaToInstructionConverter::EmitText(const Point& rPt, const OUString& rTex
                          | (static_cast<uint32_t>(m_aTextColor.GetGreen()) << 8)
                          | static_cast<uint32_t>(m_aTextColor.GetBlue());
 
-    // 线程安全的字符串缓冲
     static thread_local std::string s_textBuf;
     static thread_local std::string s_fontBuf;
-
     s_textBuf = utf8Text.getStr();
     s_fontBuf = fontName.getStr();
 
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TEXT_RUN;
-    inst.pageNum = pageNum;
-    inst.x = rPt.X();
-    inst.y = rPt.Y();
-    inst.text = s_textBuf.c_str();
-    inst.textLen = static_cast<int>(s_textBuf.size());
-    inst.fontName = s_fontBuf.c_str();
-    inst.fontSize = fontSize;
-    inst.fontColor = fontColor;
-    inst.fontWeight = fontWeight;
-    inst.fontItalic = fontItalic;
-
-    rSink.OnInstruction(inst);
+    BuildTextRunInstruction(rSink, pageNum, rPt.X(), rPt.Y(), s_textBuf.c_str(),
+                            static_cast<int>(s_textBuf.size()), s_fontBuf.c_str(), fontSize,
+                            fontColor, fontWeight, fontItalic);
 }
 
 void MetaToInstructionConverter::EmitRect(const tools::Rectangle& rRect,
                                           RenderInstructionSink& rSink, int pageNum)
 {
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::RECT;
-    inst.pageNum = pageNum;
-    inst.x = rRect.Left();
-    inst.y = rRect.Top();
-    inst.width = rRect.GetWidth();
-    inst.height = rRect.GetHeight();
-
-    rSink.OnInstruction(inst);
+    BuildRectInstruction(rSink, pageNum, rRect.Left(), rRect.Top(), rRect.GetWidth(),
+                         rRect.GetHeight());
 }
 
 void MetaToInstructionConverter::EmitLine(const Point& rStart, const Point& rEnd,
                                           RenderInstructionSink& rSink, int pageNum)
 {
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::LINE;
-    inst.pageNum = pageNum;
-    inst.x = rStart.X();
-    inst.y = rStart.Y();
-    inst.width = rEnd.X(); // x2
-    inst.height = rEnd.Y(); // y2
-
-    rSink.OnInstruction(inst);
+    BuildLineInstruction(rSink, pageNum, rStart.X(), rStart.Y(), rEnd.X(), rEnd.Y());
 }
 
 void MetaToInstructionConverter::EmitBitmap(const Point& rPt, const Bitmap& rBmp,
                                             RenderInstructionSink& rSink, int pageNum)
 {
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::BITMAP;
-    inst.pageNum = pageNum;
-    inst.x = rPt.X();
-    inst.y = rPt.Y();
-    inst.width = rBmp.GetSizePixel().Width();
-    inst.height = rBmp.GetSizePixel().Height();
-
-    rSink.OnInstruction(inst);
+    BuildBitmapInstruction(rSink, pageNum, rPt.X(), rPt.Y(), rBmp.GetSizePixel().Width(),
+                           rBmp.GetSizePixel().Height());
 }
 
 void MetaToInstructionConverter::EmitEllipse(const tools::Rectangle& rRect,
                                              RenderInstructionSink& rSink, int pageNum)
 {
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::ELLIPSE;
-    inst.pageNum = pageNum;
-    inst.x = rRect.Left();
-    inst.y = rRect.Top();
-    inst.width = rRect.GetWidth();
-    inst.height = rRect.GetHeight();
-
-    rSink.OnInstruction(inst);
+    BuildEllipseInstruction(rSink, pageNum, rRect.Left(), rRect.Top(), rRect.GetWidth(),
+                            rRect.GetHeight());
 }
 
 // ── 状态变更 emit ──
@@ -287,16 +219,7 @@ void MetaToInstructionConverter::EmitSetFont(RenderInstructionSink& rSink, int p
     static thread_local std::string s_fontBuf;
     s_fontBuf = fontName.getStr();
 
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::SET_FONT;
-    inst.pageNum = pageNum;
-    inst.fontName = s_fontBuf.c_str();
-    inst.fontSize = fontSize;
-    inst.fontWeight = fontWeight;
-    inst.fontItalic = fontItalic;
-
-    rSink.OnInstruction(inst);
+    BuildSetFontInstruction(rSink, pageNum, s_fontBuf.c_str(), fontSize, fontWeight, fontItalic);
 }
 
 void MetaToInstructionConverter::EmitSetTextColor(RenderInstructionSink& rSink, int pageNum)
@@ -305,13 +228,7 @@ void MetaToInstructionConverter::EmitSetTextColor(RenderInstructionSink& rSink, 
                          | (static_cast<uint32_t>(m_aTextColor.GetGreen()) << 8)
                          | static_cast<uint32_t>(m_aTextColor.GetBlue());
 
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::SET_TEXT_COLOR;
-    inst.pageNum = pageNum;
-    inst.fontColor = fontColor;
-
-    rSink.OnInstruction(inst);
+    BuildSetTextColorInstruction(rSink, pageNum, fontColor);
 }
 
 void MetaToInstructionConverter::EmitSetFillColor(RenderInstructionSink& rSink, int pageNum)
@@ -324,13 +241,7 @@ void MetaToInstructionConverter::EmitSetFillColor(RenderInstructionSink& rSink, 
                     | static_cast<uint32_t>(m_aFillColor.GetBlue());
     }
 
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::SET_FILL_COLOR;
-    inst.pageNum = pageNum;
-    inst.fontColor = fillColor; // 复用 fontColor 字段存储颜色值
-
-    rSink.OnInstruction(inst);
+    BuildSetFillColorInstruction(rSink, pageNum, fillColor);
 }
 
 void MetaToInstructionConverter::EmitSetLineColor(RenderInstructionSink& rSink, int pageNum)
@@ -343,13 +254,7 @@ void MetaToInstructionConverter::EmitSetLineColor(RenderInstructionSink& rSink, 
                     | static_cast<uint32_t>(m_aLineColor.GetBlue());
     }
 
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::SET_LINE_COLOR;
-    inst.pageNum = pageNum;
-    inst.fontColor = lineColor; // 复用 fontColor 字段存储颜色值
-
-    rSink.OnInstruction(inst);
+    BuildSetLineColorInstruction(rSink, pageNum, lineColor);
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstring> // memset
 
 // 渲染指令类型
 enum class RenderCmdType : uint8_t

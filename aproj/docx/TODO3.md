@@ -60,18 +60,46 @@ SW_RENDER_LOG=frame_render.txt SW_VCL_RENDER_LOG=vcl_render.txt \
 | `aproj/docx/src/render/render_log.cpp` | 修改 | LogFrameTree 改为创建 RenderInstructionOutputDevice，通过 PaintSwFrame(&aOutDev) 绘制 |
 | `aproj/docx/CMakeLists.txt` | 修改 | 添加 render_output_device.cpp 编译目标 |
 
+### Phase 7: 共享指令构建模块（代码复用）
+
+将 RenderInstruction 的构建逻辑提取为共享模块 `instruction_builder.h`，消除两侧的代码重复。所有 Build* 函数使用原始类型（int, const char*, uint32_t），不依赖任何 VCL 或 aproj 类型，两端直接调用。
+
+| 文件 | 修改类型 | 说明 |
+|------|----------|------|
+| `sw/source/core/inc/instruction_builder.h` | 新建 | 共享的 Build*Instruction() 内联函数集，依赖 render_instruction.h |
+| `sw/source/core/layout/meta_to_instruction.cxx` | 修改 | Emit* 函数改为调用 Build*Instruction()，仅保留 VCL 类型转换 |
+| `aproj/docx/src/render/render_output_device.cpp` | 修改 | Draw*/Set* 方法改为调用 Build*Instruction()，仅保留 aproj 类型适配 |
+| `sw/source/core/inc/render_instruction.h` | 修改 | 添加 `#include <cstring>`（memset 依赖） |
+| `aproj/docx/src/render/render_instruction.h` | 删除 | 不再维护副本，aproj 通过 include path 引用 sw 版本 |
+| `aproj/docx/CMakeLists.txt` | 修改 | 添加 sw/source/core/inc 到 include path |
+
+**架构原则**：
+```
+                 instruction_builder.h (共享，零依赖)
+                /                                      \
+  meta_to_instruction.cxx                  render_output_device.cpp
+  (VCL 类型 → 原始类型 → Build*)           (aproj 类型 → 原始类型 → Build*)
+```
+
+两侧各自负责类型转换（VCL Point → int 或 aproj Point → int），但指令构建逻辑 100% 共享。
+
 ---
 
 ## 三、当前架构
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
+│  共享模块                                                        │
+│  render_instruction.h  — POD 结构体定义                           │
+│  instruction_builder.h — Build*Instruction() 指令构建函数         │
+├──────────────────────────────────────────────────────────────────┤
 │  LibreOffice (sw)                                                │
 │  SwRootFrame::PaintSwFrame(rRenderContext)                       │
 │    → SwTextFrame::PaintSwFrame → rRenderContext.DrawText()       │
 │    → GDIMetaFile 录制 MetaAction                                  │
 │    → SwPaintEventListener (frame 层: PAGE_START/TEXT_FRAME)      │
 │    → MetaToInstructionConverter (VCL 层: RECT/LINE/TEXT_RUN/...) │
+│      → VCL 类型转换 + Build*Instruction() ← 共享                │
 │    → 输出: frame_render.txt + vcl_render.txt                     │
 ├──────────────────────────────────────────────────────────────────┤
 │  aproj/docx                                                      │
@@ -79,7 +107,7 @@ SW_RENDER_LOG=frame_render.txt SW_VCL_RENDER_LOG=vcl_render.txt \
 │    → 创建 RenderInstructionOutputDevice(&sink, pageNum)          │
 │    → SwTextFrame::PaintSwFrame(&outDev)                          │
 │    → outDev->SetFont() + outDev->DrawText()                      │
-│    → RenderInstructionOutputDevice 输出 RenderInstruction        │
+│      → aproj 类型适配 + Build*Instruction() ← 共享              │
 │    → 输出: render_output.txt                                     │
 ├──────────────────────────────────────────────────────────────────┤
 │  比对                                                            │
