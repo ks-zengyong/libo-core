@@ -50,11 +50,8 @@ static int g_failed = 0;
 static std::string findTestFile()
 {
     const char* paths[] = {
-        "sample.docx",
-        "../sample.docx",
-        "../../sample.docx",
-        "../../../sample.docx",
-        "../../../../aproj/docx/sample.docx",
+        "tests/sample.docx",      "sample.docx",          "../sample.docx",
+        "../../sample.docx",      "../../../sample.docx", "../../../../aproj/docx/sample.docx",
         "aproj/docx/sample.docx",
     };
     for (auto p : paths)
@@ -116,7 +113,7 @@ void test_swdoc_parse(const std::string& filePath)
     }
     TEST_ASSERT_TRUE(hasContent, "At least one text node has content");
 
-    DumpNodesXml(doc, "nodes_dump.xml");
+    DumpNodesXml(doc, "tests/nodes_dump.xml");
     std::cout << "  Nodes dumped to nodes_dump.xml" << std::endl;
 }
 
@@ -180,7 +177,7 @@ void test_swdoc_layout(const std::string& filePath)
     SwLayAction layAction(*pRoot);
     layAction.Action();
 
-    DumpFrameTreeXml(pRoot, "frmtree_dump.xml");
+    DumpFrameTreeXml(pRoot, "tests/frmtree_dump.xml");
     std::cout << "  Frame tree dumped to frmtree_dump.xml" << std::endl;
 }
 
@@ -213,9 +210,9 @@ void test_swdoc_render(const std::string& filePath)
     SwLayAction layAction(*pRoot);
     layAction.Action();
 
-    // 使用 RenderLogger 记录渲染指令
+    // 使用 RenderLogger 记录渲染指令 (输出到 tests/ 目录)
     RenderLogger logger;
-    logger.StartLog("render_test.log");
+    logger.StartLog("tests/render_test.log");
     logger.LogFrameTree(pRoot);
     logger.EndLog();
 
@@ -251,8 +248,8 @@ void test_swdoc_render(const std::string& filePath)
     TEST_ASSERT_TRUE(nTextFrames > 0 || nTextRuns > 0, "Has text frame or text run instructions");
 
     // 验证 TSV 格式输出
-    logger.WriteToFile("render_write_test.txt");
-    std::ifstream f("render_write_test.txt");
+    logger.WriteToFile("tests/render_write_test.txt");
+    std::ifstream f("tests/render_write_test.txt");
     TEST_ASSERT_TRUE(f.good(), "WriteToFile produces readable file");
 
     // 检查第一行是否是 PAGE_START
@@ -307,15 +304,15 @@ void test_full_swdoc_pipeline(const std::string& filePath)
 
     // 5. 渲染指令输出 (共享格式)
     RenderLogger logger;
-    logger.StartLog("render_output.txt");
+    logger.StartLog("tests/render_output.txt");
     logger.LogFrameTree(pRoot);
     logger.EndLog();
     // 注意：WriteToFile 不再需要，因为 OnInstruction 已实时写入文件
     // logger.WriteToFile("render_output.txt");
 
     // 验证输出文件
-    std::ifstream f("render_output.txt");
-    TEST_ASSERT_TRUE(f.good(), "render_output.txt created");
+    std::ifstream f("tests/render_output.txt");
+    TEST_ASSERT_TRUE(f.good(), "tests/render_output.txt created");
 
     std::string line;
     int nLines = 0;
@@ -340,7 +337,7 @@ void test_full_swdoc_pipeline(const std::string& filePath)
 
     // 6. 验证指令格式与 render_instruction.h 一致
     // 读取第一条 TEXT_RUN 指令，检查字段数
-    std::ifstream f2("render_output.txt");
+    std::ifstream f2("tests/render_output.txt");
     while (std::getline(f2, line))
     {
         if (line.find("TEXT_RUN") == 0)

@@ -93,6 +93,84 @@ inline void BuildTextRunInstruction(RenderInstructionSink& rSink, int pageNum, i
     rSink.OnInstruction(inst);
 }
 
+// ── Frame 层语义指令构建 ──
+
+inline void BuildTextFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
+                                      int w, int h, const char* text, int textLen,
+                                      const char* fontName, int fontSize, uint32_t fontColor,
+                                      uint8_t fontWeight, uint8_t fontItalic, const char* styleName)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TEXT_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = w;
+    inst.height = h;
+    inst.text = text;
+    inst.textLen = textLen;
+    inst.fontName = fontName;
+    inst.fontSize = fontSize;
+    inst.fontColor = fontColor;
+    inst.fontWeight = fontWeight;
+    inst.fontItalic = fontItalic;
+    inst.styleName = styleName;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildTextLineInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
+                                     int h, const char* text, int textLen, const char* fontName,
+                                     int fontSize, uint32_t fontColor, uint8_t fontWeight,
+                                     uint8_t fontItalic, const char* styleName)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TEXT_LINE;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = w;
+    inst.height = h;
+    inst.text = text;
+    inst.textLen = textLen;
+    inst.fontName = fontName;
+    inst.fontSize = fontSize;
+    inst.fontColor = fontColor;
+    inst.fontWeight = fontWeight;
+    inst.fontItalic = fontItalic;
+    inst.styleName = styleName;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildTableFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
+                                       int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TABLE_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = w;
+    inst.height = h;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildImageFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
+                                       int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::IMAGE_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = w;
+    inst.height = h;
+    rSink.OnInstruction(inst);
+}
+
 // ── 状态指令构建 ──
 
 inline void BuildSetFontInstruction(RenderInstructionSink& rSink, int pageNum, const char* fontName,

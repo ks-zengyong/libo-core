@@ -204,6 +204,14 @@ SwTableNode* SwNodes::InsertTable(const SwNode& rNd, sal_uInt16 nBoxes,
     auto* pTable = new SwTableNode(rNd);
     InsertNode(pTable, nPos);
 
+    // 初始化 tableData
+    SwTableNode::TableData tableData(nLines);
+    for (sal_uInt16 r = 0; r < nLines; ++r)
+    {
+        tableData[r].cells.resize(nBoxes);
+    }
+    pTable->SetTableData(tableData);
+
     SwNodeOffset nCurPos = nPos + SwNodeOffset(1);
 
     // 创建行和单元格

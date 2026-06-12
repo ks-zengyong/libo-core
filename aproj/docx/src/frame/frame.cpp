@@ -436,7 +436,7 @@ void SwTextFrame::PaintSwFrame(OutputDevice* pOutDev)
 
     const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
     if (pSize)
-        aFont.height = std::stoi(*pSize);
+        aFont.height = std::stoi(*pSize) * 10; // half-points → twips (×10)
 
     const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
     if (pWeight && *pWeight == "bold")

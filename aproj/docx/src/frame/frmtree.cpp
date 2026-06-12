@@ -53,6 +53,15 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
 
         MakeFramesForNode(*pNode, pParent, pSibling);
 
+        // 如果是表格节点，跳过其所有子节点（行、单元格、文本等）
+        if (pNode->IsTableNode())
+        {
+            SwTableNode* pTable = static_cast<SwTableNode*>(pNode);
+            SwEndNode* pEnd = pTable->GetEndOfSection();
+            if (pEnd)
+                i = pEnd->GetIndex();
+        }
+
         // 更新 pSibling 为最后一个创建的 Frame
         if (pParent->GetLower())
         {
@@ -152,8 +161,97 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling)
     }
     else if (rNode.IsTableNode())
     {
-        // 创建表格 Frame（简化版）
-        // 实际实现会更复杂
+        // 创建表格 Frame 树：TabFrame → RowFrame → CellFrame → TextFrame
+        SwTableNode* pTableNode = static_cast<SwTableNode*>(&rNode);
+        const auto& tableData = pTableNode->GetTableData();
+        const auto& gridCols = pTableNode->GetGridCols();
+
+        if (tableData.empty())
+            return;
+
+        // 创建 TabFrame
+        auto* pTabFrame = new SwTabFrame(pParent);
+        pTabFrame->InsertBehind(pParent, pSibling);
+
+        // 计算表格宽度和位置
+        const SwRect& rPrtArea = pParent->getFramePrintArea();
+        SwTwips nTableWidth = rPrtArea.Width();
+        if (nTableWidth <= 0)
+            nTableWidth = 9360;
+
+        SwTwips nTabY = 0;
+        if (pSibling)
+            nTabY = pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height();
+
+        SwRect aTabRect(rPrtArea.Left(), nTabY, nTableWidth, 0);
+        pTabFrame->setFrameArea(aTabRect);
+        pTabFrame->setFramePrintArea(aTabRect);
+
+        SwTwips nRowY = nTabY;
+        SwFrame* pRowSibling = nullptr;
+
+        for (size_t r = 0; r < tableData.size(); ++r)
+        {
+            const auto& rowData = tableData[r];
+
+            // 创建 RowFrame
+            auto* pRowFrame = new SwRowFrame(pTabFrame);
+            pRowFrame->InsertBehind(pTabFrame, pRowSibling);
+
+            // 估算行高
+            SwTwips nRowHeight = rowData.height > 0 ? rowData.height : 276;
+            SwRect aRowRect(0, nRowY - nTabY, nTableWidth, nRowHeight);
+            pRowFrame->setFrameArea(aRowRect);
+            pRowFrame->setFramePrintArea(aRowRect);
+
+            SwFrame* pCellSibling = nullptr;
+            SwTwips nCellX = 0;
+
+            for (size_t c = 0; c < rowData.cells.size(); ++c)
+            {
+                const auto& cellData = rowData.cells[c];
+
+                // 创建 CellFrame
+                auto* pCellFrame = new SwCellFrame(pRowFrame);
+                pCellFrame->InsertBehind(pRowFrame, pCellSibling);
+
+                // 计算单元格宽度
+                SwTwips nCellWidth = nTableWidth / rowData.cells.size();
+                if (!gridCols.empty() && c < gridCols.size())
+                    nCellWidth = gridCols[c];
+
+                SwRect aCellRect(nCellX, 0, nCellWidth, nRowHeight);
+                pCellFrame->setFrameArea(aCellRect);
+                pCellFrame->setFramePrintArea(aCellRect);
+
+                // 为单元格文本创建 TextFrame
+                if (!cellData.text.empty())
+                {
+                    // 创建临时文本节点存储单元格内容
+                    SwTextFormatColl* pColl = pTableNode->GetDoc().GetDefaultTextFormatColl();
+                    SwNodes& rNodes = pTableNode->GetDoc().GetNodes();
+                    SwTextNode* pCellTextNode = rNodes.MakeTextNode(*pTableNode, pColl);
+                    pCellTextNode->SetText(cellData.text);
+
+                    auto* pTextFrame = new SwTextFrame(pCellTextNode, pCellFrame);
+                    pTextFrame->InsertBehind(pCellFrame, nullptr);
+
+                    SwRect aTextRect(0, 0, nCellWidth, nRowHeight);
+                    pTextFrame->setFrameArea(aTextRect);
+                }
+
+                nCellX += nCellWidth;
+                pCellSibling = pCellFrame;
+            }
+
+            nRowY += nRowHeight;
+            pRowSibling = pRowFrame;
+        }
+
+        // 更新 TabFrame 高度
+        SwTwips nTotalHeight = nRowY - nTabY;
+        aTabRect.SetHeight(nTotalHeight);
+        pTabFrame->setFrameArea(aTabRect);
     }
     else if (rNode.IsStartNode())
     {

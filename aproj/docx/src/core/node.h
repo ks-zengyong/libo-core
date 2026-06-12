@@ -72,6 +72,8 @@ class SwNode : public BigPtrEntry
     friend class SwStartNode;
     friend class SwEndNode;
     friend class SwContentNode;
+    friend class SwTableNode;
+    friend class SwSectionNode;
 
 public:
     SwNode(const SwNode&) = delete;

@@ -8,6 +8,8 @@
 #include "../core/doc.h"
 #include "../core/format.h"
 #include "../frame/frame.h"
+#include "instruction_builder.h"
+#include <functional>
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -320,14 +322,63 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
 
         LogPageStart(pn, pPage->getFrameArea().Width(), pPage->getFrameArea().Height());
 
-        // 通过 OutputDevice 接口绘制页面内容
-        // 与 LibreOffice 的 pPage->PaintSwFrame(rRenderContext, aPaintRect) 流程对称
-        SwFrame* pFrame = pPage->GetLower();
-        while (pFrame)
-        {
-            pFrame->PaintSwFrame(&aOutDev);
-            pFrame = pFrame->GetNext();
-        }
+        // 遍历 Frame 树，输出 frame 层语义指令 + VCL 层绘制指令
+        // 与 LibreOffice 的双层录制架构对称：
+        //   frame 层: TEXT_FRAME (语义级，来自 SwTextFrame::Paint)
+        //   VCL 层:   SET_FONT / TEXT_RUN (绘制级，来自 OutputDevice)
+        std::function<void(SwFrame*)> logFrame = [&](SwFrame* pFrame) {
+            while (pFrame)
+            {
+                if (pFrame->IsTextFrame())
+                {
+                    // TextFrame: 先输出 frame 层 TEXT_FRAME，再输出 VCL 层指令
+                    SwTextFrame* pTextFrame = static_cast<SwTextFrame*>(pFrame);
+                    SwContentNode* pContentNode = pTextFrame->GetNode();
+                    if (pContentNode && pContentNode->IsTextNode())
+                    {
+                        SwTextNode* pTextNode = static_cast<SwTextNode*>(pContentNode);
+                        const std::string& rText = pTextNode->GetText();
+
+                        const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+                        const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+                        const std::string* pColor = pTextNode->GetAttr(RES_CHRATR_COLOR);
+                        const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
+                        const std::string* pItalic = pTextNode->GetAttr(RES_CHRATR_POSTURE);
+
+                        const char* fontName = pFont ? pFont->c_str() : "";
+                        int fontSize = pSize ? std::stoi(*pSize) : 24;
+                        uint32_t fontColor
+                            = pColor ? static_cast<uint32_t>(std::stoul(*pColor)) : 0;
+                        uint8_t fontWeight
+                            = pWeight ? static_cast<uint8_t>(std::stoi(*pWeight)) : 0;
+                        uint8_t fontItalic
+                            = pItalic ? static_cast<uint8_t>(std::stoi(*pItalic)) : 0;
+
+                        SwRect aArea = pTextFrame->getFrameArea();
+                        BuildTextFrameInstruction(*this, pn, aArea.Left(), aArea.Top(),
+                                                  aArea.Width(), aArea.Height(), rText.c_str(),
+                                                  static_cast<int>(rText.size()), fontName,
+                                                  fontSize, fontColor, fontWeight, fontItalic, "");
+                    }
+
+                    // VCL 层：PaintSwFrame 输出 SET_FONT + TEXT_RUN
+                    pFrame->PaintSwFrame(&aOutDev);
+                }
+                else if (pFrame->IsLayoutFrame())
+                {
+                    // LayoutFrame: 只递归进入子 Frame（不调用 PaintSwFrame，避免重复绘制）
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else
+                {
+                    pFrame->PaintSwFrame(&aOutDev);
+                }
+
+                pFrame = pFrame->GetNext();
+            }
+        };
+
+        logFrame(pPage->GetLower());
 
         LogPageEnd(pn);
     }

@@ -714,9 +714,18 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
     auto row = tblNode.child("w:tr");
     auto& tableData = const_cast<SwTableNode::TableData&>(pTable->GetTableData());
 
+    // 遍历表格节点的子节点结构：TableNode → RowStartNode → CellStartNode → TextNode
+    SwNodeOffset nTableIdx = pTable->GetIndex();
+    SwNodeOffset nCurIdx = nTableIdx + SwNodeOffset(1);
+
     for (size_t r = 0; r < tableData.size() && row; ++r)
     {
         auto cell = row.child("w:tc");
+
+        // 跳过 RowStartNode
+        if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsStartNode())
+            ++nCurIdx;
+
         for (size_t c = 0; c < tableData[r].cells.size() && cell; ++c)
         {
             // 解析单元格内容
@@ -731,8 +740,30 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
             }
             tableData[r].cells[c].text = cellText;
 
+            // 更新实际的文本节点
+            // 跳过 CellStartNode
+            if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsStartNode())
+                ++nCurIdx;
+
+            // 找到文本节点
+            if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsTextNode())
+            {
+                SwTextNode* pCellText = static_cast<SwTextNode*>(rNodes[nCurIdx]);
+                pCellText->SetText(cellText);
+                ++nCurIdx;
+            }
+
+            // 跳过 CellEndNode
+            if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsEndNode())
+                ++nCurIdx;
+
             cell = cell.next_sibling("w:tc");
         }
+
+        // 跳过 RowEndNode
+        if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsEndNode())
+            ++nCurIdx;
+
         row = row.next_sibling("w:tr");
     }
 }

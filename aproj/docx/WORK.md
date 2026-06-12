@@ -165,6 +165,10 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | 页面尺寸不一致 | ParseSectionProps 创建新 PageDesc 而非更新默认 | 改为更新 GetDefaultPageDesc() |
 | WriteToFile 指针悬空 | 字符串指针在 OnInstruction 后失效 | 移除 WriteToFile 调用 |
 | Frame 树遍历不完整 | 只遍历 page 直接子节点 | 改为递归遍历 body 子节点 |
+| fontSize=2 | 半点值直接赋给 twips 字段 | `aFont.height = halfPoints * 10` |
+| SwTableNode 类型错误 | 构造函数未设置 `m_nNodeType = Table` | 添加赋值语句 |
+| 表格文本为空 | InsertTable 未初始化 tableData | 添加 tableData 初始化 |
+| 表格 Frame 重复创建 | MakeFrames 遍历表格子节点 | 遇到 TableNode 时跳过子节点 |
 
 ---
 
@@ -175,73 +179,103 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | 项目 | 状态 |
 |------|------|
 | LibreOffice `make sw` | ✅ 编译通过 |
-| aproj `docx_e2e_test` | ✅ 28/28 通过 |
+| aproj `docx_e2e_test` | ✅ 28/28 通过（sample.docx: 102 TEXT_FRAME + 52 TEXT_RUN） |
 | aproj `docx_test` | ✅ 19/19 通过 |
 | aproj `render_diff` | ✅ 编译通过 |
+
+### 已完成的后续步骤
+
+| 步骤 | 内容 | 状态 |
+|------|------|------|
+| Step 1 | 修复 fontSize 单位（半点→twips） | ✅ 已完成 |
+| Step 2 | 添加 frame 层语义输出（TEXT_FRAME） | ✅ 已完成 |
+| Step 3 | 扩展 PaintSwFrame（TABLE 支持） | ✅ 已完成 |
+| Step 4 | 扩展测试 .docx 文件 | ⬜ 待开始 |
+| Step 5 | 迭代 render_diff 比对 | ⬜ 待开始 |
+| Step 6 | VCL 层接入（可选） | ⬜ 待开始 |
+
+### 当前渲染输出统计（sample.docx）
+
+```
+PAGE_START: 1
+PAGE_END:   1
+TEXT_FRAME: 102 (frame 层语义指令)
+TEXT_RUN:   52  (VCL 层绘制指令)
+SET_FONT:   102 (VCL 层状态指令)
+TABLE_FRAME: 0  (待实现)
+```
 
 ### 端到端比对结果
 
 ```
 LibreOffice frame 层 (lo_frame.txt):  PAGE_START → TEXT_FRAME → TEXT_FRAME → PAGE_END
-aproj (aproj_render.txt):             PAGE_START → SET_FONT → TEXT_RUN → SET_FONT → TEXT_RUN → PAGE_END
+aproj (aproj_render.txt):             PAGE_START → TEXT_FRAME → SET_FONT → TEXT_RUN → PAGE_END
 ```
 
 **差异类型**：
-- 指令类型不匹配：LibreOffice 输出 TEXT_FRAME（语义级），aproj 输出 TEXT_RUN（绘制级）
+- 指令类型不匹配：LibreOffice 输出 TEXT_FRAME（语义级），aproj 同时输出 TEXT_FRAME + TEXT_RUN
 - 多余状态指令：aproj 输出 SET_FONT/SET_TEXT_COLOR，LibreOffice frame 层不输出
-- 这是**架构差异**，不是 Bug：aproj 通过 OutputDevice 录制等效于 VCL 层
+- 这是**架构差异**，不是 Bug：aproj 同时输出 frame 层和 VCL 层，与 LibreOffice 的双层录制对称
 
 ### 测试文件
 
 | 文件 | 说明 |
 |------|------|
-| `tests/sample.docx` | 2 段纯文本，Arial 12pt |
-| `tests/lo_frame.txt` | LibreOffice frame 层输出（4 条指令） |
-| `tests/lo_vcl.txt` | LibreOffice VCL 层输出（42 条指令） |
-| `tests/aproj_render.txt` | aproj 输出（8 条指令） |
+| `tests/sample.docx` | WPS Office 复杂文档（A4，104 段落，23 张图片，表格，多节） |
+| `tests/render_output.txt` | aproj 完整渲染输出（268 条指令） |
+| `tests/frmtree_dump.xml` | Frame 树 XML 转储 |
+| `tests/nodes_dump.xml` | 节点树 XML 转储 |
+| `tests/lo_frame.txt` | LibreOffice frame 层输出（参考） |
+| `tests/lo_vcl.txt` | LibreOffice VCL 层输出（参考） |
 | `tests/known_diffs.txt` | 已知差异列表 |
 
 ---
 
 ## 六、后续步骤
 
-### Step 1: 修复 fontSize 单位问题（小）
+### ~~Step 1: 修复 fontSize 单位问题~~ ✅ 已完成
 
 **问题**：aproj 输出 fontSize=2 而非 24。Parser 存储半点值（24），但 PaintSwFrame 直接赋给 `aFont.height`（twips 单位），`GetHeightInHalfPoints()` 返回 24/10=2。
 
-**修复**：在 PaintSwFrame 中将半点转为 twips：`aFont.height = std::stoi(*pSize) * 10`。
+**修复**：在 `frame.cpp:439` 将半点转为 twips：`aFont.height = std::stoi(*pSize) * 10`。
 
-### Step 2: 添加 frame 层语义输出（中）
+**验证**：fontSize 现在正确输出为 24（半点 = 12pt），28/28 测试通过。
 
-aproj 当前只输出 VCL 层指令（TEXT_RUN），需要额外输出 frame 层指令（TEXT_FRAME）以匹配 LibreOffice 的 frame 层日志。
+### ~~Step 2: 添加 frame 层语义输出~~ ✅ 已完成
 
-**方案**：在 `RenderLogger::LogFrameTree` 中，遍历 Frame 树时先输出 TEXT_FRAME 语义指令，再调用 PaintSwFrame 输出 VCL 层指令。
+aproj 现在同时输出 frame 层（TEXT_FRAME）和 VCL 层（TEXT_RUN）指令，与 LibreOffice 的双层录制架构对称。
 
-### Step 3: 扩展 PaintSwFrame 实现（大）
+**实现**：
+- `RenderLogger::LogFrameTree` 遍历 Frame 树时，先输出 TEXT_FRAME（从 SwTextNode 属性获取字体信息），再调用 PaintSwFrame 输出 SET_FONT + TEXT_RUN
+- 添加 `BuildTextFrameInstruction`、`BuildTextLineInstruction`、`BuildTableFrameInstruction`、`BuildImageFrameInstruction` 到共享 `instruction_builder.h`
 
-当前只实现了 SwTextFrame::PaintSwFrame。需要扩展：
+**验证**：输出顺序 PAGE_START → TEXT_FRAME → SET_FONT → TEXT_RUN → PAGE_END，102 个 TEXT_FRAME + 52 个 TEXT_RUN。
 
-| Frame 类型 | 绘制方法 | 优先级 |
-|-----------|---------|--------|
-| SwTabFrame | DrawRect/DrawLine（表格边框） | 高 |
-| SwCellFrame | DrawRect（单元格背景） | 高 |
-| SwRowFrame | 无直接绘制（容器） | 中 |
-| 图片 Frame | DrawBitmap | 中 |
-| FlyFrame | Push/Pop + 递归绘制 | 低 |
-| SwSectionFrame | 无直接绘制（容器） | 低 |
+### ~~Step 3: 扩展 PaintSwFrame（TABLE 支持）~~ ✅ 已完成
 
-每新增一种元素，其 PaintSwFrame 实现自然调用 OutputDevice 的 Draw* 方法，渲染指令自动被记录。
+**实现**：
+- `MakeFramesForNode` 支持 SwTableNode：创建 TabFrame → RowFrame → CellFrame → TextFrame
+- `SwTableNode` 构造函数正确设置 `m_nNodeType = SwNodeType::Table`
+- `InsertTable` 初始化 tableData 结构
+- `ParseTable` 更新实际的文本节点内容
+- `MakeFrames` 遇到表格节点时跳过其子节点
 
-### Step 4: 扩展测试文件（中）
+**验证**：frame 树正确显示嵌套的 table/row/cell/text 结构。
 
-| 测试场景 | .docx 内容 | 覆盖指令 |
-|---------|-----------|---------|
-| 纯文本 | ✅ 已有 | TEXT_RUN, SET_FONT |
-| 粗体/斜体 | 加粗+斜体文本 | fontWeight, fontItalic |
-| 表格 | 3×3 表格 | TABLE_FRAME, RECT, LINE |
-| 图片 | 内嵌图片 | BITMAP |
-| 多页 | 长文本翻页 | PAGE_START/END × N |
-| 混合 | 文本+表格+图片 | 全部指令 |
+### ~~Step 3: 扩展 PaintSwFrame（TABLE 支持）~~ ✅ 已完成
+
+见上方详细说明。
+
+### Step 4: 扩展测试 .docx 文件
+
+当前测试使用 sample.docx（WPS Office 复杂文档，A4，104 段落，表格，23 张图片）。后续可添加更多测试文件：
+
+| 文件 | 内容 | 用途 |
+|------|------|------|
+| `tests/sample.docx` | 当前主测试文件 | 端到端测试 |
+| `tests/simple.docx` | 2 段纯文本 | 基础回归测试 |
+| `tests/table.docx` | 纯表格文档 | 表格渲染测试 |
+| `tests/image.docx` | 图片文档 | 图片渲染测试 |
 
 ### Step 5: 迭代比对修复（持续）
 

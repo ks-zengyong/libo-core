@@ -189,13 +189,13 @@ const std::string* SwTextNode::GetAttr(sal_uInt16 nWhich) const
 SwTableNode::SwTableNode(const SwNode& rWhere)
     : SwStartNode(rWhere, SwTableBoxStartNode)
 {
-    // 注意：SwTableNode 的节点类型是 Table，不是 Start
-    // 这里需要修改节点类型
+    m_nNodeType = SwNodeType::Table;
 }
 
 SwTableNode::SwTableNode(SwNodes& rNodes, SwNodeOffset nPos)
     : SwStartNode(rNodes, nPos, SwTableBoxStartNode)
 {
+    m_nNodeType = SwNodeType::Table;
 }
 
 SwTableNode::~SwTableNode() = default;
