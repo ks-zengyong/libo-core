@@ -170,6 +170,7 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | 表格文本为空 | InsertTable 未初始化 tableData | 添加 tableData 初始化 |
 | 表格 Frame 重复创建 | MakeFrames 遍历表格子节点 | 遇到 TableNode 时跳过子节点 |
 | VCL 层文本乱码 | `std::vector` 重新分配使 `c_str()` 指针失效 | 改用 `std::deque` 存储字符串 |
+| TSV/XML 异常行终止符 | 文本中的换行符直接写入输出 | 添加 EscapeForTsv/EscapeForXml 转义 |
 
 ---
 
@@ -180,8 +181,7 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | 项目 | 状态 |
 |------|------|
 | LibreOffice `make sw` | ✅ 编译通过 |
-| aproj `docx_e2e_test` | ✅ 28/28 通过（sample.docx: 102 TEXT_FRAME + 52 TEXT_RUN） |
-| aproj `docx_test` | ✅ 19/19 通过 |
+| aproj `docx_e2e_test` | ✅ 21/21 通过 |
 | aproj `render_diff` | ✅ 编译通过 |
 
 ### 已完成的后续步骤
@@ -315,7 +315,7 @@ aproj/docx/
 │   ├── core/                    # 文档模型
 │   │   ├── types.h              # 基础类型 (SwTwips, sal_Int32)
 │   │   ├── swrect.h             # SwRect 矩形
-│   │   ├── bparr.h              # BigPtrArray 块数组
+│   │   ├── bparr.h/cpp          # BigPtrArray 块数组
 │   │   ├── node.h/cpp           # SwNode 树
 │   │   ├── ndarr.h/cpp          # SwNodes 节点数组
 │   │   ├── format.h/cpp         # 样式系统
@@ -326,18 +326,23 @@ aproj/docx/
 │   ├── filter/                  # DOCX 解析
 │   │   └── docx_parser.h/cpp    # XML → SwDoc
 │   ├── layout/                  # 排版引擎
-│   │   └── layout.h/cpp         # LayoutEngine
-│   ├── render/                  # 渲染指令
-│   │   ├── output_device.h      # 抽象 OutputDevice 接口
-│   │   ├── render_output_device.h/cpp  # → RenderInstruction
-│   │   ├── render_log.h/cpp     # RenderLogger
-│   │   └── render_instruction.h # (已删除，引用 sw 版本)
-│   └── font/                    # 字体引擎
-│       └── font_engine.h/cpp    # stb_truetype
+│   │   └── layact.h/cpp         # SwLayAction
+│   └── render/                  # 渲染指令
+│       ├── output_device.h      # 抽象 OutputDevice 接口
+│       ├── render_output_device.h/cpp  # → RenderInstruction
+│       └── render_log.h/cpp     # RenderLogger (分层输出)
 ├── test/
-│   └── test_end_to_end.cpp      # 28/28 测试
+│   └── test_end_to_end.cpp      # 21/21 测试
 ├── tools/
-│   └── render_diff.cpp          # 比对工具
+│   ├── render_diff.cpp          # 比对工具
+│   └── dump_lo.py               # LibreOffice 输出采集
+├── tests/                       # 测试输出
+│   ├── sample.docx              # 测试输入
+│   ├── aproj_frame.txt          # frame 层输出
+│   ├── aproj_vcl.txt            # VCL 层输出
+│   ├── frmtree_dump.xml         # Frame 树转储
+│   └── nodes_dump.xml           # 节点树转储
+└── CMakeLists.txt               # 构建配置
 ├── tests/
 │   ├── sample.docx              # 测试文件
 │   ├── lo_frame.txt             # LibreOffice frame 层输出
