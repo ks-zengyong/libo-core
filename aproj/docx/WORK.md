@@ -171,6 +171,8 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | 表格 Frame 重复创建 | MakeFrames 遍历表格子节点 | 遇到 TableNode 时跳过子节点 |
 | VCL 层文本乱码 | `std::vector` 重新分配使 `c_str()` 指针失效 | 改用 `std::deque` 存储字符串 |
 | TSV/XML 异常行终止符 | 文本中的换行符直接写入输出 | 添加 EscapeForTsv/EscapeForXml 转义 |
+| Frame 层 fontWeight 错误 | `std::stoi("bold")` 会抛异常 | 改为检查字符串 "bold"→188, 默认→144 |
+| render_diff 已知差异加载失败 | `loadKnownDiffs` 要求 lineNum+TAB 格式 | 支持纯 pattern 格式（无行号） |
 
 ---
 
@@ -191,19 +193,30 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | Step 1 | 修复 fontSize 单位（半点→twips） | ✅ 已完成 |
 | Step 2 | 添加 frame 层语义输出（TEXT_FRAME） | ✅ 已完成 |
 | Step 3 | 扩展 PaintSwFrame（TABLE 支持） | ✅ 已完成 |
-| Step 4 | 扩展测试 .docx 文件 | ⬜ 待开始 |
+| Step 4 | 深化 sample.docx 测试验证 | 🔄 进行中 |
 | Step 5 | 迭代 render_diff 比对 | ⬜ 待开始 |
 | Step 6 | VCL 层接入（可选） | ⬜ 待开始 |
+
+### Step 4 进展
+
+- ✅ 修复 `render_diff.cpp` 的 `loadKnownDiffs`：支持无行号格式（纯 pattern 匹配）
+- ✅ 更新 WORK.md：明确使用 sample.docx 作为唯一测试文件，不自动生成 .docx
+- ✅ 修复 frame 层 `fontWeight`：与 VCL 层保持一致（144=normal, 188=bold）
 
 ### 当前渲染输出统计（sample.docx）
 
 ```
-PAGE_START: 1
-PAGE_END:   1
-TEXT_FRAME: 102 (frame 层语义指令)
-TEXT_RUN:   52  (VCL 层绘制指令)
-SET_FONT:   102 (VCL 层状态指令)
-TABLE_FRAME: 0  (待实现)
+Frame 层 (aproj_frame.txt): 104 条
+  PAGE_START: 1
+  PAGE_END:   1
+  TEXT_FRAME: 102 (语义指令，含字体信息)
+
+VCL 层 (aproj_vcl.txt): 258 条
+  PAGE_START: 1
+  PAGE_END:   1
+  SET_FONT:   104 (状态指令)
+  SET_TEXT_COLOR: 104
+  TEXT_RUN:   48 (绘制指令)
 ```
 
 ### 端到端比对结果
@@ -222,14 +235,14 @@ aproj (aproj_render.txt):             PAGE_START → TEXT_FRAME → SET_FONT →
 
 | 文件 | 说明 |
 |------|------|
-| `tests/sample.docx` | WPS Office 复杂文档（A4，104 段落，23 张图片，表格，多节） |
+| `sample.docx` | WPS Office 复杂文档（A4，104 段落，23 张图片，表格，多节）— 项目根目录 |
 | `tests/aproj_frame.txt` | aproj frame 层输出（TEXT_FRAME 等语义指令） |
 | `tests/aproj_vcl.txt` | aproj VCL 层输出（SET_FONT, TEXT_RUN 等绘制指令） |
 | `tests/aproj_all.log` | aproj 全部指令（frame + VCL 混合） |
 | `tests/frmtree_dump.xml` | Frame 树 XML 转储 |
 | `tests/nodes_dump.xml` | 节点树 XML 转储 |
-| `tests/lo_frame.txt` | LibreOffice frame 层输出（参考） |
-| `tests/lo_vcl.txt` | LibreOffice VCL 层输出（参考） |
+| `tests/lo_frame.txt` | LibreOffice frame 层输出（参考，需手动生成） |
+| `tests/lo_vcl.txt` | LibreOffice VCL 层输出（参考，需手动生成） |
 | `tests/known_diffs.txt` | 已知差异列表 |
 
 ---
@@ -269,29 +282,50 @@ aproj 现在同时输出 frame 层（TEXT_FRAME）和 VCL 层（TEXT_RUN）指�
 
 见上方详细说明。
 
-### Step 4: 扩展测试 .docx 文件
+### Step 4: 深化 sample.docx 测试验证 ⬜ 待开始
 
-当前测试使用 sample.docx（WPS Office 复杂文档，A4，104 段落，表格，23 张图片）。后续可添加更多测试文件：
+**策略**：不自动生成 .docx 测试文件，专注使用现有 `sample.docx`（WPS Office 复杂文档，A4，104 段落，表格，23 张图片）作为主要测试输入。该文件已涵盖纯文本、表格、图片等多种元素，足够验证排版逻辑。
 
-| 文件 | 内容 | 用途 |
-|------|------|------|
-| `tests/sample.docx` | 当前主测试文件 | 端到端测试 |
-| `tests/simple.docx` | 2 段纯文本 | 基础回归测试 |
-| `tests/table.docx` | 纯表格文档 | 表格渲染测试 |
-| `tests/image.docx` | 图片文档 | 图片渲染测试 |
+**重点**：
+1. 对 sample.docx 运行 render_diff 比对，分析每个差异的根因
+2. 修复 aproj 排版逻辑中的 Bug（非架构差异）
+3. 将已确认的架构差异记录到 known_diffs.txt
 
 ### Step 5: 迭代比对修复（持续）
 
+**前置条件**：生成 LibreOffice 参考输出
+
+```bash
+# 1. 编译 LibreOffice (含 paint_listener 植入)
+cd sw && make
+
+# 2. 运行 LibreOffice 生成参考输出
+#    设置环境变量启用 paint_listener：
+export SW_RENDER_LOG=tests/lo_frame.txt    # frame 层语义指令
+export SW_VCL_RENDER_LOG=tests/lo_vcl.txt  # VCL 层绘制指令
+instdir/program/soffice --headless sample.docx
+
+# 3. 运行 aproj 生成测试输出
+cd aproj/docx/build && cmake .. && make
+./docx_e2e_test sample.docx
+# 输出: tests/aproj_frame.txt, tests/aproj_vcl.txt
+
+# 4. 比对 frame 层
+./render_diff tests/lo_frame.txt tests/aproj_frame.txt \
+  --known-diffs tests/known_diffs.txt --verbose
+
+# 5. 比对 VCL 层（可选）
+./render_diff tests/lo_vcl.txt tests/aproj_vcl.txt \
+  --known-diffs tests/known_diffs.txt --verbose
 ```
-循环：
-  1. 用新测试文件运行 LibreOffice 生成 lo_frame.txt
-  2. 用同一文件运行 aproj 生成 aproj_render.txt
-  3. render_diff 比对
-  4. 分析差异：
-     - 已知差异 → 加入 known_diffs.txt
-     - aproj Bug → 修复 aproj 排版逻辑
-     - 架构差异 → 记录但不修复
-  5. 重复直到 render_diff 输出 PASS
+
+**差异分析循环**：
+```
+  分析每个 [DIFF] 差异：
+    - 已知差异（图片/页眉/脚注等未实现功能）→ 加入 known_diffs.txt
+    - aproj Bug（排版逻辑错误）→ 修复 aproj 代码
+    - 架构差异（frame/VCL 层混合输出）→ 记录但不修复
+  重复直到 render_diff 输出 PASS
 ```
 
 ### Step 6: VCL 层录制接入（可选，长期）

@@ -371,12 +371,21 @@ static std::vector<KnownDiff> loadKnownDiffs(const std::string& path)
     std::string line;
     while (std::getline(f, line))
     {
+        // 去除行尾 \r
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
         if (line.empty() || line[0] == '#')
             continue;
         auto tab = line.find('\t');
         if (tab != std::string::npos)
         {
+            // 格式: lineNum<TAB>pattern
             known.push_back({ parseInt(line.substr(0, tab)), line.substr(tab + 1) });
+        }
+        else
+        {
+            // 格式: pattern (无行号，匹配所有行)
+            known.push_back({ 0, line });
         }
     }
     return known;

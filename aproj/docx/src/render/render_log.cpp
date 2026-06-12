@@ -408,10 +408,10 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                         int fontSize = pSize ? std::stoi(*pSize) : 24;
                         uint32_t fontColor
                             = pColor ? static_cast<uint32_t>(std::stoul(*pColor)) : 0;
-                        uint8_t fontWeight
-                            = pWeight ? static_cast<uint8_t>(std::stoi(*pWeight)) : 0;
-                        uint8_t fontItalic
-                            = pItalic ? static_cast<uint8_t>(std::stoi(*pItalic)) : 0;
+                        // 与 VCL 层一致：FontWeight::Bold=700, FontWeight::Normal=400
+                        // 截断为 uint8_t：700→188, 400→144
+                        uint8_t fontWeight = (pWeight && *pWeight == "bold") ? 188 : 144;
+                        uint8_t fontItalic = (pItalic && *pItalic == "italic") ? 1 : 0;
 
                         SwRect aArea = pTextFrame->getFrameArea();
                         BuildTextFrameInstruction(*this, pn, aArea.Left(), aArea.Top(),
