@@ -214,6 +214,39 @@ void SwPaintEventListener::OnTextFrame(const SwTextFrame* pFrame)
 
 // ── 格式化 ──
 
+// 转义字符串中的换行符和制表符，确保 TSV 每条指令一行
+static OString EscapeForTsv(const char* s)
+{
+    if (!s)
+        return OString();
+    OStringBuffer buf;
+    for (; *s; ++s)
+    {
+        switch (*s)
+        {
+            case '\n':
+                buf.append("\\n");
+                break;
+            case '\r':
+                buf.append("\\r");
+                break;
+            case '\t':
+                buf.append("\\t");
+                break;
+            case '"':
+                buf.append("\\\"");
+                break;
+            default:
+                if (static_cast<unsigned char>(*s) < 0x20)
+                    buf.append(' ');
+                else
+                    buf.append(*s);
+                break;
+        }
+    }
+    return buf.makeStringAndClear();
+}
+
 void SwPaintEventListener::WriteInstructionToStream(std::ostream& out,
                                                     const RenderInstruction& inst)
 {
@@ -230,12 +263,12 @@ void SwPaintEventListener::WriteInstructionToStream(std::ostream& out,
         case RenderCmdType::TEXT_LINE:
         case RenderCmdType::TEXT_RUN:
             out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
-                << "\t" << inst.height << "\t\"" << (inst.text ? inst.text : "") << "\""
-                << "\t" << (inst.fontName ? inst.fontName : "") << "\t" << inst.fontSize << "\t"
+                << "\t" << inst.height << "\t\"" << EscapeForTsv(inst.text).getStr() << "\""
+                << "\t" << EscapeForTsv(inst.fontName).getStr() << "\t" << inst.fontSize << "\t"
                 << inst.fontColor << "\t" << static_cast<int>(inst.fontWeight) << "\t"
                 << static_cast<int>(inst.fontItalic) << "\t" << static_cast<int>(inst.underline)
                 << "\t" << static_cast<int>(inst.strikeout) << "\t"
-                << (inst.styleName ? inst.styleName : "");
+                << EscapeForTsv(inst.styleName).getStr();
             break;
         case RenderCmdType::TABLE_FRAME:
         case RenderCmdType::TABLE_ROW:

@@ -3358,6 +3358,9 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
         const bool bPaintLeftShadow = pPage->IsLeftShadowNeeded();
         const bool bRightSidebar = pPage->SidebarPosition() == sw::sidebarwindows::SidebarPosition::RIGHT;
 
+        // 跟踪当前页是否调用了 OnPageStart
+        bool bPageStarted = false;
+
         if ( !pPage->IsEmptyPage() )
         {
             SwRect aPaintRect;
@@ -3378,6 +3381,7 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
                     pPage->GetPhyPageNum(),
                     static_cast<int>(pPage->getFrameArea().Width()),
                     static_cast<int>(pPage->getFrameArea().Height()));
+                bPageStarted = true;
 
                 // --- VCL 层渲染指令记录: 开始录制当前页的所有 VCL 绘制操作 ---
                 if (SwPaintEventListener::Get().IsVclLogging())
@@ -3597,11 +3601,12 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
         }
 
         // --- VCL 层渲染指令记录: 停止录制并转换 ---
-        if (SwPaintEventListener::Get().IsVclLogging())
+        if (bPageStarted && SwPaintEventListener::Get().IsVclLogging())
             SwPaintEventListener::Get().StopPageRecordAndConvert(pPage->GetPhyPageNum());
 
         // --- 渲染指令记录: PAGE_END ---
-        SwPaintEventListener::Get().OnPageEnd(pPage->GetPhyPageNum());
+        if (bPageStarted)
+            SwPaintEventListener::Get().OnPageEnd(pPage->GetPhyPageNum());
 
         OSL_ENSURE( !pPage->GetNext() || pPage->GetNext()->IsPageFrame(),
                 "Neighbour of page is not a page." );
