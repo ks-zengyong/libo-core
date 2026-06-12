@@ -169,6 +169,7 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 | SwTableNode 类型错误 | 构造函数未设置 `m_nNodeType = Table` | 添加赋值语句 |
 | 表格文本为空 | InsertTable 未初始化 tableData | 添加 tableData 初始化 |
 | 表格 Frame 重复创建 | MakeFrames 遍历表格子节点 | 遇到 TableNode 时跳过子节点 |
+| VCL 层文本乱码 | `std::vector` 重新分配使 `c_str()` 指针失效 | 改用 `std::deque` 存储字符串 |
 
 ---
 
@@ -222,7 +223,9 @@ aproj (aproj_render.txt):             PAGE_START → TEXT_FRAME → SET_FONT →
 | 文件 | 说明 |
 |------|------|
 | `tests/sample.docx` | WPS Office 复杂文档（A4，104 段落，23 张图片，表格，多节） |
-| `tests/render_output.txt` | aproj 完整渲染输出（268 条指令） |
+| `tests/aproj_frame.txt` | aproj frame 层输出（TEXT_FRAME 等语义指令） |
+| `tests/aproj_vcl.txt` | aproj VCL 层输出（SET_FONT, TEXT_RUN 等绘制指令） |
+| `tests/aproj_all.log` | aproj 全部指令（frame + VCL 混合） |
 | `tests/frmtree_dump.xml` | Frame 树 XML 转储 |
 | `tests/nodes_dump.xml` | 节点树 XML 转储 |
 | `tests/lo_frame.txt` | LibreOffice frame 层输出（参考） |

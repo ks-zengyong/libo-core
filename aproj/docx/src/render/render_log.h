@@ -7,6 +7,7 @@
 #include "../frame/frame.h"
 #include <string>
 #include <vector>
+#include <deque>
 #include <fstream>
 
 // 前向声明
@@ -55,13 +56,21 @@ public:
     const std::vector<RenderInstruction>& GetInstructions() const { return m_aInstructions; }
     // 将指令写入文件 (与 LibreOffice 相同的 TSV 格式)
     void WriteToFile(const std::string& filePath);
+    // 分层输出：frame 层 (TEXT_FRAME, TABLE_FRAME 等语义指令)
+    void WriteFrameLayerToFile(const std::string& filePath);
+    // 分层输出：VCL 层 (SET_FONT, TEXT_RUN, RECT 等绘制指令)
+    void WriteVclLayerToFile(const std::string& filePath);
 
     // ── 格式化工具 (静态) ──
     // 将单条指令格式化为 TSV 行 (与 LibreOffice 完全相同的格式)
     static void WriteInstructionToStream(std::ostream& out, const RenderInstruction& inst);
 
 private:
+    // 存储字符串副本，确保指针在指令生命周期内有效
+    const char* StoreString(const char* s);
+
     std::vector<RenderInstruction> m_aInstructions;
+    std::deque<std::string> m_aStrings; // 字符串存储池 (deque 不会使已有指针失效)
     std::ofstream m_File;
     bool m_bLogging;
 };

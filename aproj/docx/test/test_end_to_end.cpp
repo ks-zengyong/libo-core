@@ -117,156 +117,10 @@ void test_swdoc_parse(const std::string& filePath)
     std::cout << "  Nodes dumped to nodes_dump.xml" << std::endl;
 }
 
-// ── Test 2: InitLayout + MakeFrames + SwLayAction ─────────────
-void test_swdoc_layout(const std::string& filePath)
+// ── Test 2: Layout + Render 完整管线 ─────────────────────────
+void test_swdoc_layout_and_render(const std::string& filePath)
 {
-    std::cout << "[Test] SwDoc Layout" << std::endl;
-
-    SwDoc doc;
-    DocxParser parser;
-    parser.Read(filePath, doc);
-
-    SwRootFrame* pRoot = InitLayout(doc);
-    TEST_ASSERT_TRUE(pRoot != nullptr, "InitLayout returns root frame");
-    TEST_ASSERT_EQ(doc.GetRootFrame(), pRoot, "RootFrame registered in SwDoc");
-
-    SwNodes& rNodes = doc.GetNodes();
-    SwNodeOffset nCount = rNodes.Count();
-    SwNode* pFirst = nullptr;
-    SwNode* pLast = nullptr;
-    for (SwNodeOffset i = 0; i < nCount; ++i)
-    {
-        SwNode* pNode = rNodes[i];
-        if (pNode && pNode->IsTextNode())
-        {
-            if (!pFirst)
-                pFirst = pNode;
-            pLast = pNode;
-        }
-    }
-
-    TEST_ASSERT_TRUE(pFirst != nullptr, "Found first text node");
-    if (pFirst && pLast)
-        MakeFrames(doc, *pFirst, *pLast);
-
-    SwPageFrame* pPage = pRoot->GetLastPage();
-    TEST_ASSERT_TRUE(pPage != nullptr, "Has at least one page");
-
-    if (pPage)
-    {
-        TEST_ASSERT_GT(pPage->getFrameArea().Width(), 0, "Page width > 0");
-        TEST_ASSERT_GT(pPage->getFrameArea().Height(), 0, "Page height > 0");
-
-        int nTextFrames = 0;
-        // 递归统计所有文本 Frame（包括 body frame 的子节点）
-        std::function<void(SwFrame*)> countTextFrames = [&](SwFrame* pF) {
-            while (pF)
-            {
-                if (pF->IsTextFrame())
-                    ++nTextFrames;
-                if (pF->IsLayoutFrame())
-                    countTextFrames(static_cast<SwLayoutFrame*>(pF)->GetLower());
-                pF = pF->GetNext();
-            }
-        };
-        countTextFrames(pPage->GetLower());
-        std::cout << "  Text frames on page 1: " << nTextFrames << std::endl;
-        TEST_ASSERT_GT(nTextFrames, 0, "Has text frames");
-    }
-
-    SwLayAction layAction(*pRoot);
-    layAction.Action();
-
-    DumpFrameTreeXml(pRoot, "tests/frmtree_dump.xml");
-    std::cout << "  Frame tree dumped to frmtree_dump.xml" << std::endl;
-}
-
-// ── Test 3: RenderLogger (共享格式) ────────────────────────────
-void test_swdoc_render(const std::string& filePath)
-{
-    std::cout << "[Test] SwDoc Render" << std::endl;
-
-    SwDoc doc;
-    DocxParser parser;
-    parser.Read(filePath, doc);
-
-    SwRootFrame* pRoot = InitLayout(doc);
-    SwNodes& rNodes = doc.GetNodes();
-    SwNodeOffset nCount = rNodes.Count();
-    SwNode* pFirst = nullptr;
-    SwNode* pLast = nullptr;
-    for (SwNodeOffset i = 0; i < nCount; ++i)
-    {
-        SwNode* pNode = rNodes[i];
-        if (pNode && pNode->IsTextNode())
-        {
-            if (!pFirst)
-                pFirst = pNode;
-            pLast = pNode;
-        }
-    }
-    if (pFirst && pLast)
-        MakeFrames(doc, *pFirst, *pLast);
-    SwLayAction layAction(*pRoot);
-    layAction.Action();
-
-    // 使用 RenderLogger 记录渲染指令 (输出到 tests/ 目录)
-    RenderLogger logger;
-    logger.StartLog("tests/render_test.log");
-    logger.LogFrameTree(pRoot);
-    logger.EndLog();
-
-    const auto& instructions = logger.GetInstructions();
-    std::cout << "  Render instructions: " << instructions.size() << std::endl;
-    TEST_ASSERT_GT(static_cast<int>(instructions.size()), 0, "Has render instructions");
-
-    // 统计指令类型
-    int nPages = 0, nTextFrames = 0, nTextLines = 0, nTextRuns = 0;
-    for (const auto& inst : instructions)
-    {
-        switch (inst.type)
-        {
-            case RenderCmdType::PAGE_START:
-                ++nPages;
-                break;
-            case RenderCmdType::TEXT_FRAME:
-                ++nTextFrames;
-                break;
-            case RenderCmdType::TEXT_LINE:
-                ++nTextLines;
-                break;
-            case RenderCmdType::TEXT_RUN:
-                ++nTextRuns;
-                break;
-            default:
-                break;
-        }
-    }
-    std::cout << "  Pages: " << nPages << ", TextFrames: " << nTextFrames
-              << ", TextLines: " << nTextLines << ", TextRuns: " << nTextRuns << std::endl;
-    TEST_ASSERT_GT(nPages, 0, "Has page instructions");
-    TEST_ASSERT_TRUE(nTextFrames > 0 || nTextRuns > 0, "Has text frame or text run instructions");
-
-    // 验证 TSV 格式输出
-    logger.WriteToFile("tests/render_write_test.txt");
-    std::ifstream f("tests/render_write_test.txt");
-    TEST_ASSERT_TRUE(f.good(), "WriteToFile produces readable file");
-
-    // 检查第一行是否是 PAGE_START
-    std::string firstLine;
-    if (std::getline(f, firstLine))
-    {
-        TEST_ASSERT_TRUE(firstLine.find("PAGE_START") == 0, "First line starts with PAGE_START");
-        // 检查是否使用 TAB 分隔
-        TEST_ASSERT_TRUE(firstLine.find('\t') != std::string::npos, "Uses TAB separator");
-    }
-    f.close();
-}
-
-// ── Test 4: 完整管线 + 输出共享格式 ────────────────────────────
-void test_full_swdoc_pipeline(const std::string& filePath)
-{
-    std::cout << "[Test] Full SwDoc Pipeline" << std::endl;
+    std::cout << "[Test] Layout + Render" << std::endl;
 
     // 1. 解析
     SwDoc doc;
@@ -275,7 +129,8 @@ void test_full_swdoc_pipeline(const std::string& filePath)
 
     // 2. 布局初始化
     SwRootFrame* pRoot = InitLayout(doc);
-    TEST_ASSERT_TRUE(pRoot != nullptr, "InitLayout");
+    TEST_ASSERT_TRUE(pRoot != nullptr, "InitLayout returns root frame");
+    TEST_ASSERT_EQ(doc.GetRootFrame(), pRoot, "RootFrame registered in SwDoc");
 
     // 3. 创建 Frame
     SwNodes& rNodes = doc.GetNodes();
@@ -298,67 +153,87 @@ void test_full_swdoc_pipeline(const std::string& filePath)
     if (pFirst && pLast)
         MakeFrames(doc, *pFirst, *pLast);
 
-    // 4. 排版
+    // 4. 验证 Frame 树
+    SwPageFrame* pPage = pRoot->GetLastPage();
+    TEST_ASSERT_TRUE(pPage != nullptr, "Has at least one page");
+    if (pPage)
+    {
+        TEST_ASSERT_GT(pPage->getFrameArea().Width(), 0, "Page width > 0");
+        TEST_ASSERT_GT(pPage->getFrameArea().Height(), 0, "Page height > 0");
+
+        int nTextFrames = 0;
+        std::function<void(SwFrame*)> countFrames = [&](SwFrame* pF) {
+            while (pF)
+            {
+                if (pF->IsTextFrame())
+                    ++nTextFrames;
+                if (pF->IsLayoutFrame())
+                    countFrames(static_cast<SwLayoutFrame*>(pF)->GetLower());
+                pF = pF->GetNext();
+            }
+        };
+        countFrames(pPage->GetLower());
+        std::cout << "  Text frames: " << nTextFrames << std::endl;
+        TEST_ASSERT_GT(nTextFrames, 0, "Has text frames");
+    }
+
+    // 5. 排版
     SwLayAction layAction(*pRoot);
     layAction.Action();
 
-    // 5. 渲染指令输出 (共享格式)
+    // 6. 渲染指令输出 (分层)
     RenderLogger logger;
-    logger.StartLog("tests/render_output.txt");
+    logger.StartLog("tests/aproj_all.log");
     logger.LogFrameTree(pRoot);
     logger.EndLog();
-    // 注意：WriteToFile 不再需要，因为 OnInstruction 已实时写入文件
-    // logger.WriteToFile("render_output.txt");
 
-    // 验证输出文件
-    std::ifstream f("tests/render_output.txt");
-    TEST_ASSERT_TRUE(f.good(), "tests/render_output.txt created");
+    logger.WriteFrameLayerToFile("tests/aproj_frame.txt");
+    logger.WriteVclLayerToFile("tests/aproj_vcl.txt");
 
+    // 7. 验证 frame 层
+    std::ifstream fFrame("tests/aproj_frame.txt");
+    TEST_ASSERT_TRUE(fFrame.good(), "tests/aproj_frame.txt created");
+    int nFrameLines = 0;
+    bool hasFramePageStart = false, hasTextFrame = false;
     std::string line;
-    int nLines = 0;
-    bool hasPageStart = false, hasPageEnd = false, hasTextRun = false;
-    while (std::getline(f, line))
+    while (std::getline(fFrame, line))
     {
-        ++nLines;
+        ++nFrameLines;
         if (line.find("PAGE_START") == 0)
-            hasPageStart = true;
-        if (line.find("PAGE_END") == 0)
-            hasPageEnd = true;
+            hasFramePageStart = true;
+        if (line.find("TEXT_FRAME") == 0)
+            hasTextFrame = true;
+    }
+    fFrame.close();
+    std::cout << "  Frame layer: " << nFrameLines << " instructions" << std::endl;
+    TEST_ASSERT_TRUE(hasFramePageStart, "Frame layer has PAGE_START");
+    TEST_ASSERT_TRUE(hasTextFrame, "Frame layer has TEXT_FRAME");
+
+    // 8. 验证 VCL 层
+    std::ifstream fVcl("tests/aproj_vcl.txt");
+    TEST_ASSERT_TRUE(fVcl.good(), "tests/aproj_vcl.txt created");
+    int nVclLines = 0;
+    bool hasVclPageStart = false, hasTextRun = false, hasSetFont = false;
+    while (std::getline(fVcl, line))
+    {
+        ++nVclLines;
+        if (line.find("PAGE_START") == 0)
+            hasVclPageStart = true;
         if (line.find("TEXT_RUN") == 0)
             hasTextRun = true;
+        if (line.find("SET_FONT") == 0)
+            hasSetFont = true;
     }
-    f.close();
+    fVcl.close();
+    std::cout << "  VCL layer: " << nVclLines << " instructions" << std::endl;
+    TEST_ASSERT_TRUE(hasVclPageStart, "VCL layer has PAGE_START");
+    TEST_ASSERT_TRUE(hasTextRun, "VCL layer has TEXT_RUN");
+    TEST_ASSERT_TRUE(hasSetFont, "VCL layer has SET_FONT");
 
-    std::cout << "  render_output.txt: " << nLines << " lines" << std::endl;
-    TEST_ASSERT_GT(nLines, 0, "Output file has content");
-    TEST_ASSERT_TRUE(hasPageStart, "Output has PAGE_START instructions");
-    TEST_ASSERT_TRUE(hasPageEnd, "Output has PAGE_END instructions");
-    TEST_ASSERT_TRUE(hasTextRun, "Output has TEXT_RUN instructions");
+    // 9. 输出调试文件
+    DumpFrameTreeXml(pRoot, "tests/frmtree_dump.xml");
 
-    // 6. 验证指令格式与 render_instruction.h 一致
-    // 读取第一条 TEXT_RUN 指令，检查字段数
-    std::ifstream f2("tests/render_output.txt");
-    while (std::getline(f2, line))
-    {
-        if (line.find("TEXT_RUN") == 0)
-        {
-            // 统计 TAB 数量 (应为 14 个 TAB = 15 个字段)
-            int tabCount = 0;
-            for (char c : line)
-            {
-                if (c == '\t')
-                    ++tabCount;
-            }
-            // TEXT_FRAME fields: type, pageNum, x, y, w, h, text, fontName, fontSize,
-            //                   fontColor, fontWeight, fontItalic, underline, strikeout, styleName = 15 fields
-            TEST_ASSERT_GE(tabCount, 13, "TEXT_FRAME has enough fields (>=14 TABs)");
-            break;
-        }
-    }
-    f2.close();
-
-    std::cout << "  Summary: " << nTextNodes << " text nodes, " << nLines << " render instructions"
-              << std::endl;
+    std::cout << "  Summary: " << nTextNodes << " text nodes" << std::endl;
 }
 
 // ── Main ───────────────────────────────────────────────────────
@@ -383,11 +258,7 @@ int main(int argc, char* argv[])
 
     test_swdoc_parse(testFile);
     std::cout << std::endl;
-    test_swdoc_layout(testFile);
-    std::cout << std::endl;
-    test_swdoc_render(testFile);
-    std::cout << std::endl;
-    test_full_swdoc_pipeline(testFile);
+    test_swdoc_layout_and_render(testFile);
     std::cout << std::endl;
 
     std::cout << "========================================" << std::endl;

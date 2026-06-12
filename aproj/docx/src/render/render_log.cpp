@@ -90,11 +90,29 @@ RenderLogger::RenderLogger()
 
 RenderLogger::~RenderLogger() { EndLog(); }
 
+const char* RenderLogger::StoreString(const char* s)
+{
+    if (!s)
+        return "";
+    // 检查是否为有效字符串（避免存储悬空指针）
+    try
+    {
+        std::string copy(s);
+        m_aStrings.push_back(copy);
+        return m_aStrings.back().c_str();
+    }
+    catch (...)
+    {
+        return "";
+    }
+}
+
 void RenderLogger::StartLog(const std::string& filePath)
 {
     m_File.open(filePath);
     m_bLogging = true;
     m_aInstructions.clear();
+    m_aStrings.clear();
 }
 
 void RenderLogger::EndLog()
@@ -108,10 +126,19 @@ void RenderLogger::EndLog()
 
 void RenderLogger::OnInstruction(const RenderInstruction& inst)
 {
-    m_aInstructions.push_back(inst);
+    // 存储字符串副本，避免指针悬空
+    RenderInstruction copy = inst;
+    if (copy.fontName)
+        copy.fontName = StoreString(copy.fontName);
+    if (copy.text)
+        copy.text = StoreString(copy.text);
+    if (copy.styleName)
+        copy.styleName = StoreString(copy.styleName);
+
+    m_aInstructions.push_back(copy);
     if (m_bLogging && m_File.is_open())
     {
-        WriteInstructionToStream(m_File, inst);
+        WriteInstructionToStream(m_File, copy);
     }
 }
 
@@ -393,6 +420,80 @@ void RenderLogger::WriteToFile(const std::string& filePath)
     for (const auto& inst : m_aInstructions)
     {
         WriteInstructionToStream(file, inst);
+    }
+
+    file.close();
+}
+
+// 判断是否为 frame 层语义指令
+static bool IsFrameLayerInstruction(RenderCmdType type)
+{
+    switch (type)
+    {
+        case RenderCmdType::PAGE_START:
+        case RenderCmdType::PAGE_END:
+        case RenderCmdType::TEXT_FRAME:
+        case RenderCmdType::TEXT_LINE:
+        case RenderCmdType::TABLE_FRAME:
+        case RenderCmdType::TABLE_ROW:
+        case RenderCmdType::TABLE_CELL:
+        case RenderCmdType::IMAGE_FRAME:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// 判断是否为 VCL 层绘制指令
+static bool IsVclLayerInstruction(RenderCmdType type)
+{
+    switch (type)
+    {
+        case RenderCmdType::PAGE_START:
+        case RenderCmdType::PAGE_END:
+        case RenderCmdType::SET_FONT:
+        case RenderCmdType::SET_TEXT_COLOR:
+        case RenderCmdType::SET_FILL_COLOR:
+        case RenderCmdType::SET_LINE_COLOR:
+        case RenderCmdType::SET_CLIP_REGION:
+        case RenderCmdType::TEXT_RUN:
+        case RenderCmdType::RECT:
+        case RenderCmdType::LINE:
+        case RenderCmdType::ELLIPSE:
+        case RenderCmdType::BITMAP:
+        case RenderCmdType::PUSH:
+        case RenderCmdType::POP:
+            return true;
+        default:
+            return false;
+    }
+}
+
+void RenderLogger::WriteFrameLayerToFile(const std::string& filePath)
+{
+    std::ofstream file(filePath);
+    if (!file.is_open())
+        return;
+
+    for (const auto& inst : m_aInstructions)
+    {
+        if (IsFrameLayerInstruction(inst.type))
+            WriteInstructionToStream(file, inst);
+    }
+
+    file.close();
+}
+
+void RenderLogger::WriteVclLayerToFile(const std::string& filePath)
+{
+    std::ofstream file(filePath);
+    if (!file.is_open())
+        return;
+
+    for (const auto& inst : m_aInstructions)
+    {
+        if (IsVclLayerInstruction(inst.type))
+            WriteInstructionToStream(file, inst);
     }
 
     file.close();
