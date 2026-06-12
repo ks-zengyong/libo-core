@@ -122,7 +122,8 @@ void SwFrame::InsertBehind(SwLayoutFrame* pParent, SwFrame* pSibling)
 
     if (!mpPrev && mpUpper)
     {
-        // 成为第一个子节点
+        // 成为第一个子节点，更新父节点的 m_pLower
+        mpUpper->SetLower(this);
     }
 }
 
@@ -137,9 +138,8 @@ void SwFrame::Cut()
 
     if (mpUpper && mpUpper->Lower() == this)
     {
-        // 我是第一个子节点，需要更新 m_pLower
-        // 这里需要访问 SwLayoutFrame 的 m_pLower
-        // 简化实现：暂时不处理
+        // 我是第一个子节点，更新父节点的 m_pLower
+        mpUpper->SetLower(mpNext);
     }
 
     mpPrev = mpNext = nullptr;
@@ -346,7 +346,7 @@ void SwPageFrame::PreparePage()
     if (!GetLower())
     {
         auto* pBody = new SwBodyFrame(this);
-        // 插入到子链表
+        pBody->InsertBehind(this, nullptr);
     }
 }
 

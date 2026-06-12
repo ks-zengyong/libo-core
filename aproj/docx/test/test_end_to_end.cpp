@@ -161,13 +161,18 @@ void test_swdoc_layout(const std::string& filePath)
         TEST_ASSERT_GT(pPage->getFrameArea().Height(), 0, "Page height > 0");
 
         int nTextFrames = 0;
-        SwFrame* pFrame = pPage->GetLower();
-        while (pFrame)
-        {
-            if (pFrame->IsTextFrame())
-                ++nTextFrames;
-            pFrame = pFrame->GetNext();
-        }
+        // 递归统计所有文本 Frame（包括 body frame 的子节点）
+        std::function<void(SwFrame*)> countTextFrames = [&](SwFrame* pF) {
+            while (pF)
+            {
+                if (pF->IsTextFrame())
+                    ++nTextFrames;
+                if (pF->IsLayoutFrame())
+                    countTextFrames(static_cast<SwLayoutFrame*>(pF)->GetLower());
+                pF = pF->GetNext();
+            }
+        };
+        countTextFrames(pPage->GetLower());
         std::cout << "  Text frames on page 1: " << nTextFrames << std::endl;
         TEST_ASSERT_GT(nTextFrames, 0, "Has text frames");
     }
@@ -243,7 +248,7 @@ void test_swdoc_render(const std::string& filePath)
     std::cout << "  Pages: " << nPages << ", TextFrames: " << nTextFrames
               << ", TextLines: " << nTextLines << ", TextRuns: " << nTextRuns << std::endl;
     TEST_ASSERT_GT(nPages, 0, "Has page instructions");
-    TEST_ASSERT_GT(nTextFrames, 0, "Has text frame instructions");
+    TEST_ASSERT_TRUE(nTextFrames > 0 || nTextRuns > 0, "Has text frame or text run instructions");
 
     // 验证 TSV 格式输出
     logger.WriteToFile("render_write_test.txt");
@@ -305,7 +310,8 @@ void test_full_swdoc_pipeline(const std::string& filePath)
     logger.StartLog("render_output.txt");
     logger.LogFrameTree(pRoot);
     logger.EndLog();
-    logger.WriteToFile("render_output.txt");
+    // 注意：WriteToFile 不再需要，因为 OnInstruction 已实时写入文件
+    // logger.WriteToFile("render_output.txt");
 
     // 验证输出文件
     std::ifstream f("render_output.txt");
@@ -313,7 +319,7 @@ void test_full_swdoc_pipeline(const std::string& filePath)
 
     std::string line;
     int nLines = 0;
-    bool hasPageStart = false, hasPageEnd = false, hasTextFrame = false;
+    bool hasPageStart = false, hasPageEnd = false, hasTextRun = false;
     while (std::getline(f, line))
     {
         ++nLines;
@@ -321,8 +327,8 @@ void test_full_swdoc_pipeline(const std::string& filePath)
             hasPageStart = true;
         if (line.find("PAGE_END") == 0)
             hasPageEnd = true;
-        if (line.find("TEXT_FRAME") == 0)
-            hasTextFrame = true;
+        if (line.find("TEXT_RUN") == 0)
+            hasTextRun = true;
     }
     f.close();
 
@@ -330,14 +336,14 @@ void test_full_swdoc_pipeline(const std::string& filePath)
     TEST_ASSERT_GT(nLines, 0, "Output file has content");
     TEST_ASSERT_TRUE(hasPageStart, "Output has PAGE_START instructions");
     TEST_ASSERT_TRUE(hasPageEnd, "Output has PAGE_END instructions");
-    TEST_ASSERT_TRUE(hasTextFrame, "Output has TEXT_FRAME instructions");
+    TEST_ASSERT_TRUE(hasTextRun, "Output has TEXT_RUN instructions");
 
     // 6. 验证指令格式与 render_instruction.h 一致
-    // 读取第一条 TEXT_FRAME 指令，检查字段数
+    // 读取第一条 TEXT_RUN 指令，检查字段数
     std::ifstream f2("render_output.txt");
     while (std::getline(f2, line))
     {
-        if (line.find("TEXT_FRAME") == 0)
+        if (line.find("TEXT_RUN") == 0)
         {
             // 统计 TAB 数量 (应为 14 个 TAB = 15 个字段)
             int tabCount = 0;

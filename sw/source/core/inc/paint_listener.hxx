@@ -84,6 +84,7 @@ private:
     MetaToInstructionConverter m_aConverter;
     std::ofstream m_vclFile;
     bool m_bVclLogging = false;
+    bool m_bConvertingVcl = false; // 正在 VCL→RenderInstruction 转换中
 };
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

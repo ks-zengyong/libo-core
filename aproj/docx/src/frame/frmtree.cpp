@@ -118,6 +118,37 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling)
         SwTextNode* pTextNode = static_cast<SwTextNode*>(&rNode);
         auto* pFrame = new SwTextFrame(pTextNode, pParent);
         pFrame->InsertBehind(pParent, pSibling);
+
+        // 设置 Frame 区域：使用父容器的打印区域宽度，高度基于文本行数估算
+        const SwRect& rPrtArea = pParent->getFramePrintArea();
+        SwTwips nWidth = rPrtArea.Width();
+        if (nWidth <= 0)
+            nWidth = pParent->getFrameArea().Width();
+        if (nWidth <= 0)
+            nWidth = 9360; // 默认约 16.5cm
+
+        // 估算文本高度：行数 × 行高（默认 276 twips ≈ 12pt × 1.15 行距）
+        const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+        int nFontSize = pSize ? std::stoi(*pSize) : 22; // 半点
+        SwTwips nLineHeight = static_cast<SwTwips>(nFontSize) * 10 * 115 / 100; // 半点→twips×行距
+        if (nLineHeight < 200)
+            nLineHeight = 276;
+
+        // 计算 Y 位置：紧跟在前一个 Frame 之后
+        SwTwips nY = 0;
+        if (pSibling)
+        {
+            nY = pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height();
+        }
+        else
+        {
+            // 第一个子 Frame，从父容器的打印区域顶部开始
+            nY = pParent->getFrameArea().Top() + rPrtArea.Top();
+        }
+
+        SwRect aFrameArea(pParent->getFrameArea().Left() + rPrtArea.Left(), nY, nWidth,
+                          nLineHeight);
+        pFrame->setFrameArea(aFrameArea);
     }
     else if (rNode.IsTableNode())
     {

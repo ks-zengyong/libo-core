@@ -87,9 +87,17 @@ void SwPaintEventListener::CheckEnvAndStart()
 void SwPaintEventListener::OnInstruction(const RenderInstruction& inst)
 {
     m_aInstructions.push_back(inst);
-    if (m_bLogging && m_File.is_open())
+    if (m_bConvertingVcl)
     {
-        WriteInstructionToStream(m_File, inst);
+        // VCL 层转换 → 写入 VCL 日志文件
+        if (m_bVclLogging && m_vclFile.is_open())
+            WriteInstructionToStream(m_vclFile, inst);
+    }
+    else
+    {
+        // Frame 层事件 → 写入 frame 日志文件
+        if (m_bLogging && m_File.is_open())
+            WriteInstructionToStream(m_File, inst);
     }
 }
 
@@ -306,8 +314,13 @@ void SwPaintEventListener::StopPageRecordAndConvert(int pageNum)
     // 停止录制
     m_aMetaFile.Stop();
 
+    // 设置标志，使 OnInstruction 将指令写入 VCL 文件
+    m_bConvertingVcl = true;
+
     // 将 MetaAction 序列转换为 RenderInstruction 并输出
     m_aConverter.Convert(m_aMetaFile, *this, pageNum);
+
+    m_bConvertingVcl = false;
 
     // 清空 MetaFile 准备下一页
     m_aMetaFile.Clear();

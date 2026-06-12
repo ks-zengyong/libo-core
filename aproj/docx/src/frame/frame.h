@@ -203,6 +203,7 @@ public:
     // 子 Frame 链表
     SwFrame* GetLower() const { return m_pLower; }
     SwFrame* Lower() const { return m_pLower; }
+    void SetLower(SwFrame* p) { m_pLower = p; }
 
     // 内容查找
     const SwContentFrame* ContainsContent() const;

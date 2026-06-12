@@ -7,9 +7,11 @@
 #include "../core/ndarr.h"
 #include "../core/doc.h"
 #include "../core/format.h"
+#include "../frame/frame.h"
 #include <iostream>
 #include <sstream>
 #include <cstring>
+#include <functional>
 
 //===----------------------------------------------------------------------===//
 // 格式化工具 — 与 LibreOffice 完全一致的 TSV 输出
@@ -378,15 +380,41 @@ void DumpFrameTreeXml(SwRootFrame* pRoot, const std::string& filePath)
                  << "width=\"" << pp->getFrameArea().Width() << "\" "
                  << "height=\"" << pp->getFrameArea().Height() << "\">\n";
 
-            SwFrame* pFrame = pp->GetLower();
-            while (pFrame)
-            {
-                file << "    <frame type=\""
-                     << (pFrame->IsTextFrame() ? "text"
-                                               : pFrame->IsLayoutFrame() ? "layout" : "unknown")
-                     << "\" />\n";
-                pFrame = pFrame->GetNext();
-            }
+            // 递归转储 Frame 树
+            std::function<void(SwFrame*, int)> dumpFrame = [&](SwFrame* pF, int indent) {
+                while (pF)
+                {
+                    std::string prefix(indent * 2, ' ');
+                    file << prefix << "<frame type=\""
+                         << (pF->IsTextFrame() ? "text"
+                                               : pF->IsLayoutFrame() ? "layout" : "unknown")
+                         << "\"";
+                    if (pF->IsTextFrame())
+                    {
+                        SwContentNode* pCN = static_cast<SwContentFrame*>(pF)->GetNode();
+                        if (pCN && pCN->IsTextNode())
+                        {
+                            SwTextNode* pTN = static_cast<SwTextNode*>(pCN);
+                            std::string txt = pTN->GetText();
+                            if (txt.size() > 30)
+                                txt = txt.substr(0, 30) + "...";
+                            file << " text=\"" << txt << "\"";
+                        }
+                    }
+                    if (pF->IsLayoutFrame() && static_cast<SwLayoutFrame*>(pF)->GetLower())
+                    {
+                        file << ">\n";
+                        dumpFrame(static_cast<SwLayoutFrame*>(pF)->GetLower(), indent + 1);
+                        file << prefix << "</frame>\n";
+                    }
+                    else
+                    {
+                        file << " />\n";
+                    }
+                    pF = pF->GetNext();
+                }
+            };
+            dumpFrame(pp->GetLower(), 2);
 
             file << "  </page>\n";
             ++pageNum;

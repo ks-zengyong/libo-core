@@ -507,20 +507,34 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         ParseParagraphProps(pPr, pTextNode);
     }
 
-    // 解析文本内容
+    // 解析文本内容和 Run 属性
     std::string text;
+    bool bRunPropsApplied = false;
     for (auto child : pNode.children())
     {
         std::string name = child.name();
 
         if (name == "w:r")
         {
+            // 解析 Run 属性（取第一个 Run 的属性应用到文本节点）
+            auto rPr = child.child("w:rPr");
+            if (rPr && !bRunPropsApplied)
+            {
+                ParseRunProps(rPr, pTextNode);
+                bRunPropsApplied = true;
+            }
             text += ParseRunText(child);
         }
         else if (name == "w:hyperlink")
         {
             for (auto r : child.children("w:r"))
             {
+                auto rPr = r.child("w:rPr");
+                if (rPr && !bRunPropsApplied)
+                {
+                    ParseRunProps(rPr, pTextNode);
+                    bRunPropsApplied = true;
+                }
                 text += ParseRunText(r);
             }
         }
@@ -743,8 +757,10 @@ void DocxParser::ParseSdt(pugi::xml_node sdtNode, SwDoc& doc)
 
 void DocxParser::ParseSectionProps(pugi::xml_node sectPrNode, SwDoc& doc)
 {
-    // 创建新的页面描述符
-    auto* pDesc = doc.MakePageDesc("Section");
+    // 更新默认页面描述符（而非创建新的）
+    SwPageDesc* pDesc = doc.GetDefaultPageDesc();
+    if (!pDesc)
+        return;
 
     // 页面尺寸
     auto pgSz = sectPrNode.child("w:pgSz");

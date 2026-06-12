@@ -72,7 +72,11 @@ void SwNodes::InitNodes()
     // 创建 Content/Body 节区（用户内容在这里）
     auto* pContentStt = new SwStartNode(*this, SwNodeOffset(8), SwNormalStartNode);
     BigPtrArray::Insert(pContentStt, 8);
-    // EndOfContent 将在最后创建
+
+    // 创建 EndOfContent 哨兵节点
+    auto* pContentEnd = new SwEndNode(*this, SwNodeOffset(9), *pContentStt);
+    BigPtrArray::Insert(pContentEnd, 9);
+    m_pEndOfContent.reset(pContentEnd);
 }
 
 SwNode* SwNodes::operator[](SwNodeOffset n) const
