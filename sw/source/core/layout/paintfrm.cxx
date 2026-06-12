@@ -3379,6 +3379,10 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
                     static_cast<int>(pPage->getFrameArea().Width()),
                     static_cast<int>(pPage->getFrameArea().Height()));
 
+                // --- VCL 层渲染指令记录: 开始录制当前页的所有 VCL 绘制操作 ---
+                if (SwPaintEventListener::Get().IsVclLogging())
+                    SwPaintEventListener::Get().StartPageRecord(pSh->GetOut());
+
                 aPaintRect.Intersection_( aRect );
 
                 if ( bExtraData &&
@@ -3591,6 +3595,10 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
                 }
             }
         }
+
+        // --- VCL 层渲染指令记录: 停止录制并转换 ---
+        if (SwPaintEventListener::Get().IsVclLogging())
+            SwPaintEventListener::Get().StopPageRecordAndConvert(pPage->GetPhyPageNum());
 
         // --- 渲染指令记录: PAGE_END ---
         SwPaintEventListener::Get().OnPageEnd(pPage->GetPhyPageNum());

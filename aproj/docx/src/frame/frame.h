@@ -17,6 +17,7 @@ class SwFlowFrame;
 class SwNode;
 class SwContentNode;
 class SwFrameFormat;
+class OutputDevice;
 
 // Frame 类型枚举，对应 LibreOffice 的 SwFrameType
 enum class SwFrameType : sal_uInt16
@@ -149,8 +150,8 @@ public:
     void InvalidateAll();
     void InvalidateNextPos();
 
-    // 绘制（简化版：记录指令）
-    virtual void PaintSwFrame() {}
+    // 绘制（通过 OutputDevice 接口，与 VCL 的 PaintSwFrame 流程对称）
+    virtual void PaintSwFrame(OutputDevice* pOutDev) { (void)pOutDev; }
 
     // 获取关联的文档节点
     SwContentNode* GetNode() const;
@@ -215,7 +216,7 @@ public:
     virtual void MakeAll() override;
 
     // 绘制
-    virtual void PaintSwFrame() override;
+    virtual void PaintSwFrame(OutputDevice* pOutDev) override;
 
     // 树操作
     virtual void Cut() override;
@@ -329,7 +330,7 @@ public:
     void MakeAll() override;
 
     // 绘制
-    void PaintSwFrame() override;
+    void PaintSwFrame(OutputDevice* pOutDev) override;
 
     // Follow 链
     SwTextFrame* GetFollow() const

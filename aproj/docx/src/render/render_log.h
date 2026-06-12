@@ -61,8 +61,6 @@ public:
     static void WriteInstructionToStream(std::ostream& out, const RenderInstruction& inst);
 
 private:
-    void LogFrameRecursive(SwFrame* pFrame, int pageNum);
-
     std::vector<RenderInstruction> m_aInstructions;
     std::ofstream m_File;
     bool m_bLogging;

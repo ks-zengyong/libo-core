@@ -41,6 +41,7 @@ add_library(docx_core STATIC
     src/filter/docx_parser.cpp
     src/layout/layact.cpp
     src/render/render_log.cpp
+    src/render/render_output_device.cpp
 )
 target_include_directories(docx_core PUBLIC src/core src/frame src/filter src/layout src/render ${THIRD_PARTY_DIR})
 target_compile_definitions(docx_core PRIVATE

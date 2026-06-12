@@ -54,7 +54,7 @@ void SwPaintEventListener::EndLog()
 
 void SwPaintEventListener::CheckEnvAndStart()
 {
-    // 检查环境变量 SW_RENDER_LOG
+    // 检查环境变量 SW_RENDER_LOG (frame 层日志)
     OUString logPath;
     if (osl_getEnvironment(OUString("SW_RENDER_LOG").pData, &logPath.pData) == osl_Process_E_None)
     {
@@ -62,7 +62,22 @@ void SwPaintEventListener::CheckEnvAndStart()
         {
             OString path = OUStringToOString(logPath, RTL_TEXTENCODING_UTF8);
             StartLog(path);
-            std::cerr << "SwPaintEventListener: logging to " << path.getStr() << std::endl;
+            std::cerr << "SwPaintEventListener: frame-level logging to " << path.getStr()
+                      << std::endl;
+        }
+    }
+
+    // 检查环境变量 SW_VCL_RENDER_LOG (VCL 层日志)
+    OUString vclLogPath;
+    if (osl_getEnvironment(OUString("SW_VCL_RENDER_LOG").pData, &vclLogPath.pData)
+        == osl_Process_E_None)
+    {
+        if (!vclLogPath.isEmpty())
+        {
+            OString path = OUStringToOString(vclLogPath, RTL_TEXTENCODING_UTF8);
+            StartVclLog(path);
+            std::cerr << "SwPaintEventListener: VCL-level logging to " << path.getStr()
+                      << std::endl;
         }
     }
 }
@@ -220,12 +235,32 @@ void SwPaintEventListener::WriteInstructionToStream(std::ostream& out,
         case RenderCmdType::IMAGE_FRAME:
         case RenderCmdType::SECTION_FRAME:
         case RenderCmdType::RECT:
+        case RenderCmdType::POLYGON:
+        case RenderCmdType::BITMAP:
+        case RenderCmdType::ELLIPSE:
             out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
                 << "\t" << inst.height;
             break;
         case RenderCmdType::LINE:
+        case RenderCmdType::POLYLINE:
             out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
                 << "\t" << inst.height;
+            break;
+        // 状态变更指令
+        case RenderCmdType::SET_FONT:
+            out << "\t" << inst.pageNum << "\t" << (inst.fontName ? inst.fontName : "") << "\t"
+                << inst.fontSize << "\t" << static_cast<int>(inst.fontWeight) << "\t"
+                << static_cast<int>(inst.fontItalic);
+            break;
+        case RenderCmdType::SET_TEXT_COLOR:
+        case RenderCmdType::SET_FILL_COLOR:
+        case RenderCmdType::SET_LINE_COLOR:
+            out << "\t" << inst.pageNum << "\t" << inst.fontColor;
+            break;
+        case RenderCmdType::SET_CLIP_REGION:
+        case RenderCmdType::PUSH:
+        case RenderCmdType::POP:
+            out << "\t" << inst.pageNum;
             break;
     }
     out << "\n";
@@ -236,6 +271,46 @@ void SwPaintEventListener::Flush()
     // 所有指令已实时写入，这里只需 flush 缓冲区
     if (m_File.is_open())
         m_File.flush();
+}
+
+// ── VCL 层录制 (GDIMetaFile 方式) ──
+
+void SwPaintEventListener::StartVclLog(const OString& filePath)
+{
+    m_vclFile.open(filePath.getStr(), std::ios::out | std::ios::binary);
+    m_bVclLogging = true;
+}
+
+void SwPaintEventListener::EndVclLog()
+{
+    if (m_vclFile.is_open())
+        m_vclFile.flush();
+    m_vclFile.close();
+    m_bVclLogging = false;
+}
+
+void SwPaintEventListener::StartPageRecord(OutputDevice* pOutDev)
+{
+    if (!m_bVclLogging || !pOutDev)
+        return;
+
+    // 开始录制 OutputDevice 的所有 Draw* 调用
+    m_aMetaFile.Record(pOutDev);
+}
+
+void SwPaintEventListener::StopPageRecordAndConvert(int pageNum)
+{
+    if (!m_bVclLogging)
+        return;
+
+    // 停止录制
+    m_aMetaFile.Stop();
+
+    // 将 MetaAction 序列转换为 RenderInstruction 并输出
+    m_aConverter.Convert(m_aMetaFile, *this, pageNum);
+
+    // 清空 MetaFile 准备下一页
+    m_aMetaFile.Clear();
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

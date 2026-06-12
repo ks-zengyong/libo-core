@@ -13,8 +13,10 @@
 #pragma once
 
 #include "render_instruction.h"
+#include "meta_to_instruction.hxx"
 #include <rtl/string.hxx>
 #include <osl/file.hxx>
+#include <vcl/gdimtf.hxx>
 #include <fstream>
 #include <vector>
 #include <memory>
@@ -22,6 +24,7 @@
 class SwTextFrame;
 class SwTabFrame;
 class SwPageFrame;
+class OutputDevice;
 
 /**
  * SwPaintEventListener — 渲染指令监听器
@@ -49,6 +52,13 @@ public:
     void OnPageEnd(int pageNum);
     void OnTextFrame(const SwTextFrame* pFrame);
 
+    // ── VCL 层录制 (GDIMetaFile 方式) ──
+    void StartVclLog(const OString& filePath);
+    void EndVclLog();
+    bool IsVclLogging() const { return m_bVclLogging; }
+    void StartPageRecord(OutputDevice* pOutDev); // 开始录制当前页的 VCL 绘制操作
+    void StopPageRecordAndConvert(int pageNum); // 停止录制并转换为 RenderInstruction
+
     // 写入文件
     void Flush();
 
@@ -68,6 +78,12 @@ private:
     std::vector<RenderInstruction> m_aInstructions;
     std::ofstream m_File;
     bool m_bLogging = false;
+
+    // VCL 层录制
+    GDIMetaFile m_aMetaFile;
+    MetaToInstructionConverter m_aConverter;
+    std::ofstream m_vclFile;
+    bool m_bVclLogging = false;
 };
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

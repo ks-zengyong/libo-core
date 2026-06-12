@@ -2,6 +2,8 @@
 
 #include "frame.h"
 #include "../core/node.h"
+#include "../core/format.h"
+#include "../render/output_device.h"
 #include <algorithm>
 #include <cassert>
 
@@ -282,13 +284,13 @@ void SwLayoutFrame::Format()
 
 void SwLayoutFrame::MakeAll() { Format(); }
 
-void SwLayoutFrame::PaintSwFrame()
+void SwLayoutFrame::PaintSwFrame(OutputDevice* pOutDev)
 {
-    // 绘制所有子 Frame
+    // 绘制所有子 Frame — 与 LibreOffice 的 SwLayoutFrame::PaintSwFrame 流程对称
     SwFrame* pFrame = m_pLower;
     while (pFrame)
     {
-        pFrame->PaintSwFrame();
+        pFrame->PaintSwFrame(pOutDev);
         pFrame = pFrame->GetNext();
     }
 }
@@ -416,9 +418,57 @@ void SwTextFrame::Format()
 
 void SwTextFrame::MakeAll() { Format(); }
 
-void SwTextFrame::PaintSwFrame()
+void SwTextFrame::PaintSwFrame(OutputDevice* pOutDev)
 {
-    // 绘制文本（将在 Phase 5 中实现）
+    // 绘制文本 — 通过 OutputDevice 接口，与 LibreOffice 的 SwTextFrame::PaintSwFrame 对称
+    if (!pOutDev || !mpNode)
+        return;
+
+    SwTextNode* pTextNode = static_cast<SwTextNode*>(mpNode);
+    if (!pTextNode)
+        return;
+
+    // 设置字体属性（从文本节点获取）
+    OutputFont aFont;
+    const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+    if (pFont)
+        aFont.familyName = *pFont;
+
+    const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+    if (pSize)
+        aFont.height = std::stoi(*pSize);
+
+    const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
+    if (pWeight && *pWeight == "bold")
+        aFont.weight = FontWeight::Bold;
+
+    const std::string* pPosture = pTextNode->GetAttr(RES_CHRATR_POSTURE);
+    if (pPosture && *pPosture == "italic")
+        aFont.italic = FontItalic::Italic;
+
+    const std::string* pColor = pTextNode->GetAttr(RES_CHRATR_COLOR);
+    if (pColor && !pColor->empty())
+    {
+        try
+        {
+            uint32_t c = static_cast<uint32_t>(std::stoul(*pColor, nullptr, 16));
+            aFont.color = OutputColor(static_cast<uint8_t>((c >> 16) & 0xFF),
+                                      static_cast<uint8_t>((c >> 8) & 0xFF),
+                                      static_cast<uint8_t>(c & 0xFF));
+        }
+        catch (...)
+        {
+        }
+    }
+
+    // 设置字体和颜色
+    pOutDev->SetFont(aFont);
+    pOutDev->SetTextColor(aFont.color);
+
+    // 绘制文本
+    std::string text = pTextNode->GetText();
+    Point pt(m_aFrameArea.Left(), m_aFrameArea.Top());
+    pOutDev->DrawText(pt, text);
 }
 
 //===----------------------------------------------------------------------===//

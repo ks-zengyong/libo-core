@@ -2,6 +2,7 @@
 // 与 LibreOffice 侧 SwPaintEventListener 输出完全相同的 TSV 格式
 
 #include "render_log.h"
+#include "render_output_device.h"
 #include "../core/node.h"
 #include "../core/ndarr.h"
 #include "../core/doc.h"
@@ -42,13 +43,33 @@ void RenderLogger::WriteInstructionToStream(std::ostream& out, const RenderInstr
         case RenderCmdType::IMAGE_FRAME:
         case RenderCmdType::SECTION_FRAME:
         case RenderCmdType::RECT:
+        case RenderCmdType::POLYGON:
+        case RenderCmdType::BITMAP:
+        case RenderCmdType::ELLIPSE:
             out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
                 << "\t" << inst.height;
             break;
         case RenderCmdType::LINE:
+        case RenderCmdType::POLYLINE:
             out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t"
                 << inst.width // x2
                 << "\t" << inst.height; // y2
+            break;
+        // 状态变更指令
+        case RenderCmdType::SET_FONT:
+            out << "\t" << inst.pageNum << "\t" << (inst.fontName ? inst.fontName : "") << "\t"
+                << inst.fontSize << "\t" << static_cast<int>(inst.fontWeight) << "\t"
+                << static_cast<int>(inst.fontItalic);
+            break;
+        case RenderCmdType::SET_TEXT_COLOR:
+        case RenderCmdType::SET_FILL_COLOR:
+        case RenderCmdType::SET_LINE_COLOR:
+            out << "\t" << inst.pageNum << "\t" << inst.fontColor;
+            break;
+        case RenderCmdType::SET_CLIP_REGION:
+        case RenderCmdType::PUSH:
+        case RenderCmdType::POP:
+            out << "\t" << inst.pageNum;
             break;
     }
     out << "\n";
@@ -269,7 +290,10 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
     if (!pRoot)
         return;
 
-    int pageNum = 1;
+    // 创建 RenderInstructionOutputDevice — 通过 OutputDevice 接口绘制
+    // 与 LibreOffice 的 PaintSwFrame → OutputDevice → GDIMetaFile 路径对称
+    RenderInstructionOutputDevice aOutDev(*this, 1);
+
     // 遍历页面 (从最后一个页面开始，与 LibreOffice 的遍历方向一致)
     SwPageFrame* pPage = pRoot->GetLastPage();
 
@@ -290,93 +314,20 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
     {
         pPage = pages[i];
         int pn = static_cast<int>(i) + 1;
+        aOutDev.SetPageNum(pn);
 
         LogPageStart(pn, pPage->getFrameArea().Width(), pPage->getFrameArea().Height());
 
-        // 遍历页面内容
+        // 通过 OutputDevice 接口绘制页面内容
+        // 与 LibreOffice 的 pPage->PaintSwFrame(rRenderContext, aPaintRect) 流程对称
         SwFrame* pFrame = pPage->GetLower();
         while (pFrame)
         {
-            LogFrameRecursive(pFrame, pn);
+            pFrame->PaintSwFrame(&aOutDev);
             pFrame = pFrame->GetNext();
         }
 
         LogPageEnd(pn);
-    }
-}
-
-void RenderLogger::LogFrameRecursive(SwFrame* pFrame, int pageNum)
-{
-    if (!pFrame)
-        return;
-
-    if (pFrame->IsTextFrame())
-    {
-        SwTextFrame* pTextFrame = static_cast<SwTextFrame*>(pFrame);
-        SwContentNode* pNode = pTextFrame->GetNode();
-
-        std::string text;
-        std::string fontName = "Arial";
-        int fontSize = 22; // 默认 11pt
-        uint32_t fontColor = 0;
-        uint8_t fontWeight = 400;
-        uint8_t fontItalic = 0;
-        std::string styleName;
-
-        if (pNode && pNode->IsTextNode())
-        {
-            SwTextNode* pTextNode = static_cast<SwTextNode*>(pNode);
-            text = pTextNode->GetText();
-
-            // 获取字体信息
-            const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
-            if (pFont)
-                fontName = *pFont;
-
-            const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
-            if (pSize)
-                fontSize = std::stoi(*pSize);
-
-            const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
-            if (pWeight && *pWeight == "bold")
-                fontWeight = 700;
-
-            const std::string* pPosture = pTextNode->GetAttr(RES_CHRATR_POSTURE);
-            if (pPosture && *pPosture == "italic")
-                fontItalic = 1;
-
-            const std::string* pColor = pTextNode->GetAttr(RES_CHRATR_COLOR);
-            if (pColor && !pColor->empty())
-            {
-                // 解析十六进制颜色
-                try
-                {
-                    fontColor = static_cast<uint32_t>(std::stoul(*pColor, nullptr, 16));
-                }
-                catch (...)
-                {
-                }
-            }
-
-            styleName = pTextNode->GetStyleName();
-        }
-
-        SwRect aRect = pFrame->getFrameArea();
-        LogTextFrame(pageNum, aRect.Left(), aRect.Top(), aRect.Width(), aRect.Height(),
-                     text.c_str(), static_cast<int>(text.size()), fontName.c_str(), fontSize,
-                     fontColor, fontWeight, fontItalic,
-                     styleName.empty() ? nullptr : styleName.c_str());
-    }
-    else if (pFrame->IsLayoutFrame())
-    {
-        // 递归记录子 Frame
-        SwLayoutFrame* pLayout = static_cast<SwLayoutFrame*>(pFrame);
-        SwFrame* pChild = pLayout->GetLower();
-        while (pChild)
-        {
-            LogFrameRecursive(pChild, pageNum);
-            pChild = pChild->GetNext();
-        }
     }
 }
 
