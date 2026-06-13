@@ -192,7 +192,8 @@ enum SwAttrWhich : sal_uInt16
     // 框架属性
     RES_FRM_SIZE = 200,
     RES_LR_SPACE, // 左右边距
-    RES_UL_SPACE, // 上下边距
+    RES_UL_SPACE, // 上边距 (space-before)
+    RES_UL_SPACE_AFTER, // 下边距 (space-after)
     RES_BACKGROUND, // 背景
     RES_BORDER, // 边框
     RES_IMAGE_HEIGHT, // 图片高度 (twips)

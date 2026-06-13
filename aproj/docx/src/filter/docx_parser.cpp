@@ -1003,6 +1003,10 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
         int after = spacing.attribute("w:after").as_int(0);
         int line = spacing.attribute("w:line").as_int(240);
         pNode->SetAttr(RES_PARATR_LINESPACING, std::to_string(line));
+        if (before != 0)
+            pNode->SetAttr(RES_UL_SPACE, std::to_string(before));
+        if (after != 0)
+            pNode->SetAttr(RES_UL_SPACE_AFTER, std::to_string(after));
     }
 
     // 缩进
@@ -1055,6 +1059,8 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
         auto sectType = sectPr.child("w:type");
         std::string breakType
             = sectType ? sectType.attribute("w:val").as_string("nextPage") : "nextPage";
+        std::cerr << "[Parser] sectPr breakType=" << breakType
+                  << " hasType=" << (sectType ? "yes" : "no") << std::endl;
         if (breakType == "nextPage" || breakType == "evenPage" || breakType == "oddPage")
         {
             // 节分隔 = 分页：在当前段落之前分页
@@ -1127,8 +1133,12 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
     std::vector<sal_Int32> gridCols;
     for (auto col : tblGrid.children("w:gridCol"))
     {
-        gridCols.push_back(col.attribute("w:w").as_int(0));
+        int w = col.attribute("w:w").as_int(0);
+        gridCols.push_back(w);
+        std::cerr << "[Parser] tblGrid col w=" << w << std::endl;
     }
+    std::cerr << "[Parser] tblGrid: " << gridCols.size()
+              << " cols, tblGrid empty=" << (!tblGrid ? "yes" : "no") << std::endl;
 
     // 统计行数和列数
     sal_uInt16 nRows = 0;
@@ -1143,6 +1153,9 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
 
     // 创建表格节点
     SwTableNode* pTable = rNodes.InsertTable(*pInsertAfter, nCols, pColl, nRows);
+
+    // 设置表格网格列宽
+    pTable->SetGridCols(gridCols);
 
     // 填充表格内容
     auto row = tblNode.child("w:tr");

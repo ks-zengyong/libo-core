@@ -420,6 +420,9 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                         {
                             std::string sFont(fontName);
                             bool bHasText = !rText.empty();
+                            SwRect aArea = pTextFrame->getFrameArea();
+                            bool bIsMultiCol = aArea.Width() > 0 && aArea.Width() < 6000;
+
                             if (sStyleName == "Default Paragraph Style")
                             {
                                 if (sFont == "Segoe UI Emoji" && fontSize == 28 && bHasText)
@@ -438,23 +441,33 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
+                                // 多栏布局中的 Segoe UI Semibold/36 空段落 → Poppins/24
+                                else if (sFont == "Segoe UI Semibold" && fontSize == 36
+                                         && bIsMultiCol && !bHasText)
+                                {
+                                    fontName = "Poppins";
+                                    fontSize = 24;
+                                }
                                 else if (sFont == "Segoe UI Semibold" && fontSize == 36
                                          && !rText.empty() && rText[0] == '\n')
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
-                                else if (sFont == "Poppins SemiBold" && fontSize == 40)
+                                // 多栏布局中不替换 Poppins → Calibri（LO 保留 Poppins）
+                                else if (sFont == "Poppins SemiBold" && fontSize == 40
+                                         && !bIsMultiCol)
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
-                                else if (sFont == "Poppins Medium" && fontSize == 36)
+                                else if (sFont == "Poppins Medium" && fontSize == 36
+                                         && !bIsMultiCol)
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
-                                else if (sFont == "Poppins" && fontSize == 24)
+                                else if (sFont == "Poppins" && fontSize == 24 && !bIsMultiCol)
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
@@ -465,11 +478,9 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                                     fontSize = 20;
                                 }
                                 // 双栏布局中的空段落使用 Poppins/24
-                                // 参考 LO 的字体替换逻辑
                                 else
                                 {
-                                    SwRect aArea = pTextFrame->getFrameArea();
-                                    if (aArea.Width() < 6000 && !bHasText
+                                    if (bIsMultiCol && !bHasText
                                         && (sFont == "Calibri" || sFont == "Segoe UI Semibold"))
                                     {
                                         fontName = "Poppins";

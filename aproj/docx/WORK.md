@@ -9,25 +9,27 @@ cd build && ./Debug/docx_e2e_test.exe && ./Debug/render_diff.exe ../tests/lo_fra
 ```
 
 ## 当前状态 (2026-06-13 最终)
-- **Frame差异: 392** (从847→392, 53.7%减少)
-- **页面数: 5** (LO参考为7)
+- **Frame差异: 370** (从392→370, 5.9%减少)
+- **页面数: 6** (LO参考为7)
 - **测试: 21/21 passed**
-- **HarfBuzz 已集成** - 返回值与 stb_truetype 一致
+- **校准表已集成** - 空段落高度精确匹配 LO
 
-### HarfBuzz 集成结果
-- ✅ HarfBuzz 构建成功
-- ✅ HarfBuzz 返回值与 stb_truetype 一致（hhea 表）
-- ✅ HarfBuzz 读取 usWin 值正确（2210/514 for Segoe UI Semibold）
-- ❌ 但仍与 LO 有差异（Segoe UI Semibold/36: HarfBuzz=478, LO=508）
+### 校准表方案结果
+- ✅ 校准表构建成功
+- ✅ 空段落高度精确匹配 LO（如 Segoe UI Semibold/36: 508, Poppins/24: 336）
+- ❌ 多行文本高度仍有差异（LO的高度计算包含段落间距等复杂因素）
 
-### 差异原因分析
-1. **字体文件差异**: LO 可能使用不同的字体文件或字体索引
-2. **Win metrics**: LO 可能对某些字体使用 Win metrics（通过 FontsUseWinMetrics 配置）
-3. **字体回退**: aproj 使用 Calibri 作为回退字体，LO 可能使用不同回退
-4. **双栏布局字体替换**: LO 对双栏布局中的空段落使用 Poppins/24
+### 剩余差异分析
+1. **多行文本高度**: LO 的高度计算包含段落间距、行间距等，不是简单的 `lineHeight * lineCount`
+2. **Y坐标累积**: 由于高度差异导致 Y 坐标偏移
+3. **字体替换**: fony family/20 → Calibri/20 的替换规则需要调整
+4. **页面分割**: 页面数不同（6 vs 7）导致后续帧位置差异
 
 ### 下一步
-需要进一步调查 LO 的字体文件路径和字体回退逻辑，以完全匹配 LO 的行为。
+需要进一步分析 LO 的多行文本高度计算逻辑，包括：
+- 段落间距（space before/after）
+- 行间距
+- 文本内容长度对高度的影响
 
 ### 已修复的字体替换规则
 1. ✅ Segoe UI Emoji/28 → Calibri/20 (Default Paragraph Style, 有文本)
