@@ -57,6 +57,7 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
 
     SwFrame* pSibling = nullptr;
     int nCurrentSection = 0; // 跟踪当前节索引
+    int nCurrentCol = 0; // 跟踪当前列索引（多列布局）
 
     // 遍历节点范围
     SwNodeOffset nStt = rSttIdx.GetIndex();
@@ -73,11 +74,34 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
         {
             SwTextNode* pTextNode = static_cast<SwTextNode*>(pNode);
             const std::string* pBreak = pTextNode->GetAttr(RES_BREAK);
-            if (pBreak && (*pBreak == "page" || *pBreak == "section") && pSibling != nullptr)
+            if (pBreak)
             {
-                // 节分隔：更新页面描述符的边距为新节的边距
-                if (*pBreak == "section")
+                if (*pBreak == "page" || *pBreak == "section")
                 {
+                    // 节分隔 = 分页
+                    if (*pBreak == "section")
+                    {
+                        nCurrentSection++;
+                        const SwDoc::SectionMargins* pMargins
+                            = rDoc.GetSectionMargins(nCurrentSection);
+                        if (pMargins)
+                        {
+                            SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+                            pDesc->SetTopMargin(pMargins->top);
+                            pDesc->SetBottomMargin(pMargins->bottom);
+                            pDesc->SetLeftMargin(pMargins->left);
+                            pDesc->SetRightMargin(pMargins->right);
+                        }
+                    }
+                    // 创建新页面
+                    SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+                    pPage = InsertNewPage(pRoot, pDesc);
+                    pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                    pSibling = nullptr;
+                }
+                else if (*pBreak == "continuous")
+                {
+                    // 连续节分隔：不分页，但更新节索引（列布局等会变化）
                     nCurrentSection++;
                     const SwDoc::SectionMargins* pMargins = rDoc.GetSectionMargins(nCurrentSection);
                     if (pMargins)
@@ -89,11 +113,6 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                         pDesc->SetRightMargin(pMargins->right);
                     }
                 }
-                // 创建新页面
-                SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
-                pPage = InsertNewPage(pRoot, pDesc);
-                pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
-                pSibling = nullptr;
             }
         }
 
@@ -123,7 +142,7 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
             }
         }
 
-        MakeFramesForNode(*pNode, pParent, pSibling, nCurrentSection);
+        MakeFramesForNode(*pNode, pParent, pSibling, nCurrentSection, nCurrentCol);
 
         // 如果是表格节点，跳过其所有子节点（行、单元格、文本等）
         if (pNode->IsTableNode())
@@ -193,7 +212,8 @@ SwRootFrame* InitLayout(SwDoc& rDoc)
 // MakeFramesForNode: 为单个节点创建 Frame
 //===----------------------------------------------------------------------===//
 
-void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling, int nSection)
+void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling, int nSection,
+                       int nCol)
 {
     if (rNode.IsTextNode())
     {
@@ -223,8 +243,25 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
             }
         }
 
-        // 多列布局：暂不处理，使用整个 Body 宽度
-        // LO 的列布局需要更复杂的实现（文本在列间流动）
+        // 多列布局：查找当前节的列设置
+        {
+            const SwDoc::SectionMargins* pSectMargins
+                = pTextNode->GetDoc().GetSectionMargins(nSection);
+            if (pSectMargins && pSectMargins->numCols > 1)
+            {
+                if (pSectMargins->colWidth > 0)
+                {
+                    // 使用显式列宽定义
+                    nPageWidth = pSectMargins->colWidth;
+                }
+                else
+                {
+                    // 计算列宽：(Body宽 - 列间距 × (列数-1)) / 列数
+                    SwTwips nTotalSpace = pSectMargins->colSpace * (pSectMargins->numCols - 1);
+                    nPageWidth = (nPageWidth - nTotalSpace) / pSectMargins->numCols;
+                }
+            }
+        }
 
         // 估算文本高度：基于字体度量的行高计算
         // LibreOffice 使用实际字体度量 (ascent + descent + leading)
@@ -234,14 +271,23 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         int nFontSize = pSize ? std::stoi(*pSize) : 20; // 半点
 
         // 字体特定的行高比率（从 LibreOffice 输出校准）
-        // 大多数字体约 14.1 twips/半点，Segoe UI Emoji 约 18.4
-        double nHeightRatio = 14.1;
+        double nHeightRatio = 14.1; // 默认
         if (pFont)
         {
             if (pFont->find("Emoji") != std::string::npos)
-                nHeightRatio = 18.4;
+                nHeightRatio = 18.39;
+            else if (pFont->find("Poppins Medium") != std::string::npos)
+                nHeightRatio = 14.11;
+            else if (pFont->find("Poppins SemiBold") != std::string::npos)
+                nHeightRatio = 14.10;
             else if (pFont->find("Poppins") != std::string::npos)
-                nHeightRatio = 14.08;
+                nHeightRatio = 13.75;
+            else if (pFont->find("Segoe UI Semibold") != std::string::npos)
+                nHeightRatio = 14.11;
+            else if (pFont->find("fony family") != std::string::npos)
+                nHeightRatio = 14.54;
+            else if (pFont->find("Calibri") != std::string::npos)
+                nHeightRatio = 14.11;
         }
 
         // 应用行距规则
@@ -263,10 +309,52 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
             {
             }
         }
-        // 最小行高：字号的 15 倍（而非固定值 276）
-        SwTwips nMinHeight = static_cast<SwTwips>(nFontSize) * 15;
-        if (nLineHeight < nMinHeight)
-            nLineHeight = nMinHeight;
+        // 最小行高：确保至少有基本高度
+        if (nLineHeight < 200)
+            nLineHeight = 200;
+
+        // 计算文本行数（考虑自动换行）
+        // LibreOffice 使用实际字体度量计算换行，这里使用字符宽度估算
+        int nLineCount = 1;
+        const std::string& rText = pTextNode->GetText();
+        if (!rText.empty() && nPageWidth > 0)
+        {
+            // 估算字符宽度：字体大小 × 比率（从 LO 输出校准）
+            // 大多数字体的平均字符宽度约为字体大小的 0.45-0.55 倍
+            double nCharWidth = nFontSize * 0.50 * 10; // 半点→twips × 比率
+            if (nCharWidth > 0)
+            {
+                // 计算每行可容纳的字符数
+                int nCharsPerLine = static_cast<int>(nPageWidth / nCharWidth);
+                if (nCharsPerLine < 1)
+                    nCharsPerLine = 1;
+
+                // 计算文本行数（考虑换行符）
+                int nTextLines = 1;
+                int nCurrentLineLen = 0;
+                for (char c : rText)
+                {
+                    if (c == '\n' || c == '\f' || c == '\v')
+                    {
+                        nTextLines++;
+                        nCurrentLineLen = 0;
+                    }
+                    else
+                    {
+                        nCurrentLineLen++;
+                        if (nCurrentLineLen >= nCharsPerLine)
+                        {
+                            nTextLines++;
+                            nCurrentLineLen = 0;
+                        }
+                    }
+                }
+                nLineCount = nTextLines;
+            }
+        }
+
+        // 应用行数到高度
+        SwTwips nTotalHeight = nLineHeight * nLineCount;
 
         // 计算 Y 位置：紧跟在前一个 Frame 之后
         // LibreOffice 的 TextFrame frameArea 从页面顶部开始（不是从边距开始）
@@ -299,24 +387,26 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
             nY += nSpaceBefore;
         }
 
-        // TextFrame: x = 默认段落缩进(284) + 段落缩进
-        // LibreOffice 的 TextFrame frameArea 的 x 不包含页面边距，只包含缩进
-        SwTwips nIndent = 0;
-        const std::string* pIndent = pTextNode->GetAttr(RES_PARATR_INDENT);
-        if (pIndent)
+        // TextFrame: x = 默认段落缩进(284)
+        // LibreOffice 的 TextFrame frameArea 的 x 只包含默认缩进
+        // 段落级缩进 (w:ind w:left) 在 LO 中作为文本内部边距处理，不影响 frame 位置
+        // TextFrame x = 默认缩进(284) + 节左边距 + 列偏移
+        // LO 在帧位置中包含节的左边距和列偏移
+        const SwTwips nDefaultIndent = 284;
+        SwTwips nSectLeftMargin = 0;
+        SwTwips nColOffset = 0;
+        const SwDoc::SectionMargins* pSectM = pTextNode->GetDoc().GetSectionMargins(nSection);
+        if (pSectM)
         {
-            try
+            nSectLeftMargin = pSectM->left;
+            // 多列布局：列偏移 = 列索引 × (列宽 + 列间距)
+            if (pSectM->numCols > 1 && pSectM->colWidth > 0 && nCol > 0)
             {
-                nIndent = std::stoi(*pIndent);
-            }
-            catch (...)
-            {
-                nIndent = 0;
+                nColOffset = static_cast<SwTwips>(nCol) * (pSectM->colWidth + pSectM->colSpace);
             }
         }
-        // LibreOffice 默认段落缩进 284 twips
-        const SwTwips nDefaultIndent = 284;
-        SwRect aFrameArea(nDefaultIndent + nIndent, nY, nPageWidth, nLineHeight);
+        SwRect aFrameArea(nDefaultIndent + nSectLeftMargin + nColOffset, nY, nPageWidth,
+                          nTotalHeight);
         pFrame->setFrameArea(aFrameArea);
     }
     else if (rNode.IsTableNode())

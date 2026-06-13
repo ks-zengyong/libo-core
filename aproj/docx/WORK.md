@@ -226,32 +226,39 @@ LibreOffice 参考 (lo_frame.txt): 114 条
 ### render_diff 比对结果（2026-06-13）
 
 ```
-Reference: tests/aproj_frame.txt (112 instructions, 5 pages)
+Reference: tests/aproj_frame.txt (instructions, 7 pages)
 Test:      tests/lo_frame.txt (114 instructions, 7 pages)
-Differences: 555
+Differences: 395
 ```
 
-**已修复的差异**（从 847 降至 555）：
+**已修复的差异**（从 847 降至 395，减少 53.4%）：
 | 修复 | 效果 |
 |------|------|
 | 第一节边距预扫描 | 页面边距从 0→正确值 |
-| 节分隔（nextPage）分页 | 页数从 3→5 |
+| 节分隔（nextPage）分页 | 页数从 3→7 |
+| 连续节分隔（continuous） | 节属性正确更新 |
 | Body 宽度 = 打印区域宽度 | 宽度从 11906→正确值 |
+| 节左边距加到帧 x 位置 | x 位置从 284→正确值 |
 | styleName 映射 "Normal"→"Default Paragraph Style" | 样式名差异消除 |
 | 默认 fontColor=0xFFFFFF | 颜色差异减少 |
 | 默认 fontSize=20 (10pt) | 字号差异减少 |
 | 默认 fontName="Calibri" | 空字体名差异消除 |
 | 首帧 space-before 偏移 (284 twips) | y 位置改善 |
+| 文本换行估算 | 高度计算改善，页数从 5→7 |
+| 多列布局 (w:cols/w:col) | 列宽从 body 宽→正确列宽 |
+| 字体特定行高比率 | 高度计算更精确 |
+| 字体替换规则 | Segoe UI Semibold 等正确替换 |
+| 最小行高调整 | 移除过大的 nFontSize*15 |
 
 **主要剩余差异**：
 | 差异 | 数量 | 原因 |
 |------|------|------|
-| 页数 | 5 vs 7 | 高度估算不精确，溢出检测不够 |
-| y 位置 | ~40 | 页面内容分布不同 |
-| fontName | ~50 | LO 无头模式字体替换 |
-| fontSize | ~25 | 样式继承链不完整 |
-| width | ~26 | 节宽度变化处理 |
-| pageNum | ~43 | 页数不同导致页码偏移 |
+| y 位置 | ~90 | 高度估算误差累积 |
+| height | ~76 | 字体度量不精确 |
+| text | ~50 | 页数微小差异导致内容分布 |
+| width | ~31 | 多列表格布局复杂 |
+| font | ~27 | LO 字体替换依赖上下文 |
+| x 位置 | ~24 | 列偏移 + 段落缩进 |
 
 ### 测试文件
 

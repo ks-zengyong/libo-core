@@ -641,10 +641,15 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                     {
                         m.numCols = cols.attribute("w:num").as_int(1);
                         m.colSpace = cols.attribute("w:space").as_int(0);
-                        // 检查是否有显式列宽定义
+                        // 检查是否有显式列宽定义（w:col 子元素）
                         auto col = cols.child("w:col");
                         if (col)
+                        {
                             m.colWidth = col.attribute("w:w").as_int(0);
+                            // 从第一列获取列间距（如果 cols 级别未设置）
+                            if (m.colSpace == 0)
+                                m.colSpace = col.attribute("w:space").as_int(0);
+                        }
                     }
                     doc.SetSectionMargins(nSection, m);
                     nSection++;
@@ -859,6 +864,32 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
                 ParseRunProps(rPr, pTextNode);
                 bRunPropsApplied = true;
             }
+            // 检查图片尺寸 (w:drawing/wp:extent)
+            {
+                auto drawing = child.child("w:drawing");
+                if (drawing)
+                {
+                    // 查找 wp:extent 元素（可能在 wp:inline 或 wp:anchor 内）
+                    for (auto& elem : drawing.children())
+                    {
+                        for (auto& sub : elem.children())
+                        {
+                            std::string subName = sub.name();
+                            if (subName.find("extent") != std::string::npos)
+                            {
+                                // cx/cy 单位是 EMU (1 inch = 914400 EMU, 1 inch = 1440 twips)
+                                long long cy = sub.attribute("cy").as_llong(0);
+                                if (cy > 0)
+                                {
+                                    SwTwips nImgHeight = static_cast<SwTwips>(cy * 1440 / 914400);
+                                    pTextNode->SetAttr(RES_IMAGE_HEIGHT,
+                                                       std::to_string(nImgHeight));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             text += runText;
         }
         else if (name == "w:hyperlink")
@@ -1027,6 +1058,11 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
         {
             // 节分隔 = 分页：在当前段落之前分页
             pNode->SetAttr(RES_BREAK, "section");
+        }
+        else if (breakType == "continuous")
+        {
+            // 连续节分隔：不分页，但需要更新节属性（列布局等）
+            pNode->SetAttr(RES_BREAK, "continuous");
         }
 
         // 更新默认页面描述符

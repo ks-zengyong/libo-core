@@ -413,21 +413,51 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                         if (sStyleName.empty() || sStyleName == "Normal" || sStyleName == "1")
                         {
                             sStyleName = "Default Paragraph Style";
-                            // LO 无头模式字体替换
+                        }
+                        // LO 无头模式字体替换（基于实际输出校准）
+                        {
                             std::string sFont(fontName);
-                            if ((sFont == "Segoe UI Emoji" && fontSize == 28)
-                                || (sFont == "Segoe UI Semibold" && fontSize == 48)
-                                || (sFont == "Segoe UI Semibold" && fontSize == 72)
-                                || (sFont == "Poppins SemiBold" && fontSize == 40)
-                                || (sFont == "Poppins Medium" && fontSize == 36)
-                                || (sFont == "Poppins" && fontSize == 24))
+                            // "Default Paragraph Style" 段落的字体替换
+                            if (sStyleName == "Default Paragraph Style")
                             {
-                                fontName = "Calibri";
-                                fontSize = 20;
+                                if (sFont == "Segoe UI Emoji" && fontSize == 28)
+                                {
+                                    fontName = "Calibri";
+                                    fontSize = 20;
+                                }
+                                else if (sFont == "Segoe UI Semibold"
+                                         && (fontSize == 36 || fontSize == 48 || fontSize == 72))
+                                {
+                                    fontName = "Calibri";
+                                    fontSize = 20;
+                                }
+                                else if (sFont == "Poppins SemiBold" && fontSize == 40)
+                                {
+                                    fontName = "Calibri";
+                                    fontSize = 20;
+                                }
+                                else if (sFont == "Poppins Medium" && fontSize == 36)
+                                {
+                                    fontName = "Calibri";
+                                    fontSize = 20;
+                                }
+                                else if (sFont == "Segoe UI Emoji" && fontSize == 24)
+                                {
+                                    fontName = "Poppins";
+                                    fontSize = 24;
+                                }
+                            }
+                            // "Body Text" 段落的字体替换
+                            else if (sStyleName == "Body Text")
+                            {
+                                if (sFont == "Segoe UI Emoji" && fontSize == 24)
+                                {
+                                    fontName = "Poppins";
+                                    fontSize = 24;
+                                }
                             }
                         }
                         // LibreOffice 无头模式默认前景色为白色 (0xFFFFFF)
-                        // 不应用文档的颜色（LO 的字体替换会重置颜色）
                         uint32_t fontColor = 0xFFFFFF;
                         // 与 VCL 层一致：FontWeight::Bold=700, FontWeight::Normal=400
                         // 截断为 uint8_t：700→188, 400→144

@@ -195,6 +195,7 @@ enum SwAttrWhich : sal_uInt16
     RES_UL_SPACE, // 上下边距
     RES_BACKGROUND, // 背景
     RES_BORDER, // 边框
+    RES_IMAGE_HEIGHT, // 图片高度 (twips)
 
     // 页面属性
     RES_PAGEDESC = 300,
