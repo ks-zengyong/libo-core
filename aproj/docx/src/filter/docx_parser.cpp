@@ -12,6 +12,7 @@
 #include <iostream>
 #include <sstream>
 #include <algorithm>
+#include <functional>
 
 //===----------------------------------------------------------------------===//
 // Read: 主入口
@@ -703,20 +704,39 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     // 正式处理文档内容
     // 注意：ParseParagraphProps 会在遇到 sectPr 时更新页面描述符的边距
     // 这是正确的行为——页面描述符会跟踪当前节的边距
+    int nChildCount = 0;
+    int nParaCount = 0;
+    int nTblCount = 0;
+    for (auto child : bodyNode.children())
+        nChildCount++;
+    for (auto child : bodyNode.children())
+    {
+        std::string name = child.name();
+        if (name == "w:p")
+            nParaCount++;
+        else if (name == "w:tbl")
+            nTblCount++;
+    }
+    std::cerr << "[ParseBody] Total children=" << nChildCount << " paragraphs=" << nParaCount
+              << " tables=" << nTblCount << std::endl;
+    int nProcessed = 0;
     for (auto child : bodyNode.children())
     {
         std::string name = child.name();
 
         if (name == "w:p")
         {
+            nProcessed++;
             ParseParagraph(child, doc);
         }
         else if (name == "w:tbl")
         {
+            nProcessed++;
             ParseTable(child, doc);
         }
         else if (name == "w:sdt")
         {
+            nProcessed++;
             ParseSdt(child, doc);
         }
         else if (name == "w:sectPr")
@@ -724,6 +744,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             // body 直接子元素的 sectPr 已在预扫描中处理
         }
     }
+    std::cerr << "[ParseBody] Processed: " << nProcessed << " elements" << std::endl;
 
     // 应用第一节的边距到页面描述符（InitLayout 需要）
     // 必须在主循环之后，因为 ParseParagraphProps 会覆盖页面描述符的边距
@@ -752,15 +773,36 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
 
     // 获取最后一个节点（在它之后插入）
     SwNode& rLastNode = rNodes.GetEndOfContent();
-    // 往前找到最后一个内容节点或 StartNode
+    // 往前找到最后一个内容节点或 StartNode（但不在表格内部）
     SwNode* pInsertAfter = nullptr;
+    bool bInsideTable = false;
     SwNodeOffset nIdx = rLastNode.GetIndex() - 1;
     while (nIdx >= 0)
     {
         SwNode* pNd = rNodes[nIdx];
         if (pNd && (pNd->IsContentNode() || pNd->IsStartNode()))
         {
-            pInsertAfter = pNd;
+            // 如果找到的节点在表格内部，使用表格 EndNode 作为插入点
+            // 后续需要修正新节点的 StartOfSection
+            SwStartNode* pStartOfSection = pNd->StartOfSectionNode();
+            if (pStartOfSection && pStartOfSection->IsTableNode())
+            {
+                SwEndNode* pTableEnd = pStartOfSection->GetEndOfSection();
+                if (pTableEnd)
+                {
+                    pInsertAfter = pTableEnd;
+                    bInsideTable = true;
+                }
+                else
+                {
+                    pInsertAfter = pStartOfSection;
+                    bInsideTable = true;
+                }
+            }
+            else
+            {
+                pInsertAfter = pNd;
+            }
             break;
         }
         --nIdx;
@@ -773,6 +815,13 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
 
     // 创建文本节点
     SwTextNode* pTextNode = rNodes.MakeTextNode(*pInsertAfter, pColl);
+
+    // 修正：如果插入点在表格内部，新节点会继承表格的 StartOfSection
+    // 需要将其修正为正文节区（EndOfContent 的 StartOfSection）
+    if (bInsideTable)
+    {
+        pTextNode->SetStartOfSection(rLastNode.StartOfSectionNode());
+    }
 
     // 解析段落属性
     std::string sStyleId;
@@ -919,6 +968,130 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
     }
 
     pTextNode->SetText(text);
+
+    // 提取文本框内容 (w:txbxContent inside w:drawing)
+    // 文本框中的段落是独立的文本节点，需要单独创建
+    // 注意：w:drawing 可能在 mc:AlternateContent/mc:Choice 中嵌套，需要递归查找
+
+    // 递归查找 w:txbxContent（支持 w:txbxContent, wps:txbxContent, txbxContent）
+    std::function<void(pugi::xml_node)> findTxbxContent = [&](pugi::xml_node node) {
+        for (auto& n : node.children())
+        {
+            std::string nName = n.name();
+            if (nName == "w:txbxContent" || nName == "wps:txbxContent" || nName == "txbxContent")
+            {
+                std::cerr << "[ParseTxbx] Found txbxContent!" << std::endl;
+                for (auto& tbPara : n.children())
+                {
+                    if (std::string(tbPara.name()) == "w:p")
+                    {
+                        std::cerr << "[ParseTxbx] Processing textbox paragraph" << std::endl;
+                        SwTextNode* pTbNode = rNodes.MakeTextNode(*pTextNode, pColl);
+
+                        auto tbPPr = tbPara.child("w:pPr");
+                        if (tbPPr)
+                        {
+                            ParseParagraphProps(tbPPr, pTbNode);
+                            auto tbStyle = tbPPr.child("w:pStyle");
+                            std::string tbStyleId;
+                            if (tbStyle)
+                                tbStyleId = tbStyle.attribute("w:val").as_string();
+
+                            const StyleDef* pTbStyleDef = nullptr;
+                            if (!tbStyleId.empty())
+                            {
+                                auto it = styles_.find(tbStyleId);
+                                if (it != styles_.end())
+                                    pTbStyleDef = &it->second;
+                            }
+                            if (pTbStyleDef)
+                            {
+                                pTbNode->SetStyleName(pTbStyleDef->name);
+                                if (!pTbStyleDef->fontName.empty())
+                                    pTbNode->SetAttr(RES_CHRATR_FONT, pTbStyleDef->fontName);
+                                if (pTbStyleDef->fontSize > 0)
+                                    pTbNode->SetAttr(RES_CHRATR_FONTSIZE,
+                                                     std::to_string(pTbStyleDef->fontSize));
+                                if (pTbStyleDef->bold)
+                                    pTbNode->SetAttr(RES_CHRATR_WEIGHT, "bold");
+                                if (pTbStyleDef->italic)
+                                    pTbNode->SetAttr(RES_CHRATR_POSTURE, "italic");
+                                if (!pTbStyleDef->color.empty())
+                                    pTbNode->SetAttr(RES_CHRATR_COLOR, pTbStyleDef->color);
+                            }
+                        }
+
+                        std::string tbText;
+                        for (auto& tbRun : tbPara.children())
+                        {
+                            if (std::string(tbRun.name()) == "w:r")
+                            {
+                                std::string rt = ParseRunText(tbRun);
+                                auto tbRPr = tbRun.child("w:rPr");
+                                if (!rt.empty() && tbRPr)
+                                    ParseRunProps(tbRPr, pTbNode);
+                                tbText += rt;
+                            }
+                        }
+                        pTbNode->SetText(tbText);
+                        std::cerr << "[ParseTxbx] Text: '" << tbText << "'" << std::endl;
+                    }
+                }
+                return;
+            }
+            findTxbxContent(n);
+        }
+    };
+
+    // 处理单个 w:drawing 节点
+    std::function<void(pugi::xml_node)> processDrawing = [&](pugi::xml_node drawing) {
+        for (auto& anchor : drawing.children())
+        {
+            // wp:anchor 或 wp:inline
+            for (auto& graphic : anchor.children())
+            {
+                if (std::string(graphic.name()) != "a:graphic"
+                    && std::string(graphic.name()) != "graphic")
+                    continue;
+                auto graphicData = graphic.child("a:graphicData");
+                if (!graphicData)
+                    graphicData = graphic.child("graphicData");
+                if (!graphicData)
+                    continue;
+
+                for (auto& gdChild : graphicData.children())
+                {
+                    findTxbxContent(gdChild);
+                }
+            }
+        }
+    };
+
+    // 递归在 w:r 的子节点中查找 w:drawing
+    // w:drawing 可能嵌套在 mc:AlternateContent/mc:Choice 中
+    std::function<void(pugi::xml_node)> findDrawingInRun = [&](pugi::xml_node node) {
+        for (auto& child : node.children())
+        {
+            std::string cname = child.name();
+            if (cname == "w:drawing" || cname == "drawing")
+            {
+                std::cerr << "[ParseTxbx] Found drawing in run" << std::endl;
+                processDrawing(child);
+            }
+            else if (cname == "mc:AlternateContent" || cname == "mc:Choice"
+                     || cname == "mc:Fallback")
+            {
+                findDrawingInRun(child);
+            }
+        }
+    };
+
+    for (auto child : pNode.children())
+    {
+        if (std::string(child.name()) != "w:r")
+            continue;
+        findDrawingInRun(child);
+    }
 }
 
 //===----------------------------------------------------------------------===//

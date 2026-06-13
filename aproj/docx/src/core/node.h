@@ -125,6 +125,9 @@ public:
     // 节点索引
     SwNodeOffset GetIndex() const { return SwNodeOffset(GetPos()); }
 
+    // 设置节区起始节点（用于修正表格后插入节点的节区归属）
+    void SetStartOfSection(SwStartNode* p) { m_pStartOfSection = p; }
+
     // 所属节点数组
     SwNodes& GetNodes();
     const SwNodes& GetNodes() const;
