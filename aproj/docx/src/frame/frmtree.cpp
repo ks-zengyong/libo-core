@@ -5,6 +5,7 @@
 #include "../core/ndarr.h"
 #include "../core/doc.h"
 #include "../core/format.h"
+#include "../font/font_engine.h"
 #include <cassert>
 #include <iostream>
 
@@ -264,35 +265,19 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         }
 
         // 估算文本高度：基于字体度量的行高计算
-        // LibreOffice 使用实际字体度量 (ascent + descent + leading)
-        // 这里使用字体特定的比率进行估算
+        // 使用 FontEngine 获取精确字体度量（对应 LO 的 SwFntObj::GetFontHeight）
         const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
         const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
         int nFontSize = pSize ? std::stoi(*pSize) : 20; // 半点
+        std::string sFontName = pFont ? *pFont : "Calibri";
 
-        // 字体特定的行高比率（从 LibreOffice 输出校准）
-        double nHeightRatio = 14.1; // 默认
-        if (pFont)
-        {
-            if (pFont->find("Emoji") != std::string::npos)
-                nHeightRatio = 18.39;
-            else if (pFont->find("Poppins Medium") != std::string::npos)
-                nHeightRatio = 14.11;
-            else if (pFont->find("Poppins SemiBold") != std::string::npos)
-                nHeightRatio = 14.10;
-            else if (pFont->find("Poppins") != std::string::npos)
-                nHeightRatio = 13.75;
-            else if (pFont->find("Segoe UI Semibold") != std::string::npos)
-                nHeightRatio = 14.11;
-            else if (pFont->find("fony family") != std::string::npos)
-                nHeightRatio = 14.54;
-            else if (pFont->find("Calibri") != std::string::npos)
-                nHeightRatio = 14.11;
-        }
+        // 使用 FontEngine 获取精确行高（已返回 twips）
+        FontEngine& fontEngine = FontEngine::Instance();
+        int nMeasuredHeight = fontEngine.MeasureTextHeight(sFontName, nFontSize);
 
-        // 应用行距规则
-        // OOXML w:line=240 表示单倍行距，w:line=204 表示约 0.85 倍行距
-        SwTwips nLineHeight = static_cast<SwTwips>(nFontSize * nHeightRatio);
+        SwTwips nLineHeight = nMeasuredHeight > 0
+                                  ? static_cast<SwTwips>(nMeasuredHeight)
+                                  : static_cast<SwTwips>(nFontSize * 14.1); // 后备估算
         const std::string* pLineSpacing = pTextNode->GetAttr(RES_PARATR_LINESPACING);
         if (pLineSpacing)
         {
@@ -314,43 +299,67 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
             nLineHeight = 200;
 
         // 计算文本行数（考虑自动换行）
-        // LibreOffice 使用实际字体度量计算换行，这里使用字符宽度估算
+        // 使用 FontEngine 进行精确字形宽度测量（对应 LO 的 VCL GetTextBreak）
         int nLineCount = 1;
         const std::string& rText = pTextNode->GetText();
         if (!rText.empty() && nPageWidth > 0)
         {
-            // 估算字符宽度：字体大小 × 比率（从 LO 输出校准）
-            // 大多数字体的平均字符宽度约为字体大小的 0.45-0.55 倍
-            double nCharWidth = nFontSize * 0.50 * 10; // 半点→twips × 比率
-            if (nCharWidth > 0)
-            {
-                // 计算每行可容纳的字符数
-                int nCharsPerLine = static_cast<int>(nPageWidth / nCharWidth);
-                if (nCharsPerLine < 1)
-                    nCharsPerLine = 1;
+            FontEngine& engine = FontEngine::Instance();
 
-                // 计算文本行数（考虑换行符）
-                int nTextLines = 1;
-                int nCurrentLineLen = 0;
-                for (char c : rText)
+            // 逐行计算：找到每行的断点，累加行数
+            int nTextLines = 1;
+            size_t nStart = 0;
+            while (nStart < rText.size())
+            {
+                // 查找下一个换行符
+                size_t nNewline = rText.find('\n', nStart);
+                std::string sLine;
+                if (nNewline != std::string::npos)
                 {
-                    if (c == '\n' || c == '\f' || c == '\v')
+                    sLine = rText.substr(nStart, nNewline - nStart);
+                }
+                else
+                {
+                    sLine = rText.substr(nStart);
+                }
+
+                if (!sLine.empty())
+                {
+                    // 测量整行宽度
+                    SwTwips nLineWidth = engine.MeasureTextWidth(sFontName, nFontSize, sLine);
+                    if (nLineWidth > nPageWidth)
                     {
-                        nTextLines++;
-                        nCurrentLineLen = 0;
-                    }
-                    else
-                    {
-                        nCurrentLineLen++;
-                        if (nCurrentLineLen >= nCharsPerLine)
+                        // 需要换行：使用 GetTextBreak 逐段切分
+                        size_t nPos = 0;
+                        while (nPos < sLine.size())
                         {
+                            std::string sRemain = sLine.substr(nPos);
+                            int nBreak
+                                = engine.FindLineBreak(sFontName, nFontSize, sRemain, nPageWidth);
+                            if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
+                            {
+                                // 剩余文本都能放下
+                                break;
+                            }
+                            if (nBreak == 0)
+                                nBreak = 1; // 至少前进一个字符
+                            nPos += nBreak;
                             nTextLines++;
-                            nCurrentLineLen = 0;
                         }
                     }
                 }
-                nLineCount = nTextLines;
+
+                if (nNewline != std::string::npos)
+                {
+                    nTextLines++; // 换行符本身占一行
+                    nStart = nNewline + 1;
+                }
+                else
+                {
+                    break;
+                }
             }
+            nLineCount = nTextLines;
         }
 
         // 应用行数到高度
@@ -390,23 +399,14 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         // TextFrame: x = 默认段落缩进(284)
         // LibreOffice 的 TextFrame frameArea 的 x 只包含默认缩进
         // 段落级缩进 (w:ind w:left) 在 LO 中作为文本内部边距处理，不影响 frame 位置
-        // TextFrame x = 默认缩进(284) + 节左边距 + 列偏移
-        // LO 在帧位置中包含节的左边距和列偏移
+        // TextFrame x = 默认缩进(284) + 节左边距
+        // LO 在帧位置中包含节的左边距
         const SwTwips nDefaultIndent = 284;
         SwTwips nSectLeftMargin = 0;
-        SwTwips nColOffset = 0;
         const SwDoc::SectionMargins* pSectM = pTextNode->GetDoc().GetSectionMargins(nSection);
         if (pSectM)
-        {
             nSectLeftMargin = pSectM->left;
-            // 多列布局：列偏移 = 列索引 × (列宽 + 列间距)
-            if (pSectM->numCols > 1 && pSectM->colWidth > 0 && nCol > 0)
-            {
-                nColOffset = static_cast<SwTwips>(nCol) * (pSectM->colWidth + pSectM->colSpace);
-            }
-        }
-        SwRect aFrameArea(nDefaultIndent + nSectLeftMargin + nColOffset, nY, nPageWidth,
-                          nTotalHeight);
+        SwRect aFrameArea(nDefaultIndent + nSectLeftMargin, nY, nPageWidth, nTotalHeight);
         pFrame->setFrameArea(aFrameArea);
     }
     else if (rNode.IsTableNode())

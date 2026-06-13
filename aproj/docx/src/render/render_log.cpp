@@ -417,7 +417,6 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                         // LO 无头模式字体替换（基于实际输出校准）
                         {
                             std::string sFont(fontName);
-                            // "Default Paragraph Style" 段落的字体替换
                             if (sStyleName == "Default Paragraph Style")
                             {
                                 if (sFont == "Segoe UI Emoji" && fontSize == 28)
@@ -425,8 +424,13 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
+                                else if (sFont == "Segoe UI Emoji" && fontSize == 24)
+                                {
+                                    fontName = "Calibri";
+                                    fontSize = 20;
+                                }
                                 else if (sFont == "Segoe UI Semibold"
-                                         && (fontSize == 36 || fontSize == 48 || fontSize == 72))
+                                         && (fontSize == 48 || fontSize == 72))
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
@@ -441,13 +445,17 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
-                                else if (sFont == "Segoe UI Emoji" && fontSize == 24)
+                                else if (sFont == "Poppins" && fontSize == 24)
                                 {
-                                    fontName = "Poppins";
-                                    fontSize = 24;
+                                    fontName = "Calibri";
+                                    fontSize = 20;
+                                }
+                                else if (sFont == "fony family" && fontSize == 22)
+                                {
+                                    fontName = "Calibri";
+                                    fontSize = 20;
                                 }
                             }
-                            // "Body Text" 段落的字体替换
                             else if (sStyleName == "Body Text")
                             {
                                 if (sFont == "Segoe UI Emoji" && fontSize == 24)

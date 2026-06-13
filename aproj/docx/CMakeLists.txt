@@ -39,17 +39,18 @@ add_library(docx_core STATIC
     src/frame/frame.cpp
     src/frame/frmtree.cpp
     src/filter/docx_parser.cpp
+    src/font/font_engine.cpp
     src/layout/layact.cpp
     src/render/render_log.cpp
     src/render/render_output_device.cpp
 )
-target_include_directories(docx_core PUBLIC src/core src/frame src/filter src/layout src/render ${THIRD_PARTY_DIR}
+target_include_directories(docx_core PUBLIC src/core src/frame src/filter src/font src/layout src/render ${THIRD_PARTY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../sw/source/core/inc)  # 共享 instruction_builder.h / render_instruction.h
 target_compile_definitions(docx_core PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 
 # End-to-end test (SwDoc pipeline)
 add_executable(docx_e2e_test test/test_end_to_end.cpp)
-target_include_directories(docx_e2e_test PRIVATE src/core src/frame src/filter src/layout src/render ${THIRD_PARTY_DIR})
+target_include_directories(docx_e2e_test PRIVATE src/core src/frame src/filter src/font src/layout src/render ${THIRD_PARTY_DIR})
 target_link_libraries(docx_e2e_test PRIVATE miniz pugixml docx_core)
 target_compile_definitions(docx_e2e_test PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 

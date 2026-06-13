@@ -857,10 +857,10 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
                     bTextRunFound = true;
                 }
             }
-            else if (rPr && !bRunPropsApplied)
+            else if (rPr && !bRunPropsApplied && !pPr.child("w:rPr"))
             {
-                // 绘图/图片 Run：仅在尚未应用文本 Run 属性时应用
-                // 这样文本 Run 的属性优先于绘图 Run
+                // 绘图/图片 Run：仅在段落标记没有 rPr 且尚未应用文本 Run 属性时应用
+                // 段落标记的 rPr（pPr/rPr）优先于绘图 Run 的 rPr
                 ParseRunProps(rPr, pTextNode);
                 bRunPropsApplied = true;
             }
@@ -907,7 +907,7 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
                         bTextRunFound = true;
                     }
                 }
-                else if (rPr && !bRunPropsApplied)
+                else if (rPr && !bRunPropsApplied && !pPr.child("w:rPr"))
                 {
                     ParseRunProps(rPr, pTextNode);
                     bRunPropsApplied = true;
