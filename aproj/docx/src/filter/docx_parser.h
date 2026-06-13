@@ -49,7 +49,8 @@ private:
 
     // 段落/文本解析
     std::string ParseRunText(pugi::xml_node rNode);
-    void ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode);
+    void ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool bSkipColor = false,
+                       bool bSkipSize = false);
     void ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode);
 
     // 属性解析辅助

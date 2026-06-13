@@ -19,7 +19,7 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx);
 SwRootFrame* InitLayout(SwDoc& rDoc);
 
 // MakeFramesForNode: 为单个节点创建 Frame
-void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling);
+void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling, int nSection = 0);
 
 // InsertNewPage: 创建新页面
 SwPageFrame* InsertNewPage(SwRootFrame* pRoot, SwPageDesc* pDesc = nullptr);

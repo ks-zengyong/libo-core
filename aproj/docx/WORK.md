@@ -212,17 +212,10 @@ TSV 格式输出，字段顺序一致，支持直接 diff 比对。
 ### 当前渲染输出统计（sample.docx）
 
 ```
-Frame 层 (aproj_frame.txt): 104 条
-  PAGE_START: 1
-  PAGE_END:   1
+Frame 层 (aproj_frame.txt): 112 条
+  PAGE_START: 5
+  PAGE_END:   5
   TEXT_FRAME: 102 (语义指令，含字体信息)
-
-VCL 层 (aproj_vcl.txt): 258 条
-  PAGE_START: 1
-  PAGE_END:   1
-  SET_FONT:   104 (状态指令)
-  SET_TEXT_COLOR: 104
-  TEXT_RUN:   48 (绘制指令)
 
 LibreOffice 参考 (lo_frame.txt): 114 条
   PAGE_START: 7
@@ -230,22 +223,35 @@ LibreOffice 参考 (lo_frame.txt): 114 条
   TEXT_FRAME: 100
 ```
 
-### render_diff 比对结果
+### render_diff 比对结果（2026-06-13）
 
 ```
-Reference: tests/lo_frame.txt (114 instructions)
-Test:      tests/aproj_frame.txt (104 instructions)
-Differences: 847
+Reference: tests/aproj_frame.txt (112 instructions, 5 pages)
+Test:      tests/lo_frame.txt (114 instructions, 7 pages)
+Differences: 555
 ```
 
-**主要差异**：
-| 差异 | LibreOffice | aproj | 状态 |
-|------|-------------|-------|------|
-| 页数 | 7 页 | 1 页 | 🔴 待修复 |
-| 页面宽度 | 11906 | 9360 | 🔴 待修复 |
-| 页面边距 | x=284, y=284 | 0, 0 | 🔴 待修复 |
-| 字体名 | 正确解析 | 部分正确 | 🟡 部分修复 |
-| 样式名 | 有样式名 | 空 | 🟡 待修复 |
+**已修复的差异**（从 847 降至 555）：
+| 修复 | 效果 |
+|------|------|
+| 第一节边距预扫描 | 页面边距从 0→正确值 |
+| 节分隔（nextPage）分页 | 页数从 3→5 |
+| Body 宽度 = 打印区域宽度 | 宽度从 11906→正确值 |
+| styleName 映射 "Normal"→"Default Paragraph Style" | 样式名差异消除 |
+| 默认 fontColor=0xFFFFFF | 颜色差异减少 |
+| 默认 fontSize=20 (10pt) | 字号差异减少 |
+| 默认 fontName="Calibri" | 空字体名差异消除 |
+| 首帧 space-before 偏移 (284 twips) | y 位置改善 |
+
+**主要剩余差异**：
+| 差异 | 数量 | 原因 |
+|------|------|------|
+| 页数 | 5 vs 7 | 高度估算不精确，溢出检测不够 |
+| y 位置 | ~40 | 页面内容分布不同 |
+| fontName | ~50 | LO 无头模式字体替换 |
+| fontSize | ~25 | 样式继承链不完整 |
+| width | ~26 | 节宽度变化处理 |
+| pageNum | ~43 | 页数不同导致页码偏移 |
 
 ### 测试文件
 

@@ -55,6 +55,25 @@ public:
     SwRootFrame* GetRootFrame() const { return m_pRootFrame; }
     void SetRootFrame(SwRootFrame* p) { m_pRootFrame = p; }
 
+    // 节边距映射：section index → margins
+    struct SectionMargins
+    {
+        int top = 1440, bottom = 1440, left = 1800, right = 1800;
+        int numCols = 1; // 列数
+        int colSpace = 0; // 列间距
+        int colWidth = 0; // 列宽（0 = 自动计算）
+    };
+    void SetSectionMargins(int nSection, const SectionMargins& rMargins)
+    {
+        m_aSectionMargins[nSection] = rMargins;
+    }
+    const SectionMargins* GetSectionMargins(int nSection) const
+    {
+        auto it = m_aSectionMargins.find(nSection);
+        return it != m_aSectionMargins.end() ? &it->second : nullptr;
+    }
+    int GetSectionCount() const { return static_cast<int>(m_aSectionMargins.size()); }
+
 private:
     // 初始化默认样式
     void InitDefaultStyles();
@@ -77,4 +96,7 @@ private:
 
     // 布局根 Frame
     SwRootFrame* m_pRootFrame = nullptr;
+
+    // 节边距映射
+    std::map<int, SectionMargins> m_aSectionMargins;
 };

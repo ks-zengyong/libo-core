@@ -603,12 +603,101 @@ void DocxParser::ParseDocument(SwDoc& doc)
 
 void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
 {
-    SwNodes& rNodes = doc.GetNodes();
-    SwNode& rEndOfContent = rNodes.GetEndOfContent();
+    // 收集所有 sectPr 的边距信息
+    // OOXML 节模型：
+    //   body/sectPr 定义第一节（第一部分的页面设置）
+    //   段落内的 sectPr 定义前一节的结束和新节的开始
+    //   例如：body/sectPr → 第1节, P26/sectPr → 第2节, P35/sectPr → 第3节...
+    int nSection = 0;
 
-    // 在 EndOfContent 之前插入内容
-    SwNode* pInsertBefore = &rEndOfContent;
+    // 收集段落内的 sectPr 边距（定义各节的页面设置）
+    // OOXML 节模型：
+    //   段落内的 sectPr 定义该段落之前的内容所属的节
+    //   例如：P26/sectPr 定义第1节（P1-P25），P35/sectPr 定义第2节（P27-P34）
+    //   body/sectPr 定义最后一节（P92+）
+    for (auto child : bodyNode.children())
+    {
+        std::string name = child.name();
+        if (name == "w:p")
+        {
+            auto pPr = child.child("w:pPr");
+            if (pPr)
+            {
+                auto sp = pPr.child("w:sectPr");
+                if (sp)
+                {
+                    SwDoc::SectionMargins m;
+                    auto pgMar = sp.child("w:pgMar");
+                    if (pgMar)
+                    {
+                        m.top = pgMar.attribute("w:top").as_int(1440);
+                        m.bottom = pgMar.attribute("w:bottom").as_int(1440);
+                        m.left = pgMar.attribute("w:left").as_int(1800);
+                        m.right = pgMar.attribute("w:right").as_int(1800);
+                    }
+                    // 解析列设置
+                    auto cols = sp.child("w:cols");
+                    if (cols)
+                    {
+                        m.numCols = cols.attribute("w:num").as_int(1);
+                        m.colSpace = cols.attribute("w:space").as_int(0);
+                        // 检查是否有显式列宽定义
+                        auto col = cols.child("w:col");
+                        if (col)
+                            m.colWidth = col.attribute("w:w").as_int(0);
+                    }
+                    doc.SetSectionMargins(nSection, m);
+                    nSection++;
+                }
+            }
+        }
+    }
 
+    // body 直接子元素的 sectPr 定义最后一节
+    for (auto child : bodyNode.children())
+    {
+        std::string name = child.name();
+        if (name == "w:sectPr")
+        {
+            SwDoc::SectionMargins m;
+            auto pgMar = child.child("w:pgMar");
+            if (pgMar)
+            {
+                m.top = pgMar.attribute("w:top").as_int(1440);
+                m.bottom = pgMar.attribute("w:bottom").as_int(1440);
+                m.left = pgMar.attribute("w:left").as_int(1800);
+                m.right = pgMar.attribute("w:right").as_int(1800);
+            }
+            // 解析列设置
+            auto cols = child.child("w:cols");
+            if (cols)
+            {
+                m.numCols = cols.attribute("w:num").as_int(1);
+                m.colSpace = cols.attribute("w:space").as_int(0);
+                auto col = cols.child("w:col");
+                if (col)
+                    m.colWidth = col.attribute("w:w").as_int(0);
+            }
+            doc.SetSectionMargins(nSection, m);
+            nSection++;
+            break;
+        }
+    }
+
+    // 如果没有找到任何 sectPr，设置默认边距
+    if (nSection == 0)
+    {
+        SwDoc::SectionMargins m;
+        m.top = 1440;
+        m.bottom = 1440;
+        m.left = 1800;
+        m.right = 1800;
+        doc.SetSectionMargins(0, m);
+    }
+
+    // 正式处理文档内容
+    // 注意：ParseParagraphProps 会在遇到 sectPr 时更新页面描述符的边距
+    // 这是正确的行为——页面描述符会跟踪当前节的边距
     for (auto child : bodyNode.children())
     {
         std::string name = child.name();
@@ -627,7 +716,22 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         }
         else if (name == "w:sectPr")
         {
-            ParseSectionProps(child, doc);
+            // body 直接子元素的 sectPr 已在预扫描中处理
+        }
+    }
+
+    // 应用第一节的边距到页面描述符（InitLayout 需要）
+    // 必须在主循环之后，因为 ParseParagraphProps 会覆盖页面描述符的边距
+    const SwDoc::SectionMargins* pFirstMargins = doc.GetSectionMargins(0);
+    if (pFirstMargins)
+    {
+        SwPageDesc* pDesc = doc.GetDefaultPageDesc();
+        if (pDesc)
+        {
+            pDesc->SetTopMargin(pFirstMargins->top);
+            pDesc->SetBottomMargin(pFirstMargins->bottom);
+            pDesc->SetLeftMargin(pFirstMargins->left);
+            pDesc->SetRightMargin(pFirstMargins->right);
         }
     }
 }
@@ -678,10 +782,11 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
 
         // 段落级 w:rPr 是段落的默认字符格式
         // OOXML 优先级：Run w:rPr > 段落 w:rPr > 段落样式 > 文档默认值
+        // 跳过颜色：段落标记的颜色不应用于文本内容
         auto pPrRPr = pPr.child("w:rPr");
         if (pPrRPr)
         {
-            ParseRunProps(pPrRPr, pTextNode);
+            ParseRunProps(pPrRPr, pTextNode, true); // bSkipColor = true
         }
     }
 
@@ -727,22 +832,32 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
     // 解析文本内容和 Run 属性
     std::string text;
     bool bRunPropsApplied = false;
+    bool bTextRunFound = false;
     for (auto child : pNode.children())
     {
         std::string name = child.name();
 
         if (name == "w:r")
         {
-            // 只有当 Run 包含文本时才应用其属性（跳过纯图片/绘图的 Run）
             std::string runText = ParseRunText(child);
+            auto rPr = child.child("w:rPr");
+
             if (!runText.empty())
             {
-                auto rPr = child.child("w:rPr");
-                if (rPr && !bRunPropsApplied)
+                // 文本 Run：优先应用其属性（覆盖绘图 Run 的属性）
+                if (rPr)
                 {
                     ParseRunProps(rPr, pTextNode);
                     bRunPropsApplied = true;
+                    bTextRunFound = true;
                 }
+            }
+            else if (rPr && !bRunPropsApplied)
+            {
+                // 绘图/图片 Run：仅在尚未应用文本 Run 属性时应用
+                // 这样文本 Run 的属性优先于绘图 Run
+                ParseRunProps(rPr, pTextNode);
+                bRunPropsApplied = true;
             }
             text += runText;
         }
@@ -750,13 +865,23 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         {
             for (auto r : child.children("w:r"))
             {
+                std::string runText = ParseRunText(r);
                 auto rPr = r.child("w:rPr");
-                if (rPr && !bRunPropsApplied)
+                if (!runText.empty())
+                {
+                    if (rPr)
+                    {
+                        ParseRunProps(rPr, pTextNode);
+                        bRunPropsApplied = true;
+                        bTextRunFound = true;
+                    }
+                }
+                else if (rPr && !bRunPropsApplied)
                 {
                     ParseRunProps(rPr, pTextNode);
                     bRunPropsApplied = true;
                 }
-                text += ParseRunText(r);
+                text += runText;
             }
         }
     }
@@ -823,8 +948,11 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
     auto pStyle = pPrNode.child("w:pStyle");
     if (pStyle)
     {
-        std::string styleName = pStyle.attribute("w:val").as_string();
-        pNode->SetStyleName(styleName);
+        std::string styleId = pStyle.attribute("w:val").as_string();
+        // 查找样式的显示名（而非 ID）
+        // 例如：styleId="Normal" → 显示名 "Default Paragraph Style"
+        // 这里先设置 ID，ParseParagraph 中会用显示名覆盖
+        pNode->SetStyleName(styleId);
     }
 
     // 对齐
@@ -890,6 +1018,17 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
     auto sectPr = pPrNode.child("w:sectPr");
     if (sectPr)
     {
+        // 检测节分隔类型：nextPage/nextColumn/continuous/evenPage/oddPage
+        // 默认为 nextPage（强制分页）
+        auto sectType = sectPr.child("w:type");
+        std::string breakType
+            = sectType ? sectType.attribute("w:val").as_string("nextPage") : "nextPage";
+        if (breakType == "nextPage" || breakType == "evenPage" || breakType == "oddPage")
+        {
+            // 节分隔 = 分页：在当前段落之前分页
+            pNode->SetAttr(RES_BREAK, "section");
+        }
+
         // 更新默认页面描述符
         SwPageDesc* pDesc = pNode->GetDoc().GetDefaultPageDesc();
         if (pDesc)
@@ -1151,7 +1290,8 @@ std::string DocxParser::ResolveImage(const std::string& relId)
 // ParseRunProps: 解析文本属性（简化版）
 //===----------------------------------------------------------------------===//
 
-void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode)
+void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool bSkipColor,
+                               bool bSkipSize)
 {
     if (!rPrNode || !pNode)
         return;
@@ -1178,12 +1318,15 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode)
         }
     }
 
-    // 字号
-    auto sz = rPrNode.child("w:sz");
-    if (sz)
+    // 字号（段落标记的字号不应用于文本内容）
+    if (!bSkipSize)
     {
-        int size = sz.attribute("w:val").as_int(22);
-        pNode->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(size));
+        auto sz = rPrNode.child("w:sz");
+        if (sz)
+        {
+            int size = sz.attribute("w:val").as_int(22);
+            pNode->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(size));
+        }
     }
 
     // 粗体
@@ -1200,10 +1343,13 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode)
         pNode->SetAttr(RES_CHRATR_POSTURE, "italic");
     }
 
-    // 颜色
-    auto color = rPrNode.child("w:color");
-    if (color)
+    // 颜色（段落标记的颜色不应用于文本内容）
+    if (!bSkipColor)
     {
-        pNode->SetAttr(RES_CHRATR_COLOR, color.attribute("w:val").as_string());
+        auto color = rPrNode.child("w:color");
+        if (color)
+        {
+            pNode->SetAttr(RES_CHRATR_COLOR, color.attribute("w:val").as_string());
+        }
     }
 }

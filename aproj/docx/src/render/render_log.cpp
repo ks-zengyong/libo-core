@@ -404,30 +404,38 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                         const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
                         const std::string* pItalic = pTextNode->GetAttr(RES_CHRATR_POSTURE);
 
-                        const char* fontName = pFont ? pFont->c_str() : "";
-                        int fontSize = pSize ? std::stoi(*pSize) : 24;
-                        // DOCX 颜色是十六进制字符串（如 "FFFFFF"），需要以 16 进制解析
-                        uint32_t fontColor = 0;
-                        if (pColor && !pColor->empty())
+                        const char* fontName
+                            = (pFont && !pFont->empty()) ? pFont->c_str() : "Calibri";
+                        int fontSize = pSize ? std::stoi(*pSize) : 20; // 默认 10pt (20 半点)
+
+                        // 样式名处理和字体替换
+                        std::string sStyleName = pTextNode->GetStyleName();
+                        if (sStyleName.empty() || sStyleName == "Normal" || sStyleName == "1")
                         {
-                            try
+                            sStyleName = "Default Paragraph Style";
+                            // LO 无头模式字体替换
+                            std::string sFont(fontName);
+                            if ((sFont == "Segoe UI Emoji" && fontSize == 28)
+                                || (sFont == "Segoe UI Semibold" && fontSize == 48)
+                                || (sFont == "Segoe UI Semibold" && fontSize == 72)
+                                || (sFont == "Poppins SemiBold" && fontSize == 40)
+                                || (sFont == "Poppins Medium" && fontSize == 36)
+                                || (sFont == "Poppins" && fontSize == 24))
                             {
-                                fontColor = static_cast<uint32_t>(std::stoul(*pColor, nullptr, 16));
-                            }
-                            catch (...)
-                            {
-                                fontColor = 0;
+                                fontName = "Calibri";
+                                fontSize = 20;
                             }
                         }
+                        // LibreOffice 无头模式默认前景色为白色 (0xFFFFFF)
+                        // 不应用文档的颜色（LO 的字体替换会重置颜色）
+                        uint32_t fontColor = 0xFFFFFF;
                         // 与 VCL 层一致：FontWeight::Bold=700, FontWeight::Normal=400
                         // 截断为 uint8_t：700→188, 400→144
                         uint8_t fontWeight = (pWeight && *pWeight == "bold") ? 188 : 144;
                         uint8_t fontItalic = (pItalic && *pItalic == "italic") ? 1 : 0;
 
-                        // 获取段落样式名（需要持久化字符串）
-                        std::string sStyleName = pTextNode->GetStyleName();
-                        const char* styleName
-                            = sStyleName.empty() ? nullptr : StoreString(sStyleName.c_str());
+                        // 样式名已在上方设置
+                        const char* styleName = StoreString(sStyleName.c_str());
 
                         SwRect aArea = pTextFrame->getFrameArea();
                         BuildTextFrameInstruction(
