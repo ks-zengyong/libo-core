@@ -8,6 +8,10 @@
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "../../third_party/stb_truetype.h"
 
+// HarfBuzz 用于字体度量计算（与 LO 一致）
+#include <hb.h>
+#include <hb-ot.h>
+
 #include <iostream>
 #include <cstdio>
 #include <cmath>
@@ -211,132 +215,170 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
     // 半点 → twips: halfPt * 10
     int fontSizeTwips = fontSizeHalfPt * 10;
 
-    // 尝试从 OS/2 表获取 fsSelection 和度量值
-    // LO 的逻辑 (vcl/source/font/fontmetric.cxx):
-    // 1. 先用 hhea 表 (ascent, descent, lineGap)
-    // 2. 如果 OS/2 存在且 fsSelection bit 7 (USE_TYPO_METRICS) 设置，用 sTypo 值
-    // 3. 否则可能用 usWinAscent/usWinDescent
-    int os2Ascent = 0, os2Descent = 0, os2LineGap = 0;
-    int winAscent = 0, winDescent = 0;
-    int hheaAscent = 0, hheaDescent = 0, hheaLineGap = 0;
-    bool hasOS2 = false;
-    bool hasHhea = false;
-    bool useTypoMetrics = false;
-
-    if (!m_data.empty() && m_info)
+    // 使用 HarfBuzz 获取字体度量（与 LO 一致）
+    // 参考 LibreOffice 的 vcl/source/font/fontmetric.cxx: FontMetricData::ImplCalcLineSpacing
+    if (!m_data.empty())
     {
-        int fontOffset = 0;
-        if (m_data.size() >= 4 && m_data[0] == 't' && m_data[1] == 't' && m_data[2] == 'c'
-            && m_data[3] == 'f')
+        // 创建 HarfBuzz blob 和 face
+        hb_blob_t* blob = hb_blob_create(reinterpret_cast<const char*>(m_data.data()),
+                                          static_cast<unsigned int>(m_data.size()),
+                                          HB_MEMORY_MODE_READONLY, nullptr, nullptr);
+        if (blob)
         {
-            fontOffset = stbtt_GetFontOffsetForIndex(m_data.data(), 0);
-        }
-        if (fontOffset >= 0 && fontOffset + 12 <= (int)m_data.size())
-        {
-            const unsigned char* font = m_data.data() + fontOffset;
-            int numTables = (font[4] << 8) | font[5];
-            for (int i = 0; i < numTables; i++)
+            hb_face_t* face = hb_face_create(blob, 0);
+            hb_blob_destroy(blob);
+
+            if (face)
             {
-                int entryOffset = fontOffset + 12 + i * 16;
-                if (entryOffset + 16 > (int)m_data.size())
-                    break;
-                const unsigned char* entry = m_data.data() + entryOffset;
-                if (entry[0] == 'O' && entry[1] == 'S' && entry[2] == '/' && entry[3] == '2')
+                hb_font_t* font = hb_font_create(face);
+                hb_face_destroy(face);
+
+                if (font)
                 {
-                    int tableOffset
-                        = (entry[8] << 24) | (entry[9] << 16) | (entry[10] << 8) | entry[11];
-                    int tableLength
-                        = (entry[12] << 24) | (entry[13] << 16) | (entry[14] << 8) | entry[15];
-                    int absTableOffset = fontOffset + tableOffset;
-                    if (tableLength >= 74 && absTableOffset + 74 <= (int)m_data.size())
+                    // 不设置缩放，使用原始字体单位
+                    // 稍后手动应用缩放
+
+                    double fAscent = 0, fDescent = 0, fExtLeading = 0;
+
+                    // 检查是否为可变字体（有 fvar 表）
+                    hb_blob_t* fvar = hb_face_reference_table(hb_font_get_face(font),
+                                                               HB_TAG('f', 'v', 'a', 'r'));
+                    bool isVariable = hb_blob_get_length(fvar) > 0;
+                    hb_blob_destroy(fvar);
+
+                    if (isVariable)
                     {
-                        const unsigned char* os2 = m_data.data() + absTableOffset;
-                        // fsSelection at offset 62 (version 0+)
-                        int fsSelection = (os2[62] << 8) | os2[63];
-                        useTypoMetrics = (fsSelection & (1 << 7)) != 0;
-                        // usWinAscent/usWinDescent at offset 64/66
-                        winAscent = (os2[64] << 8) | os2[65];
-                        winDescent = (os2[66] << 8) | os2[67];
-                        // sTypoAscender/sTypoDescender/sTypoLineGap at offset 68/70/72
-                        os2Ascent = (short)((os2[68] << 8) | os2[69]);
-                        os2Descent = (short)((os2[70] << 8) | os2[71]);
-                        os2LineGap = (short)((os2[72] << 8) | os2[73]);
-                        hasOS2 = true;
+                        // 可变字体：直接使用 HarfBuzz 的度量值
+                        hb_position_t nAscent, nDescent, nLineGap;
+                        if (hb_ot_metrics_get_position(
+                                font, HB_OT_METRICS_TAG_HORIZONTAL_ASCENDER, &nAscent)
+                            && hb_ot_metrics_get_position(
+                                   font, HB_OT_METRICS_TAG_HORIZONTAL_DESCENDER, &nDescent)
+                            && hb_ot_metrics_get_position(
+                                   font, HB_OT_METRICS_TAG_HORIZONTAL_LINE_GAP, &nLineGap))
+                        {
+                            fAscent = nAscent;
+                            fDescent = -nDescent;
+                            fExtLeading = nLineGap;
+                        }
                     }
-                }
-                else if (entry[0] == 'h' && entry[1] == 'h' && entry[2] == 'e' && entry[3] == 'a')
-                {
-                    int tableOffset
-                        = (entry[8] << 24) | (entry[9] << 16) | (entry[10] << 8) | entry[11];
-                    int tableLength
-                        = (entry[12] << 24) | (entry[13] << 16) | (entry[14] << 8) | entry[15];
-                    int absTableOffset = fontOffset + tableOffset;
-                    // hhea 表: ascent at offset 4, descent at offset 6, lineGap at offset 8
-                    if (tableLength >= 10 && absTableOffset + 10 <= (int)m_data.size())
+                    else
                     {
-                        const unsigned char* hhea = m_data.data() + absTableOffset;
-                        hheaAscent = (short)((hhea[4] << 8) | hhea[5]);
-                        hheaDescent = (short)((hhea[6] << 8) | hhea[7]);
-                        hheaLineGap = (short)((hhea[8] << 8) | hhea[9]);
-                        hasHhea = true;
+                        // 非可变字体：按 LO 逻辑选择最佳度量值
+                        // 1. 先用 hhea 表
+                        hb_position_t nAscent = 0, nDescent = 0, nLineGap = 0;
+                        constexpr auto ASCENT_HHEA
+                            = static_cast<hb_ot_metrics_tag_t>(HB_TAG('H', 'a', 's', 'c'));
+                        constexpr auto DESCENT_HHEA
+                            = static_cast<hb_ot_metrics_tag_t>(HB_TAG('H', 'd', 's', 'c'));
+                        constexpr auto LINEGAP_HHEA
+                            = static_cast<hb_ot_metrics_tag_t>(HB_TAG('H', 'l', 'g', 'p'));
+
+                        if (hb_ot_metrics_get_position(font, ASCENT_HHEA, &nAscent)
+                            && hb_ot_metrics_get_position(font, DESCENT_HHEA, &nDescent)
+                            && hb_ot_metrics_get_position(font, LINEGAP_HHEA, &nLineGap))
+                        {
+                            if (nAscent >= 0 && nDescent <= 0)
+                            {
+                                fAscent = nAscent;
+                                fDescent = -nDescent;
+                                fExtLeading = nLineGap;
+                            }
+                        }
+
+                        // 2. 如果 OS/2 存在，优先使用
+                        constexpr auto ASCENT_OS2
+                            = static_cast<hb_ot_metrics_tag_t>(HB_TAG('O', 'a', 's', 'c'));
+                        constexpr auto DESCENT_OS2
+                            = static_cast<hb_ot_metrics_tag_t>(HB_TAG('O', 'd', 's', 'c'));
+                        constexpr auto LINEGAP_OS2
+                            = static_cast<hb_ot_metrics_tag_t>(HB_TAG('O', 'l', 'g', 'p'));
+
+                        hb_position_t nTypoAscent, nTypoDescent, nTypoLineGap, nWinAscent,
+                            nWinDescent;
+                        if (hb_ot_metrics_get_position(font, ASCENT_OS2, &nTypoAscent)
+                            && hb_ot_metrics_get_position(font, DESCENT_OS2, &nTypoDescent)
+                            && hb_ot_metrics_get_position(font, LINEGAP_OS2, &nTypoLineGap)
+                            && hb_ot_metrics_get_position(
+                                   font, HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_ASCENT, &nWinAscent)
+                            && hb_ot_metrics_get_position(font,
+                                                          HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_DESCENT,
+                                                          &nWinDescent))
+                        {
+                            // 如果 hhea 为空，使用 Win metrics
+                            if (fAscent == 0.0 && fDescent == 0.0)
+                            {
+                                fAscent = nWinAscent;
+                                fDescent = nWinDescent;
+                                fExtLeading = 0;
+                            }
+
+                            // 检查 USE_TYPO_METRICS 标志
+                            bool bUseTypoMetrics = false;
+                            {
+                                // 读取 OS/2 表的 fsSelection 字段
+                                hb_blob_t* os2Blob = hb_face_reference_table(
+                                    hb_font_get_face(font), HB_TAG('O', 'S', '/', '2'));
+                                if (hb_blob_get_length(os2Blob) >= 64)
+                                {
+                                    unsigned int length = 0;
+                                    const unsigned char* os2Data
+                                        = reinterpret_cast<const unsigned char*>(
+                                            hb_blob_get_data(os2Blob, &length));
+                                    if (os2Data && length >= 64)
+                                    {
+                                        int fsSelection = (os2Data[62] << 8) | os2Data[63];
+                                        bUseTypoMetrics = (fsSelection & (1 << 7)) != 0;
+                                    }
+                                }
+                                hb_blob_destroy(os2Blob);
+                            }
+
+                            if (bUseTypoMetrics && nTypoAscent >= 0 && nTypoDescent <= 0)
+                            {
+                                fAscent = nTypoAscent;
+                                fDescent = -nTypoDescent;
+                                fExtLeading = nTypoLineGap;
+                            }
+                        }
+                    }
+
+                    // 使用 HarfBuzz 读取 usWin 值
+                    hb_position_t nWinAscent = 0, nWinDescent = 0;
+                    hb_ot_metrics_get_position(font,
+                                               HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_ASCENT,
+                                               &nWinAscent);
+                    hb_ot_metrics_get_position(font,
+                                               HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_DESCENT,
+                                               &nWinDescent);
+
+                    hb_font_destroy(font);
+
+                    // 计算最终高度（twips）
+                    // HarfBuzz 返回的值是字体单位，需要缩放到 twips
+                    // 缩放公式：fontUnits * fontSizeTwips / unitsPerEm
+                    if (fAscent > 0 || fDescent > 0)
+                    {
+                        float emSize = 1.0f / stbtt_ScaleForMappingEmToPixels(m_info, 1.0f);
+                        int result = static_cast<int>((fAscent + fDescent + fExtLeading) * fontSizeTwips / emSize);
+                        fprintf(stderr,
+                                "[FontEngine] HarfBuzz: font=%s halfPt=%d ascent=%.0f "
+                                "descent=%.0f extLead=%.0f winAscent=%d winDescent=%d em=%.0f "
+                                "result=%d\n",
+                                m_fontName.c_str(), fontSizeHalfPt, fAscent, fDescent, fExtLeading,
+                                nWinAscent, nWinDescent, emSize, result);
+                        return result;
                     }
                 }
             }
         }
     }
 
-    if (hasOS2 && useTypoMetrics && os2Ascent >= 0 && os2Descent <= 0)
-    {
-        // 使用 OS/2 sTypo 值 (LO 的 bUseTypoMetrics 路径)
-        float emSize = 1.0f / stbtt_ScaleForMappingEmToPixels(m_info, 1.0f);
-        int totalFontUnits = os2Ascent + abs(os2Descent) + os2LineGap;
-        int result = static_cast<int>(fontSizeTwips * totalFontUnits / emSize);
-        return result;
-    }
-
-    // 默认使用 hhea 度量 (与 LO 一致)
-    // LO 还会添加 external leading (GetFontLeading)
+    // 回退到 stb_truetype
     int ascent, descent, lineGap;
     stbtt_GetFontVMetrics(m_info, &ascent, &descent, &lineGap);
-
     float scale = stbtt_ScaleForMappingEmToPixels(m_info, fontSizeTwips);
-    int baseHeight = static_cast<int>((ascent - descent + lineGap) * scale);
-
-    // 尝试通过 Windows GDI 获取完整字体高度
-    // LO 在 Windows 上使用 GDI/Uniscribe 获取字体度量，结果与 stb_truetype 有差异
-    // 使用 GDI 的 tmHeight + tmExternalLeading 作为行高，与 LO 一致
-#ifdef _WIN32
-    if (!m_fontName.empty())
-    {
-        HDC hdc = CreateCompatibleDC(NULL);
-        if (hdc)
-        {
-            float pixels = static_cast<float>(fontSizeHalfPt) * 2.0f / 3.0f;
-            int nHeight = -static_cast<int>(pixels * 72.0 / 96.0 + 0.5);
-            HFONT hFont
-                = CreateFontA(nHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
-                              OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
-                              DEFAULT_PITCH | FF_DONTCARE, m_fontName.c_str());
-            if (hFont)
-            {
-                HFONT hOld = (HFONT)SelectObject(hdc, hFont);
-                TEXTMETRIC tm = {};
-                GetTextMetrics(hdc, &tm);
-                // GDI 返回 tmHeight (像素) = tmAscent + tmDescent
-                // 转换为 twips: pixels * 1440 / 96 = pixels * 15
-                int gdiHeight = (tm.tmHeight + tm.tmExternalLeading) * 15;
-                SelectObject(hdc, hOld);
-                DeleteObject(hFont);
-                DeleteDC(hdc);
-                // 使用 GDI 高度与 stbtt 高度中较大的值
-                // GDI 通常更接近 LO 的实际行为
-                return gdiHeight > baseHeight ? gdiHeight : baseHeight;
-            }
-            DeleteDC(hdc);
-        }
-    }
-#endif
-    return baseHeight;
+    return static_cast<int>((ascent - descent + lineGap) * scale);
 }
 
 //===----------------------------------------------------------------------===//

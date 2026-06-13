@@ -15,6 +15,11 @@ foreach(dep miniz.h miniz.c miniz_common.h miniz_tdef.h miniz_tinfl.h miniz_zip.
     endif()
 endforeach()
 
+# Check for HarfBuzz
+if(NOT EXISTS "${THIRD_PARTY_DIR}/harfbuzz/harfbuzz.cc")
+    message(FATAL_ERROR "Missing HarfBuzz. Copy from libo-core/workdir/UnpackedTarball/harfbuzz/src/")
+endif()
+
 # miniz (C library)
 add_library(miniz STATIC
     ${THIRD_PARTY_DIR}/miniz.c
@@ -28,6 +33,14 @@ target_include_directories(miniz PUBLIC ${THIRD_PARTY_DIR})
 add_library(pugixml STATIC ${THIRD_PARTY_DIR}/pugixml.cpp)
 target_include_directories(pugixml PUBLIC ${THIRD_PARTY_DIR})
 target_compile_definitions(pugixml PUBLIC PUGIXML_NO_EXCEPTIONS=1)
+
+# HarfBuzz (font metrics library)
+add_library(harfbuzz STATIC ${THIRD_PARTY_DIR}/harfbuzz/harfbuzz.cc)
+target_include_directories(harfbuzz PUBLIC ${THIRD_PARTY_DIR}/harfbuzz)
+target_compile_definitions(harfbuzz PRIVATE _CRT_SECURE_NO_WARNINGS=1)
+if(MSVC)
+    target_compile_options(harfbuzz PRIVATE /W0 /utf-8)
+endif()
 
 # Core library (LibreOffice-compatible docx pipeline)
 add_library(docx_core STATIC
@@ -47,6 +60,7 @@ add_library(docx_core STATIC
 target_include_directories(docx_core PUBLIC src/core src/frame src/filter src/font src/layout src/render ${THIRD_PARTY_DIR}
     ${CMAKE_CURRENT_SOURCE_DIR}/../../sw/source/core/inc)  # 共享 instruction_builder.h / render_instruction.h
 target_compile_definitions(docx_core PRIVATE _CRT_SECURE_NO_WARNINGS=1)
+target_link_libraries(docx_core PUBLIC harfbuzz)
 
 # End-to-end test (SwDoc pipeline)
 add_executable(docx_e2e_test test/test_end_to_end.cpp)

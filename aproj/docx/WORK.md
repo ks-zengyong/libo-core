@@ -12,8 +12,22 @@ cd build && ./Debug/docx_e2e_test.exe && ./Debug/render_diff.exe ../tests/lo_fra
 - **Frame差异: 392** (从847→392, 53.7%减少)
 - **页面数: 5** (LO参考为7)
 - **测试: 21/21 passed**
-- **主要问题: 字体度量差异导致页面结构不同**
-- **阻塞项: 需要集成 HarfBuzz 才能进一步降低差异**
+- **HarfBuzz 已集成** - 返回值与 stb_truetype 一致
+
+### HarfBuzz 集成结果
+- ✅ HarfBuzz 构建成功
+- ✅ HarfBuzz 返回值与 stb_truetype 一致（hhea 表）
+- ✅ HarfBuzz 读取 usWin 值正确（2210/514 for Segoe UI Semibold）
+- ❌ 但仍与 LO 有差异（Segoe UI Semibold/36: HarfBuzz=478, LO=508）
+
+### 差异原因分析
+1. **字体文件差异**: LO 可能使用不同的字体文件或字体索引
+2. **Win metrics**: LO 可能对某些字体使用 Win metrics（通过 FontsUseWinMetrics 配置）
+3. **字体回退**: aproj 使用 Calibri 作为回退字体，LO 可能使用不同回退
+4. **双栏布局字体替换**: LO 对双栏布局中的空段落使用 Poppins/24
+
+### 下一步
+需要进一步调查 LO 的字体文件路径和字体回退逻辑，以完全匹配 LO 的行为。
 
 ### 已修复的字体替换规则
 1. ✅ Segoe UI Emoji/28 → Calibri/20 (Default Paragraph Style, 有文本)

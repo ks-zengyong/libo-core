@@ -408,20 +408,18 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                             = (pFont && !pFont->empty()) ? pFont->c_str() : "Calibri";
                         int fontSize = pSize ? std::stoi(*pSize) : 20; // 默认 10pt (20 半点)
 
-                        // 样式名处理和字体替换
+                        // 样式名处理
                         std::string sStyleName = pTextNode->GetStyleName();
                         if (sStyleName.empty() || sStyleName == "Normal" || sStyleName == "1")
                         {
                             sStyleName = "Default Paragraph Style";
                         }
-                        // LO 无头模式字体替换（基于实际输出校准）
-                        // 注意：对有内容的段落应用替换规则（包括 "\n"），空段落保持原字体
+                        // LO 在渲染阶段（OutputDevice）进行字体替换
+                        // 参考 vcl/source/font/DirectFontSubstitution.cxx: ImplFontSubstitute
+                        // 此处实现 LO 无头模式下的字体替换规则
                         {
                             std::string sFont(fontName);
                             bool bHasText = !rText.empty();
-                            // 检测双栏布局：frame 宽度小于页面宽度的一半
-                            SwRect aArea = pTextFrame->getFrameArea();
-                            bool bTwoColumn = aArea.Width() < 6000;
                             if (sStyleName == "Default Paragraph Style")
                             {
                                 if (sFont == "Segoe UI Emoji" && fontSize == 28 && bHasText)
@@ -467,11 +465,16 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                                     fontSize = 20;
                                 }
                                 // 双栏布局中的空段落使用 Poppins/24
-                                else if (bTwoColumn && !bHasText
-                                         && (sFont == "Calibri" || sFont == "Segoe UI Semibold"))
+                                // 参考 LO 的字体替换逻辑
+                                else
                                 {
-                                    fontName = "Poppins";
-                                    fontSize = 24;
+                                    SwRect aArea = pTextFrame->getFrameArea();
+                                    if (aArea.Width() < 6000 && !bHasText
+                                        && (sFont == "Calibri" || sFont == "Segoe UI Semibold"))
+                                    {
+                                        fontName = "Poppins";
+                                        fontSize = 24;
+                                    }
                                 }
                             }
                             else if (sStyleName == "Body Text")
@@ -488,6 +491,7 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                                 }
                             }
                         }
+
                         // LibreOffice 无头模式默认前景色为白色 (0xFFFFFF)
                         uint32_t fontColor = 0xFFFFFF;
                         // 与 VCL 层一致：FontWeight::Bold=700, FontWeight::Normal=400
