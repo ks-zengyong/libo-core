@@ -294,9 +294,6 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
             {
             }
         }
-        // 最小行高：确保至少有基本高度
-        if (nLineHeight < 200)
-            nLineHeight = 200;
 
         // 计算文本行数（考虑自动换行）
         // 使用 FontEngine 进行精确字形宽度测量（对应 LO 的 VCL GetTextBreak）

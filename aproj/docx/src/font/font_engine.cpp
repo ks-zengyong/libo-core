@@ -218,7 +218,9 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
     // 3. 否则可能用 usWinAscent/usWinDescent
     int os2Ascent = 0, os2Descent = 0, os2LineGap = 0;
     int winAscent = 0, winDescent = 0;
+    int hheaAscent = 0, hheaDescent = 0, hheaLineGap = 0;
     bool hasOS2 = false;
+    bool hasHhea = false;
     bool useTypoMetrics = false;
 
     if (!m_data.empty() && m_info)
@@ -261,7 +263,23 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                         os2LineGap = (short)((os2[72] << 8) | os2[73]);
                         hasOS2 = true;
                     }
-                    break;
+                }
+                else if (entry[0] == 'h' && entry[1] == 'h' && entry[2] == 'e' && entry[3] == 'a')
+                {
+                    int tableOffset
+                        = (entry[8] << 24) | (entry[9] << 16) | (entry[10] << 8) | entry[11];
+                    int tableLength
+                        = (entry[12] << 24) | (entry[13] << 16) | (entry[14] << 8) | entry[15];
+                    int absTableOffset = fontOffset + tableOffset;
+                    // hhea 表: ascent at offset 4, descent at offset 6, lineGap at offset 8
+                    if (tableLength >= 10 && absTableOffset + 10 <= (int)m_data.size())
+                    {
+                        const unsigned char* hhea = m_data.data() + absTableOffset;
+                        hheaAscent = (short)((hhea[4] << 8) | hhea[5]);
+                        hheaDescent = (short)((hhea[6] << 8) | hhea[7]);
+                        hheaLineGap = (short)((hhea[8] << 8) | hhea[9]);
+                        hasHhea = true;
+                    }
                 }
             }
         }
@@ -273,11 +291,6 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
         float emSize = 1.0f / stbtt_ScaleForMappingEmToPixels(m_info, 1.0f);
         int totalFontUnits = os2Ascent + abs(os2Descent) + os2LineGap;
         int result = static_cast<int>(fontSizeTwips * totalFontUnits / emSize);
-        fprintf(
-            stderr,
-            "[FontEngine] USE_TYPO: font=%s halfPt=%d typo=%d/%d/%d total=%d em=%.0f result=%d\n",
-            m_fontName.c_str(), fontSizeHalfPt, os2Ascent, os2Descent, os2LineGap, totalFontUnits,
-            emSize, result);
         return result;
     }
 
@@ -285,11 +298,13 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
     // LO 还会添加 external leading (GetFontLeading)
     int ascent, descent, lineGap;
     stbtt_GetFontVMetrics(m_info, &ascent, &descent, &lineGap);
+
     float scale = stbtt_ScaleForMappingEmToPixels(m_info, fontSizeTwips);
     int baseHeight = static_cast<int>((ascent - descent + lineGap) * scale);
 
-    // 尝试通过 Windows GDI 获取 external leading
-    int extLeading = 0;
+    // 尝试通过 Windows GDI 获取完整字体高度
+    // LO 在 Windows 上使用 GDI/Uniscribe 获取字体度量，结果与 stb_truetype 有差异
+    // 使用 GDI 的 tmHeight + tmExternalLeading 作为行高，与 LO 一致
 #ifdef _WIN32
     if (!m_fontName.empty())
     {
@@ -307,15 +322,21 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                 HFONT hOld = (HFONT)SelectObject(hdc, hFont);
                 TEXTMETRIC tm = {};
                 GetTextMetrics(hdc, &tm);
-                extLeading = tm.tmExternalLeading;
+                // GDI 返回 tmHeight (像素) = tmAscent + tmDescent
+                // 转换为 twips: pixels * 1440 / 96 = pixels * 15
+                int gdiHeight = (tm.tmHeight + tm.tmExternalLeading) * 15;
                 SelectObject(hdc, hOld);
                 DeleteObject(hFont);
+                DeleteDC(hdc);
+                // 使用 GDI 高度与 stbtt 高度中较大的值
+                // GDI 通常更接近 LO 的实际行为
+                return gdiHeight > baseHeight ? gdiHeight : baseHeight;
             }
             DeleteDC(hdc);
         }
     }
 #endif
-    return baseHeight + extLeading;
+    return baseHeight;
 }
 
 //===----------------------------------------------------------------------===//

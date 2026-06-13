@@ -788,6 +788,7 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         // 段落级 w:rPr 是段落的默认字符格式
         // OOXML 优先级：Run w:rPr > 段落 w:rPr > 段落样式 > 文档默认值
         // 跳过颜色：段落标记的颜色不应用于文本内容
+        // 注意：段落标记 rPr 的字体/字号会被段落样式覆盖（与 LO 一致）
         auto pPrRPr = pPr.child("w:rPr");
         if (pPrRPr)
         {

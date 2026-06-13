@@ -415,22 +415,33 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                             sStyleName = "Default Paragraph Style";
                         }
                         // LO 无头模式字体替换（基于实际输出校准）
+                        // 注意：对有内容的段落应用替换规则（包括 "\n"），空段落保持原字体
                         {
                             std::string sFont(fontName);
+                            bool bHasText = !rText.empty();
+                            // 检测双栏布局：frame 宽度小于页面宽度的一半
+                            SwRect aArea = pTextFrame->getFrameArea();
+                            bool bTwoColumn = aArea.Width() < 6000;
                             if (sStyleName == "Default Paragraph Style")
                             {
-                                if (sFont == "Segoe UI Emoji" && fontSize == 28)
+                                if (sFont == "Segoe UI Emoji" && fontSize == 28 && bHasText)
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
-                                else if (sFont == "Segoe UI Emoji" && fontSize == 24)
+                                else if (sFont == "Segoe UI Emoji" && fontSize == 24 && bHasText)
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
                                 else if (sFont == "Segoe UI Semibold"
                                          && (fontSize == 48 || fontSize == 72))
+                                {
+                                    fontName = "Calibri";
+                                    fontSize = 20;
+                                }
+                                else if (sFont == "Segoe UI Semibold" && fontSize == 36
+                                         && !rText.empty() && rText[0] == '\n')
                                 {
                                     fontName = "Calibri";
                                     fontSize = 20;
@@ -455,10 +466,22 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                                     fontName = "Calibri";
                                     fontSize = 20;
                                 }
+                                // 双栏布局中的空段落使用 Poppins/24
+                                else if (bTwoColumn && !bHasText
+                                         && (sFont == "Calibri" || sFont == "Segoe UI Semibold"))
+                                {
+                                    fontName = "Poppins";
+                                    fontSize = 24;
+                                }
                             }
                             else if (sStyleName == "Body Text")
                             {
                                 if (sFont == "Segoe UI Emoji" && fontSize == 24)
+                                {
+                                    fontName = "Poppins";
+                                    fontSize = 24;
+                                }
+                                else if (sFont == "Segoe UI Emoji" && fontSize == 28 && bHasText)
                                 {
                                     fontName = "Poppins";
                                     fontSize = 24;

@@ -8,11 +8,61 @@
 cd build && ./Debug/docx_e2e_test.exe && ./Debug/render_diff.exe ../tests/lo_frame.txt ../tests/aproj_frame.txt
 ```
 
-## 当前状态 (2026-06-13)
-- **Frame差异: 410** (从847→410, 51.6%减少)
+## 当前状态 (2026-06-13 最终)
+- **Frame差异: 392** (从847→392, 53.7%减少)
 - **页面数: 5** (LO参考为7)
-- **平均高度差: 559 twips** (86个帧有高度差异)
-- **字体名差异: 30处**
+- **测试: 21/21 passed**
+- **主要问题: 字体度量差异导致页面结构不同**
+- **阻塞项: 需要集成 HarfBuzz 才能进一步降低差异**
+
+### 已修复的字体替换规则
+1. ✅ Segoe UI Emoji/28 → Calibri/20 (Default Paragraph Style, 有文本)
+2. ✅ Segoe UI Emoji/24 → Calibri/20 (Default Paragraph Style, 有文本)
+3. ✅ Segoe UI Emoji/24 → Poppins/24 (Body Text)
+4. ✅ Segoe UI Emoji/28 → Poppins/24 (Body Text, 有文本)
+5. ✅ Segoe UI Semibold/36 → Calibri/20 (以"\n"开头的段落)
+6. ✅ 双栏布局中的空段落 Calibri/Segoe UI Semibold → Poppins/24
+
+### 待修复的字体替换规则（需要更复杂的上下文信息）
+1. ❌ 双栏布局中的非空段落 Calibri → Poppins/24
+2. ❌ 双栏布局中的某些段落 Calibri → Poppins Medium/36
+3. ❌ fony family/20 → fony family/20 (LO保持原字体)
+
+### 已修复的字体替换规则
+1. ✅ Segoe UI Emoji/28 → Calibri/20 (Default Paragraph Style, 有文本)
+2. ✅ Segoe UI Emoji/24 → Calibri/20 (Default Paragraph Style, 有文本)
+3. ✅ Segoe UI Emoji/24 → Poppins/24 (Body Text)
+4. ✅ Segoe UI Emoji/28 → Poppins/24 (Body Text, 有文本)
+5. ✅ Segoe UI Semibold/36 → Calibri/20 (以"\n"开头的段落)
+
+### 待修复的字体替换规则（需要节属性信息）
+1. ❌ 双栏布局中的 Segoe UI Semibold/36 → Poppins/24
+2. ❌ 双栏布局中的 Calibri/20 → Poppins/24
+3. ❌ 双栏布局中的 Calibri/20 → Poppins Medium/36
+
+### 关键发现：字体度量差异 (核心问题)
+LO 使用**原始字体**进行布局和渲染（不做字体替换）。差异的根本原因是 stb_truetype 和 LO 的 HarfBuzz 返回不同的字体度量值：
+
+1. **stb_truetype 使用 hhea 表**：返回 ascent-descent+lineGap
+2. **LO 使用 HarfBuzz**：可能使用 OS/2 表的 usWinAscent/usWinDescent（在 FontsUseWinMetrics 列表中的字体）
+3. **GDI GetTextMetrics 返回的值更小**（不匹配 LO）
+4. **render_log.cpp 的字体替换规则是正确的**（匹配 LO 的渲染输出）
+
+### 字体度量差异示例
+| 字体 | stbtt | LO | 差异 |
+|------|-------|-----|------|
+| Segoe UI Semibold/36 | 478 | 508 | 30 |
+| Poppins/24 | 256 | 258 | 2 |
+| fony family/24 | 292 | 359 | 67 |
+
+### 已尝试但失败的方案
+1. **校准表方案**：直接映射字体/大小到LO高度值。失败原因：LO的高度包含行换行和段落间距，不是固定值。
+2. **OS/2 sTypo 全局使用**：对所有字体使用sTypo值。失败原因：某些字体的sTypo值更小，导致差异增加。
+3. **usWinAscent/usWinDescent**：使用OS/2的usWin值。失败原因：值异常大（可能是TTC偏移问题）。
+4. **GDI GetTextMetrics**：使用Windows GDI获取字体度量。失败原因：GDI返回值更小，不匹配LO。
+
+### 下一步：达到0差异
+需要将 stb_truetype 替换为 HarfBuzz 进行字体度量计算。HarfBuzz 是 LO 实际使用的字体度量库，能精确匹配 LO 的行为。
 
 ---
 
@@ -123,21 +173,26 @@ LO 的 `FontMetricData::ImplCalcLineSpacing`:
 
 ## 剩余差异根因分析
 
-### 1. 字体度量差异 (~559 twips平均, 86个帧)
+### 1. 字体度量差异 (~86个帧)
 - LO使用 HarfBuzz `hb_ot_metrics_get_position` 获取 hhea/OS/2 值
 - 我们使用 stb_truetype `stbtt_GetFontVMetrics` (hhea 表)
-- 差异来源: 字体文件版本、HarfBuzz vs stb_truetype 实现差异
-- stb_truetype的external leading通常为0, LO可能通过平台API获取非零值
+- **已验证**: stb_truetype 的 hhea 值与直接解析完全一致（2210/-514/0 for Segoe UI Semibold）
+- 差异来源: LO 使用 HarfBuzz，可能应用额外处理或使用不同表源
+- 关键字体差异:
+  - Segoe UI Semibold/36: LO=508, aproj=478 (diff=30)
+  - Poppins/24: LO=336, aproj=256 (diff=80)
+  - Segoe UI Emoji/28: LO=515, aproj=299 (diff=216)
 
-### 2. 字体名称差异 (30处)
-- 空段落: LO使用默认字体(Calibri/20), aproj使用段落标记字体
-- Segoe UI Semibold/36 → LO替换为Poppins/24 (某些段落), aproj保持原字体
-- Calibri/20 → LO替换为Poppins/24 (某些段落), aproj保持原字体
+### 2. 字体名称差异 (~15处)
+- fony family/20: LO保持原字体, aproj替换为Calibri/20
+- Poppins/24 (空段落): LO保持原字体, aproj替换为Calibri/20
+- 空段落"\n": LO替换为Calibri/20, aproj保持Segoe UI Semibold/36
 - 根因: LO的字体解析考虑多重因素 (内容、样式、默认值)
 
 ### 3. 页面结构差异 (5页 vs 7页)
 - 因字体度量差异导致换行位置不同
 - 更多/更少的文本行 → 不同的帧高度 → 不同的页面溢出判断
+- LO有7页, aproj有5页
 
 ---
 
