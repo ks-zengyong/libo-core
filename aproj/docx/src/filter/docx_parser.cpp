@@ -257,18 +257,10 @@ void DocxParser::ParseStyles(SwDoc& doc)
                 auto rFonts = rPr.child("w:rFonts");
                 if (rFonts)
                 {
+                    // LO headless 模式下不解析主题字体引用（w:asciiTheme）
+                    // 只使用显式字体名（w:ascii），否则留空让渲染器回退到默认字体（Calibri）
+                    // 参考 LO 的 VCL 字体替换机制：主题字体在 headless 模式下不可用
                     std::string font = rFonts.attribute("w:ascii").as_string();
-                    // 如果没有直接字体名，尝试解析主题引用
-                    if (font.empty())
-                    {
-                        std::string themeFont = rFonts.attribute("w:asciiTheme").as_string();
-                        if (!themeFont.empty())
-                        {
-                            auto it = themeFonts_.find(themeFont);
-                            if (it != themeFonts_.end())
-                                font = it->second;
-                        }
-                    }
                     if (!font.empty())
                         defaultStyle.fontName = font;
                 }
@@ -385,18 +377,8 @@ void DocxParser::ParseStyles(SwDoc& doc)
             auto rFonts = rPr.child("w:rFonts");
             if (rFonts)
             {
+                // LO headless 模式下不解析主题字体引用（w:asciiTheme）
                 def.fontName = rFonts.attribute("w:ascii").as_string();
-                // 如果没有直接字体名，尝试解析主题引用
-                if (def.fontName.empty())
-                {
-                    std::string themeFont = rFonts.attribute("w:asciiTheme").as_string();
-                    if (!themeFont.empty())
-                    {
-                        auto it = themeFonts_.find(themeFont);
-                        if (it != themeFonts_.end())
-                            def.fontName = it->second;
-                    }
-                }
             }
 
             auto sz = rPr.child("w:sz");
@@ -627,6 +609,8 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 auto sp = pPr.child("w:sectPr");
                 if (sp)
                 {
+                    std::cerr << "[PreScan] section " << nSection << " from paragraph-level sectPr" << std::endl;
+
                     SwDoc::SectionMargins m;
                     auto pgMar = sp.child("w:pgMar");
                     if (pgMar)
@@ -635,6 +619,9 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                         m.bottom = pgMar.attribute("w:bottom").as_int(1440);
                         m.left = pgMar.attribute("w:left").as_int(1800);
                         m.right = pgMar.attribute("w:right").as_int(1800);
+                        std::cerr << "[PreScan] section " << nSection
+                                  << " pgMar: top=" << m.top << " bottom=" << m.bottom
+                                  << " left=" << m.left << " right=" << m.right << std::endl;
                     }
                     // 解析列设置
                     auto cols = sp.child("w:cols");
@@ -665,6 +652,8 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         std::string name = child.name();
         if (name == "w:sectPr")
         {
+            std::cerr << "[PreScan] section " << nSection << " from body-level sectPr" << std::endl;
+
             SwDoc::SectionMargins m;
             auto pgMar = child.child("w:pgMar");
             if (pgMar)
@@ -673,6 +662,9 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 m.bottom = pgMar.attribute("w:bottom").as_int(1440);
                 m.left = pgMar.attribute("w:left").as_int(1800);
                 m.right = pgMar.attribute("w:right").as_int(1800);
+                std::cerr << "[PreScan] section " << nSection
+                          << " pgMar: top=" << m.top << " bottom=" << m.bottom
+                          << " left=" << m.left << " right=" << m.right << std::endl;
             }
             // 解析列设置
             auto cols = child.child("w:cols");
@@ -693,6 +685,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     // 如果没有找到任何 sectPr，设置默认边距
     if (nSection == 0)
     {
+        std::cerr << "[PreScan] No sectPr found, setting default margins for section 0" << std::endl;
         SwDoc::SectionMargins m;
         m.top = 1440;
         m.bottom = 1440;
@@ -751,6 +744,10 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     const SwDoc::SectionMargins* pFirstMargins = doc.GetSectionMargins(0);
     if (pFirstMargins)
     {
+        std::cerr << "[ParseBody] Applying section 0 margins: top=" << pFirstMargins->top
+                  << " bottom=" << pFirstMargins->bottom
+                  << " left=" << pFirstMargins->left
+                  << " right=" << pFirstMargins->right << std::endl;
         SwPageDesc* pDesc = doc.GetDefaultPageDesc();
         if (pDesc)
         {
@@ -758,6 +755,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             pDesc->SetBottomMargin(pFirstMargins->bottom);
             pDesc->SetLeftMargin(pFirstMargins->left);
             pDesc->SetRightMargin(pFirstMargins->right);
+            std::cerr << "[ParseBody] After applying, pDesc top=" << pDesc->GetTopMargin() << std::endl;
         }
     }
 }
@@ -781,30 +779,32 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
     {
         SwNode* pNd = rNodes[nIdx];
         if (pNd && (pNd->IsContentNode() || pNd->IsStartNode()))
-        {
-            // 如果找到的节点在表格内部，使用表格 EndNode 作为插入点
-            // 后续需要修正新节点的 StartOfSection
-            SwStartNode* pStartOfSection = pNd->StartOfSectionNode();
-            if (pStartOfSection && pStartOfSection->IsTableNode())
             {
-                SwEndNode* pTableEnd = pStartOfSection->GetEndOfSection();
-                if (pTableEnd)
+                // 如果找到的节点在表格内部，使用表格 EndNode 作为插入点
+                // 后续需要修正新节点的 StartOfSection
+                // 使用 FindTableNode() 而非直接检查 StartOfSectionNode()，
+                // 因为表格内部的节点其 StartOfSectionNode() 是单元格起始节点，不是表格节点
+                SwTableNode* pTableNode = pNd->FindTableNode();
+                if (pTableNode)
                 {
-                    pInsertAfter = pTableEnd;
-                    bInsideTable = true;
+                    SwEndNode* pTableEnd = pTableNode->GetEndOfSection();
+                    if (pTableEnd)
+                    {
+                        pInsertAfter = pTableEnd;
+                        bInsideTable = true;
+                    }
+                    else
+                    {
+                        pInsertAfter = pTableNode;
+                        bInsideTable = true;
+                    }
                 }
                 else
                 {
-                    pInsertAfter = pStartOfSection;
-                    bInsideTable = true;
+                    pInsertAfter = pNd;
                 }
+                break;
             }
-            else
-            {
-                pInsertAfter = pNd;
-            }
-            break;
-        }
         --nIdx;
     }
     if (!pInsertAfter)
@@ -812,6 +812,11 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         // 如果没有找到，在 EndOfContent 的 StartNode 之后插入
         pInsertAfter = rLastNode.StartOfSectionNode();
     }
+
+    std::cerr << "[ParseParagraph] InsertAfter idx=" << pInsertAfter->GetIndex()
+              << " bInsideTable=" << (bInsideTable ? "yes" : "no")
+              << " type=" << (pInsertAfter->IsContentNode() ? "content" : pInsertAfter->IsStartNode() ? "start" : pInsertAfter->IsEndNode() ? "end" : "other")
+              << std::endl;
 
     // 创建文本节点
     SwTextNode* pTextNode = rNodes.MakeTextNode(*pInsertAfter, pColl);
@@ -986,7 +991,29 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
                     if (std::string(tbPara.name()) == "w:p")
                     {
                         std::cerr << "[ParseTxbx] Processing textbox paragraph" << std::endl;
-                        SwTextNode* pTbNode = rNodes.MakeTextNode(*pTextNode, pColl);
+                        // 如果文本框段落位于表格内部，将节点插入到表格结束节点之后
+                        // 以确保 MakeFrames 能正确处理（表格子节点会被跳过）
+                        SwNode* pInsertAfter = pTextNode;
+                        SwTableNode* pCurTable = pTextNode->FindTableNode();
+                        if (pCurTable)
+                        {
+                            SwEndNode* pTblEnd = pCurTable->GetEndOfSection();
+                            if (pTblEnd)
+                                pInsertAfter = pTblEnd;
+                            std::cerr << "[ParseTxbx] Textbox inside table, inserting after table end"
+                                      << std::endl;
+                        }
+                        SwTextNode* pTbNode = rNodes.MakeTextNode(*pInsertAfter, pColl);
+
+                        // 修正 section 归属：文本框节点应属于 body 层
+                        if (pCurTable)
+                        {
+                            SwStartNode* pBodyStart = pCurTable;
+                            while (pBodyStart->StartOfSectionNode())
+                                pBodyStart = pBodyStart->StartOfSectionNode();
+                            pTbNode->SetStartOfSection(pBodyStart);
+                            std::cerr << "[ParseTxbx] Fixed section to body level" << std::endl;
+                        }
 
                         auto tbPPr = tbPara.child("w:pPr");
                         if (tbPPr)
@@ -1386,6 +1413,149 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
 
         row = row.next_sibling("w:tr");
     }
+
+    // 提取表格单元格中的文本框内容 (w:txbxContent inside w:drawing)
+    // 表格单元格中的 w:drawing 元素不会被 ParseParagraph 处理，
+    // 需要在 ParseTable 中单独提取
+    {
+        SwEndNode* pTableEnd = pTable->GetEndOfSection();
+        SwNode* pTxbxInsertAfter = pTableEnd ? static_cast<SwNode*>(pTableEnd) : static_cast<SwNode*>(pTable);
+
+        // 递归查找 w:txbxContent
+        std::function<void(pugi::xml_node)> findTxbxContent = [&](pugi::xml_node node) {
+            for (auto& n : node.children())
+            {
+                std::string nName = n.name();
+                if (nName == "w:txbxContent" || nName == "wps:txbxContent" || nName == "txbxContent")
+                {
+                    std::cerr << "[ParseTxbx] Found txbxContent in table!" << std::endl;
+                    for (auto& tbPara : n.children())
+                    {
+                        if (std::string(tbPara.name()) == "w:p")
+                        {
+                            std::cerr << "[ParseTxbx] Processing textbox paragraph in table" << std::endl;
+                            SwTextNode* pTbNode = rNodes.MakeTextNode(*pTxbxInsertAfter, pColl);
+
+                            // 修正 section 归属：文本框节点应属于 body 层
+                            {
+                                SwStartNode* pBodyStart = pTable;
+                                while (pBodyStart->StartOfSectionNode())
+                                    pBodyStart = pBodyStart->StartOfSectionNode();
+                                pTbNode->SetStartOfSection(pBodyStart);
+                                std::cerr << "[ParseTxbx] Fixed section to body level" << std::endl;
+                            }
+
+                            auto tbPPr = tbPara.child("w:pPr");
+                            if (tbPPr)
+                            {
+                                ParseParagraphProps(tbPPr, pTbNode);
+                                auto tbStyle = tbPPr.child("w:pStyle");
+                                std::string tbStyleId;
+                                if (tbStyle)
+                                    tbStyleId = tbStyle.attribute("w:val").as_string();
+
+                                const StyleDef* pTbStyleDef = nullptr;
+                                if (!tbStyleId.empty())
+                                {
+                                    auto it = styles_.find(tbStyleId);
+                                    if (it != styles_.end())
+                                        pTbStyleDef = &it->second;
+                                }
+                                if (pTbStyleDef)
+                                {
+                                    pTbNode->SetStyleName(pTbStyleDef->name);
+                                    if (!pTbStyleDef->fontName.empty())
+                                        pTbNode->SetAttr(RES_CHRATR_FONT, pTbStyleDef->fontName);
+                                    if (pTbStyleDef->fontSize > 0)
+                                        pTbNode->SetAttr(RES_CHRATR_FONTSIZE,
+                                                         std::to_string(pTbStyleDef->fontSize));
+                                    if (pTbStyleDef->bold)
+                                        pTbNode->SetAttr(RES_CHRATR_WEIGHT, "bold");
+                                    if (pTbStyleDef->italic)
+                                        pTbNode->SetAttr(RES_CHRATR_POSTURE, "italic");
+                                    if (!pTbStyleDef->color.empty())
+                                        pTbNode->SetAttr(RES_CHRATR_COLOR, pTbStyleDef->color);
+                                }
+                            }
+
+                            std::string tbText;
+                            for (auto& tbRun : tbPara.children())
+                            {
+                                if (std::string(tbRun.name()) == "w:r")
+                                {
+                                    std::string rt = ParseRunText(tbRun);
+                                    auto tbRPr = tbRun.child("w:rPr");
+                                    if (!rt.empty() && tbRPr)
+                                        ParseRunProps(tbRPr, pTbNode);
+                                    tbText += rt;
+                                }
+                            }
+                            pTbNode->SetText(tbText);
+                            std::cerr << "[ParseTxbx] Table textbox text: '" << tbText << "'" << std::endl;
+                        }
+                    }
+                    return;
+                }
+                findTxbxContent(n);
+            }
+        };
+
+        // 处理单个 w:drawing 节点
+        std::function<void(pugi::xml_node)> processDrawing = [&](pugi::xml_node drawing) {
+            for (auto& anchor : drawing.children())
+            {
+                for (auto& graphic : anchor.children())
+                {
+                    if (std::string(graphic.name()) != "a:graphic"
+                        && std::string(graphic.name()) != "graphic")
+                        continue;
+                    auto graphicData = graphic.child("a:graphicData");
+                    if (!graphicData)
+                        graphicData = graphic.child("graphicData");
+                    if (!graphicData)
+                        continue;
+
+                    for (auto& gdChild : graphicData.children())
+                    {
+                        findTxbxContent(gdChild);
+                    }
+                }
+            }
+        };
+
+        // 递归在节点中查找 w:drawing
+        std::function<void(pugi::xml_node)> findDrawing = [&](pugi::xml_node node) {
+            for (auto& child : node.children())
+            {
+                std::string cname = child.name();
+                if (cname == "w:drawing" || cname == "drawing")
+                {
+                    std::cerr << "[ParseTxbx] Found drawing in table cell" << std::endl;
+                    processDrawing(child);
+                }
+                else if (cname == "mc:AlternateContent" || cname == "mc:Choice"
+                         || cname == "mc:Fallback")
+                {
+                    findDrawing(child);
+                }
+            }
+        };
+
+        // 遍历所有单元格查找 w:drawing
+        for (auto tblRow : tblNode.children("w:tr"))
+        {
+            for (auto tblCell : tblRow.children("w:tc"))
+            {
+                for (auto cellPara : tblCell.children("w:p"))
+                {
+                    for (auto cellRun : cellPara.children("w:r"))
+                    {
+                        findDrawing(cellRun);
+                    }
+                }
+            }
+        }
+    }
 }
 
 //===----------------------------------------------------------------------===//
@@ -1523,18 +1693,8 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool b
     auto rFonts = rPrNode.child("w:rFonts");
     if (rFonts)
     {
+        // LO headless 模式下不解析主题字体引用（w:asciiTheme）
         std::string font = rFonts.attribute("w:ascii").as_string();
-        // 如果没有直接字体名，尝试解析主题引用
-        if (font.empty())
-        {
-            std::string themeFont = rFonts.attribute("w:asciiTheme").as_string();
-            if (!themeFont.empty())
-            {
-                auto it = themeFonts_.find(themeFont);
-                if (it != themeFonts_.end())
-                    font = it->second;
-            }
-        }
         if (!font.empty())
         {
             pNode->SetAttr(RES_CHRATR_FONT, font);

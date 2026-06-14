@@ -150,10 +150,13 @@ void test_swdoc_layout_and_render(const std::string& filePath)
         }
     }
     TEST_ASSERT_TRUE(pFirst != nullptr, "Has content nodes");
+    std::cerr << "[TEST] About to call MakeFrames, nCount=" << rNodes.Count() << std::endl;
     if (pFirst && pLast)
         MakeFrames(doc, *pFirst, *pLast);
+    std::cerr << "[TEST] MakeFrames done" << std::endl;
 
     // 4. 验证 Frame 树
+    std::cerr << "[TEST] Verifying Frame tree..." << std::endl;
     SwPageFrame* pPage = pRoot->GetLastPage();
     TEST_ASSERT_TRUE(pPage != nullptr, "Has at least one page");
     if (pPage)
@@ -178,17 +181,25 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     }
 
     // 5. 排版
+    std::cerr << "[TEST] SwLayAction::Action..." << std::endl;
     SwLayAction layAction(*pRoot);
     layAction.Action();
+    std::cerr << "[TEST] SwLayAction done" << std::endl;
 
     // 6. 渲染指令输出 (分层)
     RenderLogger logger;
+    std::cerr << "[TEST] LogFrameTree..." << std::endl;
     logger.StartLog("tests/aproj_all.log");
     logger.LogFrameTree(pRoot);
     logger.EndLog();
+    std::cerr << "[TEST] LogFrameTree done" << std::endl;
 
+    std::cerr << "[TEST] WriteFrameLayerToFile..." << std::endl;
     logger.WriteFrameLayerToFile("tests/aproj_frame.txt");
+    std::cerr << "[TEST] WriteFrameLayerToFile done" << std::endl;
+    std::cerr << "[TEST] WriteVclLayerToFile..." << std::endl;
     logger.WriteVclLayerToFile("tests/aproj_vcl.txt");
+    std::cerr << "[TEST] WriteVclLayerToFile done" << std::endl;
 
     // 7. 验证 frame 层
     std::ifstream fFrame("tests/aproj_frame.txt");

@@ -414,94 +414,9 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                         {
                             sStyleName = "Default Paragraph Style";
                         }
-                        // LO 在渲染阶段（OutputDevice）进行字体替换
-                        // 参考 vcl/source/font/DirectFontSubstitution.cxx: ImplFontSubstitute
-                        // 此处实现 LO 无头模式下的字体替换规则
-                        {
-                            std::string sFont(fontName);
-                            bool bHasText = !rText.empty();
-                            SwRect aArea = pTextFrame->getFrameArea();
-                            bool bIsMultiCol = aArea.Width() > 0 && aArea.Width() < 6000;
-
-                            if (sStyleName == "Default Paragraph Style")
-                            {
-                                if (sFont == "Segoe UI Emoji" && fontSize == 28 && bHasText)
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                else if (sFont == "Segoe UI Emoji" && fontSize == 24 && bHasText)
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                else if (sFont == "Segoe UI Semibold"
-                                         && (fontSize == 48 || fontSize == 72))
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                // 多栏布局中的 Segoe UI Semibold/36 空段落 → Poppins/24
-                                else if (sFont == "Segoe UI Semibold" && fontSize == 36
-                                         && bIsMultiCol && !bHasText)
-                                {
-                                    fontName = "Poppins";
-                                    fontSize = 24;
-                                }
-                                else if (sFont == "Segoe UI Semibold" && fontSize == 36
-                                         && !rText.empty() && rText[0] == '\n')
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                // 多栏布局中不替换 Poppins → Calibri（LO 保留 Poppins）
-                                else if (sFont == "Poppins SemiBold" && fontSize == 40
-                                         && !bIsMultiCol)
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                else if (sFont == "Poppins Medium" && fontSize == 36
-                                         && !bIsMultiCol)
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                else if (sFont == "Poppins" && fontSize == 24 && !bIsMultiCol)
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                else if (sFont == "fony family" && fontSize == 22)
-                                {
-                                    fontName = "Calibri";
-                                    fontSize = 20;
-                                }
-                                // 双栏布局中的空段落使用 Poppins/24
-                                else
-                                {
-                                    if (bIsMultiCol && !bHasText
-                                        && (sFont == "Calibri" || sFont == "Segoe UI Semibold"))
-                                    {
-                                        fontName = "Poppins";
-                                        fontSize = 24;
-                                    }
-                                }
-                            }
-                            else if (sStyleName == "Body Text")
-                            {
-                                if (sFont == "Segoe UI Emoji" && fontSize == 24)
-                                {
-                                    fontName = "Poppins";
-                                    fontSize = 24;
-                                }
-                                else if (sFont == "Segoe UI Emoji" && fontSize == 28 && bHasText)
-                                {
-                                    fontName = "Poppins";
-                                    fontSize = 24;
-                                }
-                            }
-                        }
+                        // 字体替换在 LO 中由 VCL 层的 ImplFontSubstitute 处理
+                        // 参考 vcl/source/font/DirectFontSubstitution.cxx
+                        // aproj 使用系统字体，不需要额外的字体替换逻辑
 
                         // LibreOffice 无头模式默认前景色为白色 (0xFFFFFF)
                         uint32_t fontColor = 0xFFFFFF;

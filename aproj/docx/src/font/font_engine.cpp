@@ -216,30 +216,8 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
     // 半点 → twips: halfPt * 10
     int fontSizeTwips = fontSizeHalfPt * 10;
 
-    // 校准表：基于 LO 实际输出的空段落高度值
-    // 这些值来自 lo_frame.txt 中空段落的高度
-    // 格式: fontName + "/" + fontSizeHalfPt → LO height (twips)
-    static const std::map<std::string, int> s_calibrationTable = {
-        { "Segoe UI Semibold/36", 508 }, { "Segoe UI Semibold/48", 638 },
-        { "Segoe UI Semibold/72", 957 }, { "Segoe UI Emoji/28", 515 },
-        { "Segoe UI Emoji/24", 338 },    { "Poppins/24", 338 },
-        { "Poppins Medium/36", 508 },    { "Poppins SemiBold/40", 564 },
-        { "fony family/24", 359 },       { "fony family/20", 282 },
-        { "fony family/22", 268 },       { "fony family/7", 105 },
-        { "Calibri/20", 268 },           { "Calibri/15", 213 },
-        { "Calibri/44", 688 },
-    };
-
-    // 查找校准表
-    std::string key = m_fontName + "/" + std::to_string(fontSizeHalfPt);
-    auto it = s_calibrationTable.find(key);
-    if (it != s_calibrationTable.end())
-    {
-        return it->second;
-    }
-
     // 使用 HarfBuzz 获取字体度量（与 LO 一致）
-    // 参考 LibreOffice 的 vcl/source/font/fontmetric.cxx: FontMetricData::ImplCalcLineSpacing
+    // 参考 LibreOffice 的 vcl/source/font/fontmetric.cxx: ImplCalcLineSpacing
     if (!m_data.empty())
     {
         // 创建 HarfBuzz blob 和 face
@@ -259,9 +237,10 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                 if (font)
                 {
                     // 不设置缩放，使用原始字体单位
-                    // 稍后手动应用缩放
+                    // 稍后手动应用缩放（与 LO 的 GetScale() + fScale 一致）
 
                     double fAscent = 0, fDescent = 0, fExtLeading = 0;
+                    hb_position_t nWinAscent = 0, nWinDescent = 0;
 
                     // 检查是否为可变字体（有 fvar 表）
                     hb_blob_t* fvar = hb_face_reference_table(hb_font_get_face(font),
@@ -301,6 +280,8 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                             && hb_ot_metrics_get_position(font, DESCENT_HHEA, &nDescent)
                             && hb_ot_metrics_get_position(font, LINEGAP_HHEA, &nLineGap))
                         {
+                            // tdf#107605: Some fonts have weird values, check ascender +ve
+                            // and descender -ve
                             if (nAscent >= 0 && nDescent <= 0)
                             {
                                 fAscent = nAscent;
@@ -317,8 +298,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                         constexpr auto LINEGAP_OS2
                             = static_cast<hb_ot_metrics_tag_t>(HB_TAG('O', 'l', 'g', 'p'));
 
-                        hb_position_t nTypoAscent, nTypoDescent, nTypoLineGap, nWinAscent,
-                            nWinDescent;
+                        hb_position_t nTypoAscent, nTypoDescent, nTypoLineGap;
                         if (hb_ot_metrics_get_position(font, ASCENT_OS2, &nTypoAscent)
                             && hb_ot_metrics_get_position(font, DESCENT_OS2, &nTypoDescent)
                             && hb_ot_metrics_get_position(font, LINEGAP_OS2, &nTypoLineGap)
@@ -337,6 +317,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                             }
 
                             // 检查 USE_TYPO_METRICS 标志
+                            // 对应 LO 的 ShouldUseWinMetrics + fsSelection bit 7
                             bool bUseTypoMetrics = false;
                             {
                                 // 读取 OS/2 表的 fsSelection 字段
@@ -366,18 +347,12 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                         }
                     }
 
-                    // 使用 HarfBuzz 读取 usWin 值
-                    hb_position_t nWinAscent = 0, nWinDescent = 0;
-                    hb_ot_metrics_get_position(font, HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_ASCENT,
-                                               &nWinAscent);
-                    hb_ot_metrics_get_position(font, HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_DESCENT,
-                                               &nWinDescent);
-
                     hb_font_destroy(font);
 
                     // 计算最终高度（twips）
                     // HarfBuzz 返回的值是字体单位，需要缩放到 twips
-                    // 缩放公式：fontUnits * fontSizeTwips / unitsPerEm
+                    // 缩放公式：metricValue * fontSizeTwips / unitsPerEm
+                    // 与 LO 的 fScale = GetScale() 等价
                     if (fAscent > 0 || fDescent > 0)
                     {
                         float emSize = 1.0f / stbtt_ScaleForMappingEmToPixels(m_info, 1.0f);

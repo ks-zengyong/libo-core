@@ -107,6 +107,10 @@ SwStartNode::SwStartNode(const SwNode& rWhere, SwStartNodeType eType)
     , m_pEndOfSection(nullptr)
     , m_eStartNodeType(eType)
 {
+    // 修正：StartNode 的 StartOfSection 应该指向父 StartNode
+    // 如果 rWhere 是 StartNode，则用它作为父节区；否则继承 rWhere 的 StartOfSection
+    if (rWhere.IsStartNode())
+        m_pStartOfSection = const_cast<SwStartNode*>(static_cast<const SwStartNode*>(&rWhere));
 }
 
 //===----------------------------------------------------------------------===//
@@ -134,6 +138,10 @@ SwEndNode::SwEndNode(const SwNode& rWhere, SwStartNode& rSttNd)
 SwContentNode::SwContentNode(const SwNode& rWhere, SwNodeType nType, SwTextFormatColl* pFormatColl)
     : SwNode(rWhere, nType)
 {
+    // 修正：内容节点的 StartOfSection 应该指向最近的封闭 StartNode
+    // 如果 rWhere 是 StartNode，则用它作为封闭节区；否则继承 rWhere 的 StartOfSection
+    if (rWhere.IsStartNode())
+        m_pStartOfSection = const_cast<SwStartNode*>(static_cast<const SwStartNode*>(&rWhere));
     if (pFormatColl)
         ChgFormatColl(pFormatColl);
 }
