@@ -84,7 +84,7 @@ private:
         bool keepLines = false;
         // 字符属性
         std::string fontName;
-        int fontSize = 22; // 半点
+        int fontSize = 0; // 半点（0 表示未设置）
         bool bold = false;
         bool italic = false;
         std::string color;
@@ -119,10 +119,15 @@ private:
     // 主题字体映射：minorHAnsi → "Calibri" 等
     std::map<std::string, std::string> themeFonts_;
 
+    // 节分隔类型映射：sectionIndex → breakType
+    // OOXML: w:type 在 w:sectPr 中指定该节的起始分隔类型
+    std::map<int, std::string> sectionBreakTypes_;
+
     // 解析主题文件
     void ParseTheme();
 
     // 当前解析状态
     SwTextNode* curTextNode_ = nullptr;
     SwTextFormatColl* curStyle_ = nullptr;
+    int m_nCurrentSection_ = 0; // 当前正在解析的节索引
 };

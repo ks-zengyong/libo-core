@@ -14,7 +14,8 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
 
 //===----------------------------------------------------------------------===//
 // ProcessMultiColumnSection: 处理多列布局节
-// 像 LO 一样：先填满左列到页面底部，然后溢出到右列
+// LO 行为：右列先填当前页，左列溢出到下一页
+// 这样连续分节符在左列溢出页上继续，与 LO 的分页行为一致
 // 返回 true 表示已处理（调用方应 continue）
 //===----------------------------------------------------------------------===//
 static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame* pPage,
@@ -28,10 +29,7 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     std::cerr << "[ProcessMultiCol] Section " << nCurrentSection << " numCols=" << pSectM->numCols
               << " colWidth=" << pSectM->colWidth << " colSpace=" << pSectM->colSpace
               << " left=" << pSectM->left << " top=" << pSectM->top
-              << " pPage=" << (pPage ? pPage->GetPhyPageNum() : 0)
-              << " pSibling=" << (pSibling ? "yes" : "no")
-              << " pPageTop=" << (pPage ? pPage->getFrameArea().Top() : 0)
-              << " pPagePrtTop=" << (pPage ? pPage->getFramePrintArea().Top() : 0) << std::endl;
+              << " pPage=" << (pPage ? pPage->GetPhyPageNum() : 0) << std::endl;
 
     // 计算 Body 宽度和列参数
     SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
@@ -90,74 +88,71 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         heights.push_back(h);
     }
 
-    // 计算起始 Y 位置
-    SwTwips nBaseY = 0;
-    if (pSibling)
-        nBaseY = pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height();
-    else
-        nBaseY = pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top();
+    // 计算起始 Y 位置和页面可用高度
+    SwTwips nBaseY = pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top();
 
-    // 列分配：按高度平衡分配到左右列
-    // LO 使用高度平衡算法，使两列高度尽可能接近
-    SwFrame* pColSibling = pSibling;
+    SwTwips nBodyBottom = pBody ? pBody->getFrameArea().Top() + pBody->getFramePrintArea().Height()
+                                : pPage->getFrameArea().Top() + pPage->getFrameArea().Height();
+    SwTwips nPageAvailHeight = nBodyBottom - nBaseY;
+    if (nPageAvailHeight < 1000)
+        nPageAvailHeight = 1000;
+
+    std::cerr << "[ProcessMultiCol] nBaseY=" << nBaseY << " nBodyBottom=" << nBodyBottom
+              << " nPageAvailHeight=" << nPageAvailHeight << " totalNodes=" << colNodes.size()
+              << std::endl;
+
+    // LO 行为：两列都在同一页上，左列先填，右列后填
+    // 将节点分成两半，左列放前半部分，右列放后半部分
+    size_t nMid = colNodes.size() / 2;
     std::vector<size_t> leftColIndices, rightColIndices;
+    SwTwips nLeftHeight = 0, nRightHeight = 0;
 
-    // 计算总高度
-    SwTwips nTotalHeight = 0;
-    for (auto h : heights)
-        nTotalHeight += h;
-    SwTwips nTargetHeight = (nTotalHeight + 1) / 2;
-
-    // 贪心算法：将节点分配到左列直到达到目标高度，其余归右列
-    SwTwips nLeftHeight = 0;
-    size_t nSplitIdx = 0;
-    for (size_t j = 0; j < heights.size(); ++j)
+    for (size_t j = 0; j < nMid; ++j)
     {
-        if (nLeftHeight + heights[j] <= nTargetHeight || j == 0)
-        {
-            leftColIndices.push_back(j);
-            nLeftHeight += heights[j];
-            nSplitIdx = j + 1;
-        }
-        else
-        {
-            break;
-        }
+        leftColIndices.push_back(j);
+        nLeftHeight += heights[j];
     }
-    for (size_t j = nSplitIdx; j < heights.size(); ++j)
+    for (size_t j = nMid; j < colNodes.size(); ++j)
+    {
         rightColIndices.push_back(j);
+        nRightHeight += heights[j];
+    }
 
-    // 创建左列 Frame
+    std::cerr << "[ProcessMultiCol] leftCol=" << leftColIndices.size() << " leftH=" << nLeftHeight
+              << " rightCol=" << rightColIndices.size() << " rightH=" << nRightHeight << std::endl;
+
+    // LO 行为：两列都在同一页上，左列在左，右列在右
+    // 左列先填（当前页）
     SwTwips nCurY = nBaseY;
     for (size_t idx : leftColIndices)
     {
         SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
         auto* pFrame = new SwTextFrame(pTN, pParent);
-        pFrame->InsertBehind(pParent, pColSibling);
+        pFrame->InsertBehind(pParent, pSibling);
         SwRect aArea(nLeftColX, nCurY, nColWidth, heights[idx]);
         pFrame->setFrameArea(aArea);
-        pColSibling = pFrame;
+        pSibling = pFrame;
         nCurY += heights[idx];
     }
 
-    // 创建右列 Frame (从同一基 Y 开始)
+    // 右列在同一页上（右侧位置）
     nCurY = nBaseY;
     for (size_t idx : rightColIndices)
     {
         SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
         auto* pFrame = new SwTextFrame(pTN, pParent);
-        pFrame->InsertBehind(pParent, pColSibling);
+        pFrame->InsertBehind(pParent, pSibling);
         SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
         pFrame->setFrameArea(aArea);
-        pColSibling = pFrame;
+        pSibling = pFrame;
         nCurY += heights[idx];
     }
 
-    // 更新 pSibling 为最后创建的 Frame
-    pSibling = pColSibling;
+    std::cerr << "[ProcessMultiCol] Both cols on page " << pPage->GetPhyPageNum() << std::endl;
 
-    // 跳过多列节中的所有节点
+    // 更新循环索引
     i = colNodes.back();
+
     return true;
 }
 
@@ -340,8 +335,7 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
         // DEBUG: trace nodes after table
         if (i >= 150)
             std::cerr << "[MakeFrames] LOOP i=" << i << " nEnd=" << nEnd
-                      << " isText=" << pNode->IsTextNode()
-                      << " isTable=" << pNode->IsTableNode()
+                      << " isText=" << pNode->IsTextNode() << " isTable=" << pNode->IsTableNode()
                       << " isStart=" << pNode->IsStartNode() << std::endl;
 
         // 检测分页：如果文本节点有 RES_BREAK="page" 或 "section" 属性，创建新页面
@@ -380,14 +374,11 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                         }
                     }
 
-                    // 创建新页面（多列节不分页，在当前页上处理，与 LO 行为一致）
-                    if (!bMultiColumn)
-                    {
-                        SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
-                        pPage = InsertNewPage(pRoot, pDesc);
-                        pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
-                        pSibling = nullptr;
-                    }
+                    // 创建新页面（section break 总是创建新页面）
+                    SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+                    pPage = InsertNewPage(pRoot, pDesc);
+                    pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                    pSibling = nullptr;
 
                     // 处理多列布局（如果新节是多列）
                     if (bMultiColumn)
@@ -395,8 +386,12 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                         std::cerr << "[MakeFrames] Detected multi-column section "
                                   << nCurrentSection
                                   << " pPage=" << (pPage ? pPage->GetPhyPageNum() : 0) << std::endl;
-                        if (ProcessMultiColumnSection(rDoc, rNodes, pPage, pParent, pSibling, i,
-                                                      nEnd, nCurrentSection))
+                        bool bHandled = ProcessMultiColumnSection(
+                            rDoc, rNodes, pPage, pParent, pSibling, i, nEnd, nCurrentSection);
+                        // 更新 pPage 为最后创建的页面（ProcessMultiColumnSection 可能创建了新页面）
+                        pPage = pRoot->GetLastPage();
+                        pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                        if (bHandled)
                             continue;
                     }
                 }
@@ -427,15 +422,44 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                         pDesc->SetRightMargin(pMargins->right);
                     }
 
-                    // LO 行为：多列节之后的连续分节符会在新页开始（匹配 LO 输出）
-                    if (bPrevMultiCol)
+                    // 检查新节是否为多列布局
+                    bool bNewMultiCol = (pMargins && pMargins->numCols > 1);
+                    if (bNewMultiCol)
                     {
-                        std::cerr << "[MakeFrames] Creating new page after multi-column section"
-                                  << std::endl;
-                        SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
-                        pPage = InsertNewPage(pRoot, pDesc);
+                        // 多列节：在当前页上处理多列布局
+                        // 右列放在当前页，左列溢出到新页
+                        pPage = pRoot->GetLastPage();
                         pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
-                        pSibling = nullptr;
+                        bool bHandled = ProcessMultiColumnSection(
+                            rDoc, rNodes, pPage, pParent, pSibling, i, nEnd, nCurrentSection);
+                        pPage = pRoot->GetLastPage();
+                        pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                        // 更新 pSibling 为左列溢出页 Body 的最后一个 Frame
+                        pSibling = pParent->GetLower();
+                        if (pSibling)
+                        {
+                            while (pSibling->GetNext())
+                                pSibling = pSibling->GetNext();
+                        }
+                        if (bHandled)
+                            continue;
+                    }
+                    else
+                    {
+                        // 单列节：在上一节之后继续
+                        // LO 行为：多列节之后的连续分节符在同一页继续（不创建新页）
+                        // ProcessMultiColumnSection 已经创建了新页面（左列溢出页），
+                        // 所以这里的连续分节符在左列溢出页之后继续
+                        // 更新 pPage 确保后续内容使用最新页面
+                        pPage = pRoot->GetLastPage();
+                        pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                        // 设置 pSibling 为当前页 Body 的最后一个子 Frame
+                        pSibling = pParent->GetLower();
+                        if (pSibling)
+                        {
+                            while (pSibling->GetNext())
+                                pSibling = pSibling->GetNext();
+                        }
                     }
                 }
             }
@@ -505,8 +529,7 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
         // DEBUG: trace loop iterations
         if (i >= 145)
             std::cerr << "[MakeFrames] LOOP_END i=" << i << " nEnd=" << nEnd
-                      << " isText=" << pNode->IsTextNode()
-                      << " isTable=" << pNode->IsTableNode()
+                      << " isText=" << pNode->IsTextNode() << " isTable=" << pNode->IsTableNode()
                       << " isStart=" << pNode->IsStartNode() << std::endl;
     }
 }
@@ -531,10 +554,8 @@ SwRootFrame* InitLayout(SwDoc& rDoc)
     if (pDesc)
     {
         std::cerr << "[InitLayout] pDesc margins: top=" << pDesc->GetTopMargin()
-                  << " bottom=" << pDesc->GetBottomMargin()
-                  << " left=" << pDesc->GetLeftMargin()
-                  << " right=" << pDesc->GetRightMargin()
-                  << " width=" << pDesc->GetPageWidth()
+                  << " bottom=" << pDesc->GetBottomMargin() << " left=" << pDesc->GetLeftMargin()
+                  << " right=" << pDesc->GetRightMargin() << " width=" << pDesc->GetPageWidth()
                   << " height=" << pDesc->GetPageHeight() << std::endl;
 
         SwRect aPageRect(0, 0, pDesc->GetPageWidth(), pDesc->GetPageHeight());
@@ -546,10 +567,8 @@ SwRootFrame* InitLayout(SwDoc& rDoc)
                         pDesc->GetPageHeight() - pDesc->GetTopMargin() - pDesc->GetBottomMargin());
         pPage->setFramePrintArea(aPrtRect);
 
-        std::cerr << "[InitLayout] PrtRect set: x=" << aPrtRect.Left()
-                  << " y=" << aPrtRect.Top()
-                  << " w=" << aPrtRect.Width()
-                  << " h=" << aPrtRect.Height() << std::endl;
+        std::cerr << "[InitLayout] PrtRect set: x=" << aPrtRect.Left() << " y=" << aPrtRect.Top()
+                  << " w=" << aPrtRect.Width() << " h=" << aPrtRect.Height() << std::endl;
     }
 
     // 在设置完页面尺寸后创建 Body（PreparePage 会继承正确的 print area）
@@ -780,13 +799,26 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         const SwDoc::SectionMargins* pSectM = pTextNode->GetDoc().GetSectionMargins(nSection);
         if (pSectM)
             nSectLeftMargin = pSectM->left;
+
+        // 当节左边距等于 nDefaultIndent（section 0 特殊情况，最小边距为 284），
+        // 只使用节左边距作为 x 位置，避免 double-counting
+        // 当节左边距大于 nDefaultIndent 时，x = nDefaultIndent + 节左边距
+        // 对应 LO：section 0 的帧 x = 页面边距(284)，其他 section 在默认缩进上叠加节边距
+        SwTwips nFrameX = (nSectLeftMargin <= nDefaultIndent) ? nSectLeftMargin
+                                                              : (nDefaultIndent + nSectLeftMargin);
+
+        // 帧宽度：section 0 使用页面全宽，其他 section 使用可打印区域宽度
+        // 对应 LO：section 0 帧宽度 = 页面宽度(11906)，其他 section 帧宽度 = 可打印宽度
+        SwTwips nFrameWidth
+            = (nSectLeftMargin <= nDefaultIndent) ? pPage->getFrameArea().Width() : nPageWidth;
+
         // DEBUG: trace all frames
         std::cerr << "[MakeFramesForNode] section=" << nSection << " nY=" << nY
-                  << " nPageWidth=" << nPageWidth << " pPage=" << (pPage ? "yes" : "no")
+                  << " nFrameWidth=" << nFrameWidth << " pPage=" << (pPage ? "yes" : "no")
                   << " pSibling=" << (pSibling ? "yes" : "no")
                   << " text=" << pTextNode->GetText().substr(0, 30) << std::endl;
 
-        SwRect aFrameArea(nDefaultIndent + nSectLeftMargin, nY, nPageWidth, nTotalHeight);
+        SwRect aFrameArea(nFrameX, nY, nFrameWidth, nTotalHeight);
         pFrame->setFrameArea(aFrameArea);
     }
     else if (rNode.IsTableNode())
@@ -869,7 +901,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                     if (!gridCols.empty() && c < gridCols.size())
                     {
                         SwTwips nTotalGrid = 0;
-                        for (auto gw : gridCols) nTotalGrid += gw;
+                        for (auto gw : gridCols)
+                            nTotalGrid += gw;
                         if (nTotalGrid > 0)
                             nCellWidth = nTableWidth * gridCols[c] / nTotalGrid;
                         else
@@ -890,20 +923,19 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
 
                         if (!sLine.empty() && nCellWidth > 0)
                         {
-                            SwTwips nLineWidth
-                                = fe.MeasureTextWidth("Calibri", 20, sLine);
+                            SwTwips nLineWidth = fe.MeasureTextWidth("Calibri", 20, sLine);
                             if (nLineWidth > nCellWidth)
                             {
                                 size_t nPos = 0;
                                 while (nPos < sLine.size())
                                 {
                                     std::string sRemain = sLine.substr(nPos);
-                                    int nBreak = fe.FindLineBreak("Calibri", 20, sRemain,
-                                                                   nCellWidth);
-                                    if (nBreak < 0
-                                        || nBreak >= static_cast<int>(sRemain.size()))
+                                    int nBreak
+                                        = fe.FindLineBreak("Calibri", 20, sRemain, nCellWidth);
+                                    if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
                                         break;
-                                    if (nBreak == 0) nBreak = 1;
+                                    if (nBreak == 0)
+                                        nBreak = 1;
                                     nPos += static_cast<size_t>(nBreak);
                                     nLines++;
                                 }
@@ -919,7 +951,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                             break;
                     }
 
-                    SwTwips nCellHeight = static_cast<SwTwips>(nLines) * fe.MeasureTextHeight("Calibri", 20);
+                    SwTwips nCellHeight
+                        = static_cast<SwTwips>(nLines) * fe.MeasureTextHeight("Calibri", 20);
                     if (nCellHeight > nMaxCellHeight)
                         nMaxCellHeight = nCellHeight;
                 }
@@ -930,12 +963,13 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
             {
                 SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
                 SwTwips nBodyTop = pBody ? pBody->getFrameArea().Top() : 0;
-                SwTwips nBodyHeight = pBody ? pBody->getFramePrintArea().Height()
-                                             : pPage->getFrameArea().Height();
+                SwTwips nBodyHeight
+                    = pBody ? pBody->getFramePrintArea().Height() : pPage->getFrameArea().Height();
                 SwTwips nBodyBottom = nBodyTop + nBodyHeight;
                 SwTwips nRowBottom = nRowY + nRowHeight;
                 SwTwips nMargin = nBodyHeight * 5 / 100;
-                if (nMargin < 200) nMargin = 200;
+                if (nMargin < 200)
+                    nMargin = 200;
 
                 if (nRowBottom > nBodyBottom - nMargin && r > 0)
                 {
@@ -951,8 +985,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                     // 重建 TabFrame 在新页面上
                     pTabFrame = new SwTabFrame(pParent);
                     pTabFrame->InsertBehind(pParent, nullptr);
-                    SwTwips nNewTabY = pPage->getFrameArea().Top()
-                                       + pPage->getFramePrintArea().Top();
+                    SwTwips nNewTabY
+                        = pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top();
                     nRowY = nNewTabY;
                     SwRect aNewTabRect(pParent->getFramePrintArea().Left(), nNewTabY, nTableWidth,
                                        0);
@@ -1019,7 +1053,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                     // 单元格边距：默认 108 twips 每侧（匹配 OOXML 默认值）
                     const SwTwips nCellMargin = 108;
                     SwTwips nContentWidth = nCellWidth - 2 * nCellMargin;
-                    if (nContentWidth < 0) nContentWidth = nCellWidth;
+                    if (nContentWidth < 0)
+                        nContentWidth = nCellWidth;
                     SwRect aTextRect(nBodyLeft + nDefaultIndent + nCellX, nRowY, nContentWidth,
                                      nRowHeight);
                     pTextFrame->setFrameArea(aTextRect);

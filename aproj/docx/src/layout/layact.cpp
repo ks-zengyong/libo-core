@@ -7,16 +7,8 @@
 #include <algorithm>
 #include <iostream>
 
-// FontEngine 前向声明（将在后续版本中集成）
-class FontEngine
-{
-public:
-    float getLineHeight(const std::string& fontName, int fontSize) { return fontSize * 1.2f; }
-    float getStringWidth(const std::string& text, const std::string& fontName, int fontSize)
-    {
-        return text.size() * fontSize * 0.6f;
-    }
-};
+// 使用真正的 FontEngine（来自 font/font_engine.h）
+#include "../font/font_engine.h"
 
 //===----------------------------------------------------------------------===//
 // SwLayAction
@@ -146,7 +138,7 @@ void TextFormatter::FormatTextFrame(SwTextFrame* pFrame)
 
     // 获取字体信息
     std::string fontName = "Arial";
-    int fontSize = 22; // 默认 11pt (22 半点)
+    int fontSize = 20; // LO 默认 10pt (20 半点)
 
     // 从节点属性获取字体
     const std::string* pFont = pNode->GetAttr(RES_CHRATR_FONT);
@@ -184,7 +176,7 @@ int TextFormatter::CalcLineHeight(const std::string& fontName, int fontSize)
 {
     if (m_pFontEngine)
     {
-        return static_cast<int>(m_pFontEngine->getLineHeight(fontName, fontSize));
+        return m_pFontEngine->MeasureTextHeight(fontName, fontSize);
     }
     // 默认行高：fontSize * 1.2
     return static_cast<int>(fontSize * 1.2);
@@ -195,7 +187,7 @@ int TextFormatter::CalcStringWidth(const std::string& text, const std::string& f
 {
     if (m_pFontEngine)
     {
-        return static_cast<int>(m_pFontEngine->getStringWidth(text, fontName, fontSize));
+        return static_cast<int>(m_pFontEngine->MeasureTextWidth(fontName, fontSize, text));
     }
     // 默认宽度：每个字符约 0.6 * fontSize
     return static_cast<int>(text.size() * fontSize * 0.6);
