@@ -349,8 +349,22 @@ void DocxParser::ParseStyles(SwDoc& doc)
             auto spacing = pPr.child("w:spacing");
             if (spacing)
             {
-                def.spacingBefore = spacing.attribute("w:before").as_int(0);
-                def.spacingAfter = spacing.attribute("w:after").as_int(0);
+                // 对应 LO: before 优先于 beforeLines，after 优先于 afterLines
+                pugi::xml_attribute attrBefore = spacing.attribute("w:before");
+                pugi::xml_attribute attrBeforeLines = spacing.attribute("w:beforeLines");
+                pugi::xml_attribute attrAfter = spacing.attribute("w:after");
+                pugi::xml_attribute attrAfterLines = spacing.attribute("w:afterLines");
+
+                if (attrBefore)
+                    def.spacingBefore = attrBefore.as_int(0);
+                else if (attrBeforeLines)
+                    def.spacingBefore = attrBeforeLines.as_int(0) * 240 / 100;
+
+                if (attrAfter)
+                    def.spacingAfter = attrAfter.as_int(0);
+                else if (attrAfterLines)
+                    def.spacingAfter = attrAfterLines.as_int(0) * 240 / 100;
+
                 def.spacingLine = spacing.attribute("w:line").as_int(240);
             }
 
@@ -511,8 +525,11 @@ void DocxParser::ParseStyles(SwDoc& doc)
     fprintf(stderr, "[Parser] Resolved style fonts:\n");
     for (auto & [ id, def ] : styles_)
     {
-        fprintf(stderr, "[Parser]   styleId='%s' name='%s' font='%s' size=%d\n", id.c_str(),
-                def.name.c_str(), def.fontName.c_str(), def.fontSize);
+        fprintf(stderr,
+                "[Parser]   styleId='%s' name='%s' font='%s' size=%d"
+                " spacingBefore=%d spacingAfter=%d spacingLine=%d\n",
+                id.c_str(), def.name.c_str(), def.fontName.c_str(), def.fontSize, def.spacingBefore,
+                def.spacingAfter, def.spacingLine);
     }
 }
 
@@ -943,6 +960,15 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         if (pPrRPr)
         {
             ParseRunProps(pPrRPr, pTextNode); // 不跳过任何属性
+
+            // 将段落标记的字体/字号保存到专用属性（用于行高计算）
+            // 对应 LO 中段落标记的 ListAutoFormat 属性
+            const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+            if (pFont && !pFont->empty())
+                pTextNode->SetAttr(RES_CHRATR_FONT_PARA_MARK, *pFont);
+            const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+            if (pSize && !pSize->empty())
+                pTextNode->SetAttr(RES_CHRATR_FONTSIZE_PARA_MARK, *pSize);
         }
     }
 
@@ -953,17 +979,31 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         auto it = styles_.find(sStyleId);
         if (it != styles_.end())
             pStyleDef = &it->second;
+        else
+            std::cerr << "[DEBUG] Style not found: styleId=" << sStyleId
+                      << " mapSize=" << styles_.size() << std::endl;
     }
     if (!pStyleDef)
     {
+        int nDefaultCount = 0;
         for (auto & [ id, def ] : styles_)
         {
             if (def.type == "paragraph" && def.isDefault)
             {
                 pStyleDef = &def;
-                break;
+                nDefaultCount++;
+                std::cerr << "[DEBUG] Fallback default style: id=" << id << " name=" << def.name
+                          << std::endl;
             }
         }
+        std::cerr << "[DEBUG] sStyleId=" << sStyleId << " foundStyle=" << (pStyleDef ? "yes" : "NO")
+                  << " nDefaultCount=" << nDefaultCount << std::endl;
+    }
+    else
+    {
+        std::cerr << "[DEBUG] Found style: styleId=" << sStyleId << " name=" << pStyleDef->name
+                  << " fontName=" << pStyleDef->fontName << " fontSize=" << pStyleDef->fontSize
+                  << " basedOn=" << pStyleDef->basedOn << std::endl;
     }
 
     // 解析文本内容和 Run 属性
@@ -1092,120 +1132,11 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             std::string nName = n.name();
             if (nName == "w:txbxContent" || nName == "wps:txbxContent" || nName == "txbxContent")
             {
-                std::cerr << "[ParseTxbx] Found txbxContent!" << std::endl;
-                for (auto& tbPara : n.children())
-                {
-                    if (std::string(tbPara.name()) == "w:p")
-                    {
-                        std::cerr << "[ParseTxbx] Processing textbox paragraph" << std::endl;
-                        // 如果文本框段落位于表格内部，将节点插入到表格结束节点之后
-                        // 以确保 MakeFrames 能正确处理（表格子节点会被跳过）
-                        SwNode* pInsertAfter = pTextNode;
-                        SwTableNode* pCurTable = pTextNode->FindTableNode();
-                        if (pCurTable)
-                        {
-                            SwEndNode* pTblEnd = pCurTable->GetEndOfSection();
-                            if (pTblEnd)
-                                pInsertAfter = pTblEnd;
-                            std::cerr
-                                << "[ParseTxbx] Textbox inside table, inserting after table end"
-                                << std::endl;
-                        }
-                        SwTextNode* pTbNode = rNodes.MakeTextNode(*pInsertAfter, pColl);
-
-                        // 修正 section 归属：文本框节点应属于 body 层
-                        if (pCurTable)
-                        {
-                            SwStartNode* pBodyStart = pCurTable;
-                            while (pBodyStart->StartOfSectionNode())
-                                pBodyStart = pBodyStart->StartOfSectionNode();
-                            pTbNode->SetStartOfSection(pBodyStart);
-                            std::cerr << "[ParseTxbx] Fixed section to body level" << std::endl;
-                        }
-
-                        auto tbPPr = tbPara.child("w:pPr");
-                        if (tbPPr)
-                        {
-                            ParseParagraphProps(tbPPr, pTbNode);
-                            auto tbStyle = tbPPr.child("w:pStyle");
-                            std::string tbStyleId;
-                            if (tbStyle)
-                                tbStyleId = tbStyle.attribute("w:val").as_string();
-
-                            const StyleDef* pTbStyleDef = nullptr;
-                            if (!tbStyleId.empty())
-                            {
-                                auto it = styles_.find(tbStyleId);
-                                if (it != styles_.end())
-                                    pTbStyleDef = &it->second;
-                            }
-                            // 如果没找到样式，回退到默认段落样式
-                            if (!pTbStyleDef)
-                            {
-                                for (auto & [ id, def ] : styles_)
-                                {
-                                    if (def.type == "paragraph" && def.isDefault)
-                                    {
-                                        pTbStyleDef = &def;
-                                        break;
-                                    }
-                                }
-                            }
-                            // 样式属性始终覆盖 pPr/rPr 和 run rPr
-                            if (pTbStyleDef)
-                            {
-                                pTbNode->SetStyleName(pTbStyleDef->name);
-                                if (!pTbStyleDef->fontName.empty())
-                                    pTbNode->SetAttr(RES_CHRATR_FONT, pTbStyleDef->fontName);
-                                if (pTbStyleDef->fontSize > 0)
-                                    pTbNode->SetAttr(RES_CHRATR_FONTSIZE,
-                                                     std::to_string(pTbStyleDef->fontSize));
-                                if (pTbStyleDef->bold)
-                                    pTbNode->SetAttr(RES_CHRATR_WEIGHT, "bold");
-                                if (pTbStyleDef->italic)
-                                    pTbNode->SetAttr(RES_CHRATR_POSTURE, "italic");
-                                if (!pTbStyleDef->color.empty())
-                                    pTbNode->SetAttr(RES_CHRATR_COLOR, pTbStyleDef->color);
-                            }
-                        }
-                        else
-                        {
-                            // 没有 pPr，但仍然应使用默认段落样式
-                            for (auto & [ id, def ] : styles_)
-                            {
-                                if (def.type == "paragraph" && def.isDefault)
-                                {
-                                    pTbNode->SetStyleName(def.name);
-                                    if (!def.fontName.empty())
-                                        pTbNode->SetAttr(RES_CHRATR_FONT, def.fontName);
-                                    if (def.fontSize > 0)
-                                        pTbNode->SetAttr(RES_CHRATR_FONTSIZE,
-                                                         std::to_string(def.fontSize));
-                                    if (def.bold)
-                                        pTbNode->SetAttr(RES_CHRATR_WEIGHT, "bold");
-                                    if (def.italic)
-                                        pTbNode->SetAttr(RES_CHRATR_POSTURE, "italic");
-                                    if (!def.color.empty())
-                                        pTbNode->SetAttr(RES_CHRATR_COLOR, def.color);
-                                    break;
-                                }
-                            }
-                        }
-
-                        std::string tbText;
-                        for (auto& tbRun : tbPara.children())
-                        {
-                            if (std::string(tbRun.name()) == "w:r")
-                            {
-                                std::string rt = ParseRunText(tbRun);
-                                // 不应用 run rPr 到段落级别，段落样式已在上方设置
-                                tbText += rt;
-                            }
-                        }
-                        pTbNode->SetText(tbText);
-                        std::cerr << "[ParseTxbx] Text: '" << tbText << "'" << std::endl;
-                    }
-                }
+                // 文本框（w:txbxContent）属于浮动对象，aproj 尚未实现
+                // 跳过文本框内容，避免将其错误插入主文档流
+                std::cerr
+                    << "[ParseTxbx] Found txbxContent, skipping (floating object not supported)"
+                    << std::endl;
                 return;
             }
             findTxbxContent(n);
@@ -1338,17 +1269,41 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
     }
 
     // 间距
+    // 对应 LO 的 DomainMapper.cxx: lcl_attribute() 处理 CT_Spacing
     auto spacing = pPrNode.child("w:spacing");
     if (spacing)
     {
-        int before = spacing.attribute("w:before").as_int(0);
-        int after = spacing.attribute("w:after").as_int(0);
         int line = spacing.attribute("w:line").as_int(240);
-        pNode->SetAttr(RES_PARATR_LINESPACING, std::to_string(line));
-        if (before != 0)
-            pNode->SetAttr(RES_UL_SPACE, std::to_string(before));
-        if (after != 0)
-            pNode->SetAttr(RES_UL_SPACE_AFTER, std::to_string(after));
+        // 只在行间距不是默认值 240 时才设置，否则让样式继承链处理
+        // 否则会阻止样式中的行间距被继承
+        if (line != 240)
+            pNode->SetAttr(RES_PARATR_LINESPACING, std::to_string(line));
+
+        // before / beforeLines / after / afterLines
+        // LO: before 优先于 beforeLines，after 优先于 afterLines
+        // LO: beforeLines * nSingleLineSpacing(240) / 100 = twips
+        // LO: afterLines * nSingleLineSpacing(240) / 100 = twips
+        pugi::xml_attribute attrBefore = spacing.attribute("w:before");
+        pugi::xml_attribute attrBeforeLines = spacing.attribute("w:beforeLines");
+        pugi::xml_attribute attrAfter = spacing.attribute("w:after");
+        pugi::xml_attribute attrAfterLines = spacing.attribute("w:afterLines");
+
+        int nBefore = 0;
+        if (attrBefore)
+            nBefore = attrBefore.as_int(0);
+        else if (attrBeforeLines)
+            nBefore = attrBeforeLines.as_int(0) * 240 / 100;
+
+        int nAfter = 0;
+        if (attrAfter)
+            nAfter = attrAfter.as_int(0);
+        else if (attrAfterLines)
+            nAfter = attrAfterLines.as_int(0) * 240 / 100;
+
+        if (nBefore != 0)
+            pNode->SetAttr(RES_UL_SPACE, std::to_string(nBefore));
+        if (nAfter != 0)
+            pNode->SetAttr(RES_UL_SPACE_AFTER, std::to_string(nAfter));
     }
 
     // 缩进
@@ -1575,108 +1530,11 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
                 if (nName == "w:txbxContent" || nName == "wps:txbxContent"
                     || nName == "txbxContent")
                 {
-                    std::cerr << "[ParseTxbx] Found txbxContent in table!" << std::endl;
-                    for (auto& tbPara : n.children())
-                    {
-                        if (std::string(tbPara.name()) == "w:p")
-                        {
-                            std::cerr << "[ParseTxbx] Processing textbox paragraph in table"
-                                      << std::endl;
-                            SwTextNode* pTbNode = rNodes.MakeTextNode(*pTxbxInsertAfter, pColl);
-
-                            // 修正 section 归属：文本框节点应属于 body 层
-                            {
-                                SwStartNode* pBodyStart = pTable;
-                                while (pBodyStart->StartOfSectionNode())
-                                    pBodyStart = pBodyStart->StartOfSectionNode();
-                                pTbNode->SetStartOfSection(pBodyStart);
-                                std::cerr << "[ParseTxbx] Fixed section to body level" << std::endl;
-                            }
-
-                            auto tbPPr = tbPara.child("w:pPr");
-                            if (tbPPr)
-                            {
-                                ParseParagraphProps(tbPPr, pTbNode);
-                                auto tbStyle = tbPPr.child("w:pStyle");
-                                std::string tbStyleId;
-                                if (tbStyle)
-                                    tbStyleId = tbStyle.attribute("w:val").as_string();
-
-                                const StyleDef* pTbStyleDef = nullptr;
-                                if (!tbStyleId.empty())
-                                {
-                                    auto it = styles_.find(tbStyleId);
-                                    if (it != styles_.end())
-                                        pTbStyleDef = &it->second;
-                                }
-                                // 如果没找到样式，回退到默认段落样式
-                                if (!pTbStyleDef)
-                                {
-                                    for (auto & [ id, def ] : styles_)
-                                    {
-                                        if (def.type == "paragraph" && def.isDefault)
-                                        {
-                                            pTbStyleDef = &def;
-                                            break;
-                                        }
-                                    }
-                                }
-                                // 样式属性始终覆盖 pPr/rPr 和 run rPr
-                                if (pTbStyleDef)
-                                {
-                                    pTbNode->SetStyleName(pTbStyleDef->name);
-                                    if (!pTbStyleDef->fontName.empty())
-                                        pTbNode->SetAttr(RES_CHRATR_FONT, pTbStyleDef->fontName);
-                                    if (pTbStyleDef->fontSize > 0)
-                                        pTbNode->SetAttr(RES_CHRATR_FONTSIZE,
-                                                         std::to_string(pTbStyleDef->fontSize));
-                                    if (pTbStyleDef->bold)
-                                        pTbNode->SetAttr(RES_CHRATR_WEIGHT, "bold");
-                                    if (pTbStyleDef->italic)
-                                        pTbNode->SetAttr(RES_CHRATR_POSTURE, "italic");
-                                    if (!pTbStyleDef->color.empty())
-                                        pTbNode->SetAttr(RES_CHRATR_COLOR, pTbStyleDef->color);
-                                }
-                            }
-                            else
-                            {
-                                // 没有 pPr，但仍然应使用默认段落样式
-                                for (auto & [ id, def ] : styles_)
-                                {
-                                    if (def.type == "paragraph" && def.isDefault)
-                                    {
-                                        pTbNode->SetStyleName(def.name);
-                                        if (!def.fontName.empty())
-                                            pTbNode->SetAttr(RES_CHRATR_FONT, def.fontName);
-                                        if (def.fontSize > 0)
-                                            pTbNode->SetAttr(RES_CHRATR_FONTSIZE,
-                                                             std::to_string(def.fontSize));
-                                        if (def.bold)
-                                            pTbNode->SetAttr(RES_CHRATR_WEIGHT, "bold");
-                                        if (def.italic)
-                                            pTbNode->SetAttr(RES_CHRATR_POSTURE, "italic");
-                                        if (!def.color.empty())
-                                            pTbNode->SetAttr(RES_CHRATR_COLOR, def.color);
-                                        break;
-                                    }
-                                }
-                            }
-
-                            std::string tbText;
-                            for (auto& tbRun : tbPara.children())
-                            {
-                                if (std::string(tbRun.name()) == "w:r")
-                                {
-                                    std::string rt = ParseRunText(tbRun);
-                                    // 不应用 run rPr 到段落级别，段落样式已在上方设置
-                                    tbText += rt;
-                                }
-                            }
-                            pTbNode->SetText(tbText);
-                            std::cerr << "[ParseTxbx] Table textbox text: '" << tbText << "'"
-                                      << std::endl;
-                        }
-                    }
+                    // 文本框（w:txbxContent）属于浮动对象，aproj 尚未实现
+                    // 跳过文本框内容，避免将其错误插入主文档流
+                    std::cerr << "[ParseTxbx] Found txbxContent in table, skipping (floating "
+                                 "object not supported)"
+                              << std::endl;
                     return;
                 }
                 findTxbxContent(n);

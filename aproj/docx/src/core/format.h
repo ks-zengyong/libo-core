@@ -189,6 +189,13 @@ enum SwAttrWhich : sal_uInt16
     RES_CHRATR_LANGUAGE, // 语言
     RES_CHRATR_END,
 
+    // 段落标记字符属性（w:pPr/w:rPr）
+    // 这些属性用于行高计算，对应 LO 中段落标记的 ListAutoFormat
+    RES_CHRATR_PARA_MARK_BEGIN = 191,
+    RES_CHRATR_FONT_PARA_MARK = RES_CHRATR_PARA_MARK_BEGIN, // 段落标记字体
+    RES_CHRATR_FONTSIZE_PARA_MARK, // 段落标记字号（半点）
+    RES_CHRATR_PARA_MARK_END,
+
     // 框架属性
     RES_FRM_SIZE = 200,
     RES_LR_SPACE, // 左右边距

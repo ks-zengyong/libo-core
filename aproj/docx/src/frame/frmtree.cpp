@@ -88,8 +88,15 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         heights.push_back(h);
     }
 
-    // 计算起始 Y 位置和页面可用高度
+    // 计算起始 Y 位置：应从当前页已有内容之后开始（对应 LO 行为）
     SwTwips nBaseY = pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top();
+    if (pSibling)
+    {
+        // 从最后一个兄弟 Frame 的底部开始
+        SwTwips nSiblingBottom = pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height();
+        if (nSiblingBottom > nBaseY)
+            nBaseY = nSiblingBottom;
+    }
 
     SwTwips nBodyBottom = pBody ? pBody->getFrameArea().Top() + pBody->getFramePrintArea().Height()
                                 : pPage->getFrameArea().Top() + pPage->getFrameArea().Height();
@@ -101,54 +108,119 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
               << " nPageAvailHeight=" << nPageAvailHeight << " totalNodes=" << colNodes.size()
               << std::endl;
 
-    // LO 行为：两列都在同一页上，左列先填，右列后填
-    // 将节点分成两半，左列放前半部分，右列放后半部分
-    size_t nMid = colNodes.size() / 2;
+    // LO 行为：两列并排在同一页，左列先填，右列放剩余内容
+    // 左列放前 N 个节点，右列放剩余节点
     std::vector<size_t> leftColIndices, rightColIndices;
     SwTwips nLeftHeight = 0, nRightHeight = 0;
 
-    for (size_t j = 0; j < nMid; ++j)
+    // 计算有多少内容能放入左列（不超过页面可用高度）
+    SwTwips nAccumHeight = 0;
+    size_t nLeftEnd = 0;
+    for (size_t j = 0; j < colNodes.size(); ++j)
     {
-        leftColIndices.push_back(j);
-        nLeftHeight += heights[j];
+        if (nAccumHeight + heights[j] > nPageAvailHeight && nLeftEnd > 0)
+            break;
+        nAccumHeight += heights[j];
+        nLeftEnd = j + 1;
     }
-    for (size_t j = nMid; j < colNodes.size(); ++j)
+
+    // 如果所有内容都能放入左列，则平均分配
+    if (nLeftEnd >= colNodes.size())
     {
-        rightColIndices.push_back(j);
-        nRightHeight += heights[j];
+        size_t nMid = (colNodes.size() + 1) / 2;
+        for (size_t j = 0; j < nMid; ++j)
+        {
+            leftColIndices.push_back(j);
+            nLeftHeight += heights[j];
+        }
+        for (size_t j = nMid; j < colNodes.size(); ++j)
+        {
+            rightColIndices.push_back(j);
+            nRightHeight += heights[j];
+        }
     }
+    else
+    {
+        for (size_t j = 0; j < nLeftEnd; ++j)
+        {
+            leftColIndices.push_back(j);
+            nLeftHeight += heights[j];
+        }
+        for (size_t j = nLeftEnd; j < colNodes.size(); ++j)
+        {
+            rightColIndices.push_back(j);
+            nRightHeight += heights[j];
+        }
+    }
+
+    // 检查左列是否溢出（需要新页面）
+    bool bLeftOverflow = (nLeftHeight > nPageAvailHeight && nLeftHeight > 0);
 
     std::cerr << "[ProcessMultiCol] leftCol=" << leftColIndices.size() << " leftH=" << nLeftHeight
-              << " rightCol=" << rightColIndices.size() << " rightH=" << nRightHeight << std::endl;
+              << " rightCol=" << rightColIndices.size() << " rightH=" << nRightHeight
+              << " bLeftOverflow=" << bLeftOverflow << std::endl;
 
-    // LO 行为：两列都在同一页上，左列在左，右列在右
-    // 左列先填（当前页）
+    // LO 行为：两列并排在同一页，左列溢出则创建新页面
     SwTwips nCurY = nBaseY;
+
+    // 左列填当前页（或新页面如果溢出）
+    SwLayoutFrame* pLeftBody = pParent;
+    SwFrame* pLeftSibling = pSibling;
+    if (bLeftOverflow)
+    {
+        // 左列溢出：创建新页面
+        SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+        SwRootFrame* pRoot = rDoc.GetRootFrame();
+        SwPageFrame* pNewPage = InsertNewPage(pRoot, pDesc);
+        pLeftBody = static_cast<SwLayoutFrame*>(pNewPage->GetLower());
+        pLeftSibling = nullptr;
+        nCurY = pNewPage->getFrameArea().Top() + pNewPage->getFramePrintArea().Top();
+        std::cerr << "[ProcessMultiCol] Left col overflow to page " << pNewPage->GetPhyPageNum()
+                  << std::endl;
+    }
+
     for (size_t idx : leftColIndices)
     {
         SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
-        auto* pFrame = new SwTextFrame(pTN, pParent);
-        pFrame->InsertBehind(pParent, pSibling);
+        auto* pFrame = new SwTextFrame(pTN, pLeftBody);
+        pFrame->InsertBehind(pLeftBody, pLeftSibling);
         SwRect aArea(nLeftColX, nCurY, nColWidth, heights[idx]);
         pFrame->setFrameArea(aArea);
-        pSibling = pFrame;
+        pLeftSibling = pFrame;
         nCurY += heights[idx];
     }
 
-    // 右列在同一页上（右侧位置）
-    nCurY = nBaseY;
-    for (size_t idx : rightColIndices)
+    // 右列在当前页（与左列并排，如果左列未溢出；如果左列溢出，右列也在新页面）
+    if (!bLeftOverflow)
     {
-        SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
-        auto* pFrame = new SwTextFrame(pTN, pParent);
-        pFrame->InsertBehind(pParent, pSibling);
-        SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
-        pFrame->setFrameArea(aArea);
-        pSibling = pFrame;
-        nCurY += heights[idx];
+        nCurY = nBaseY;
+        for (size_t idx : rightColIndices)
+        {
+            SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
+            auto* pFrame = new SwTextFrame(pTN, pParent);
+            pFrame->InsertBehind(pParent, pLeftSibling);
+            SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
+            pFrame->setFrameArea(aArea);
+            pSibling = pFrame;
+            nCurY += heights[idx];
+        }
     }
-
-    std::cerr << "[ProcessMultiCol] Both cols on page " << pPage->GetPhyPageNum() << std::endl;
+    else
+    {
+        // 左列溢出到新页面，右列也放在同一新页面
+        nCurY = pLeftBody->getFrameArea().Top() + pLeftBody->getFramePrintArea().Top();
+        SwFrame* pRightSibling = nullptr;
+        for (size_t idx : rightColIndices)
+        {
+            SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
+            auto* pFrame = new SwTextFrame(pTN, pLeftBody);
+            pFrame->InsertBehind(pLeftBody, pLeftSibling);
+            SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
+            pFrame->setFrameArea(aArea);
+            pSibling = pFrame;
+            nCurY += heights[idx];
+        }
+    }
 
     // 更新循环索引
     i = colNodes.back();
@@ -158,8 +230,13 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
 
 static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nColWidth)
 {
-    const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
-    const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+    // 行高应使用段落标记字体（w:pPr/w:rPr），而非内容字体
+    const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
+    const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT_PARA_MARK);
+    if (!pSize)
+        pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+    if (!pFont)
+        pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
     int nFontSize = pSize ? std::stoi(*pSize) : 20;
     std::string sFontName = pFont ? *pFont : "Calibri";
 
@@ -182,7 +259,12 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
         }
     }
 
-    // 计算行数
+    // 计算行数（使用内容字体进行宽度测量）
+    const std::string* pContentFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+    const std::string* pContentSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+    std::string sContentFontName = pContentFont ? *pContentFont : "Calibri";
+    int nContentFontSize = pContentSize ? std::stoi(*pContentSize) : 20;
+
     int nLineCount = 1;
     const std::string& rText = pTextNode->GetText();
     if (!rText.empty() && nColWidth > 0)
@@ -200,15 +282,16 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
 
             if (!sLine.empty())
             {
-                SwTwips nLineWidth = fontEngine.MeasureTextWidth(sFontName, nFontSize, sLine);
+                SwTwips nLineWidth
+                    = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
                 if (nLineWidth > nColWidth)
                 {
                     size_t nPos = 0;
                     while (nPos < sLine.size())
                     {
                         std::string sRemain = sLine.substr(nPos);
-                        int nBreak
-                            = fontEngine.FindLineBreak(sFontName, nFontSize, sRemain, nColWidth);
+                        int nBreak = fontEngine.FindLineBreak(sContentFontName, nContentFontSize,
+                                                              sRemain, nColWidth);
                         if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
                             break;
                         if (nBreak == 0)
@@ -379,6 +462,10 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                     pPage = InsertNewPage(pRoot, pDesc);
                     pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
                     pSibling = nullptr;
+                    std::cerr << "[MakeFrames] SECTION BREAK: new page="
+                              << (pPage ? pPage->GetPhyPageNum() : 0)
+                              << " pParent=" << (pParent ? "yes" : "no")
+                              << " bMultiColumn=" << bMultiColumn << std::endl;
 
                     // 处理多列布局（如果新节是多列）
                     if (bMultiColumn)
@@ -494,6 +581,10 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
             }
         }
 
+        std::cerr << "[MakeFrames] Calling MakeFramesForNode i=" << i
+                  << " pPage=" << (pPage ? pPage->GetPhyPageNum() : 0)
+                  << " pParent=" << (pParent ? "yes" : "no")
+                  << " pSibling=" << (pSibling ? "yes" : "no") << std::endl;
         MakeFramesForNode(*pNode, pParent, pSibling, nCurrentSection, nCurrentCol);
 
         // 如果是表格节点，跳过其所有子节点（行、单元格、文本等）
@@ -644,8 +735,14 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
 
         // 估算文本高度：基于字体度量的行高计算
         // 使用 FontEngine 获取精确字体度量（对应 LO 的 SwFntObj::GetFontHeight）
-        const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
-        const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+        // 行高应使用段落标记字体（w:pPr/w:rPr），而非内容字体
+        // 对应 LO 中 APPLY_PARAGRAPH_MARK_FORMAT_TO_EMPTY_LINE_AT_END_OF_PARAGRAPH
+        const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
+        const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT_PARA_MARK);
+        if (!pSize)
+            pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+        if (!pFont)
+            pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
         int nFontSize = pSize ? std::stoi(*pSize) : 20; // 半点
         std::string sFontName = pFont ? *pFont : "Calibri";
 
@@ -675,6 +772,12 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
 
         // 计算文本行数（考虑自动换行）
         // 使用 FontEngine 进行精确字形宽度测量（对应 LO 的 VCL GetTextBreak）
+        // 宽度测量使用内容字体（RES_CHRATR_FONT），而非段落标记字体
+        const std::string* pContentFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+        const std::string* pContentSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+        std::string sContentFontName = pContentFont ? *pContentFont : "Calibri";
+        int nContentFontSize = pContentSize ? std::stoi(*pContentSize) : 20;
+
         int nLineCount = 1;
         const std::string& rText = pTextNode->GetText();
         if (!rText.empty() && nPageWidth > 0)
@@ -700,8 +803,9 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
 
                 if (!sLine.empty())
                 {
-                    // 测量整行宽度
-                    SwTwips nLineWidth = engine.MeasureTextWidth(sFontName, nFontSize, sLine);
+                    // 测量整行宽度（使用内容字体）
+                    SwTwips nLineWidth
+                        = engine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
                     if (nLineWidth > nPageWidth)
                     {
                         // 需要换行：使用 GetTextBreak 逐段切分
@@ -709,8 +813,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                         while (nPos < sLine.size())
                         {
                             std::string sRemain = sLine.substr(nPos);
-                            int nBreak
-                                = engine.FindLineBreak(sFontName, nFontSize, sRemain, nPageWidth);
+                            int nBreak = engine.FindLineBreak(sContentFontName, nContentFontSize,
+                                                              sRemain, nPageWidth);
                             if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
                             {
                                 // 剩余文本都能放下
