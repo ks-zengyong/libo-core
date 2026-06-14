@@ -113,10 +113,13 @@ SwTwips FontInstance::GetTextWidth(const std::string& text, int fontSizeHalfPt) 
                     MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), wtext.data(),
                                         wlen);
                     GetTextExtentPoint32W(hdc, wtext.data(), wlen, &size);
+                    SwTwips tw = static_cast<SwTwips>(size.cx * 15);
+                    fprintf(stderr, "[FontEngine] GDI textWidth: font=%s size=%d text=\"%.30s\" px=%d tw=%d\n",
+                            m_fontName.c_str(), fontSizeHalfPt, text.c_str(), size.cx, tw);
                     SelectObject(hdc, hOld);
                     DeleteObject(hFont);
                     DeleteDC(hdc);
-                    return static_cast<SwTwips>(size.cx * 15);
+                    return tw;
                 }
                 SelectObject(hdc, hOld);
                 DeleteObject(hFont);
@@ -167,8 +170,72 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
     if (!m_valid || !m_info || text.empty())
         return 0;
 
+    // 使用 GDI 进行精确宽度测量（与 GetTextWidth 一致）
     // 对应 VCL 的 GenericSalLayout::GetTextBreak
-    // 逐字符累加宽度，找到超过 maxWidth 的位置
+#ifdef _WIN32
+    if (!m_fontName.empty())
+    {
+        HDC hdc = CreateCompatibleDC(NULL);
+        if (hdc)
+        {
+            float pixels = static_cast<float>(fontSizeHalfPt) * 2.0f / 3.0f;
+            int nHeight = -static_cast<int>(pixels * 72.0 / 96.0 + 0.5);
+            HFONT hFont
+                = CreateFontA(nHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                              OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                              DEFAULT_PITCH | FF_DONTCARE, m_fontName.c_str());
+            if (hFont)
+            {
+                HFONT hOld = (HFONT)SelectObject(hdc, hFont);
+                // 将整个文本转换为宽字符
+                int wlen = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), NULL, 0);
+                if (wlen > 0)
+                {
+                    std::vector<wchar_t> wtext(wlen);
+                    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), wtext.data(), wlen);
+                    
+                    // 二分查找断点
+                    int lo = 0, hi = wlen;
+                    int lastBreak = 0;
+                    while (lo < hi)
+                    {
+                        int mid = (lo + hi) / 2;
+                        SIZE size;
+                        GetTextExtentPoint32W(hdc, wtext.data(), mid, &size);
+                        SwTwips tw = static_cast<SwTwips>(size.cx * 15);
+                        if (tw <= maxWidth)
+                        {
+                            lastBreak = mid;
+                            lo = mid + 1;
+                        }
+                        else
+                        {
+                            hi = mid;
+                        }
+                    }
+                    SelectObject(hdc, hOld);
+                    DeleteObject(hFont);
+                    DeleteDC(hdc);
+                    
+                    if (lastBreak == 0)
+                        return 1; // at least one character
+                    if (lastBreak >= wlen)
+                        return -1; // entire text fits
+                    
+                    // 将宽字符断点映射回 UTF-8 字节位置
+                    // 使用 MultiByteToWideChar 反向映射
+                    int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wtext.data(), lastBreak, NULL, 0, NULL, NULL);
+                    return utf8Len;
+                }
+                SelectObject(hdc, hOld);
+                DeleteObject(hFont);
+            }
+            DeleteDC(hdc);
+        }
+    }
+#endif
+
+    // 回退到 stb_truetype
     float pixels = static_cast<float>(fontSizeHalfPt) * 2.0f / 3.0f;
     float scale = stbtt_ScaleForPixelHeight(m_info, pixels);
 
@@ -308,6 +375,12 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                                    font, HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_DESCENT,
                                    &nWinDescent))
                         {
+                            // DEBUG: print OS/2 sTypo values
+                            fprintf(stderr,
+                                    "[FontEngine] OS/2: font=%s typoAsc=%d typoDesc=%d "
+                                    "typoLineGap=%d winAsc=%d winDesc=%d\n",
+                                    m_fontName.c_str(), nTypoAscent, nTypoDescent,
+                                    nTypoLineGap, nWinAscent, nWinDescent);
                             // 如果 hhea 为空，使用 Win metrics
                             if (fAscent == 0.0 && fDescent == 0.0)
                             {
@@ -340,6 +413,11 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
 
                             if (bUseTypoMetrics && nTypoAscent >= 0 && nTypoDescent <= 0)
                             {
+                                fprintf(stderr,
+                                        "[FontEngine] USE_TYPO_METRICS: font=%s using typo "
+                                        "asc=%d desc=%d lineGap=%d\n",
+                                        m_fontName.c_str(), nTypoAscent, nTypoDescent,
+                                        nTypoLineGap);
                                 fAscent = nTypoAscent;
                                 fDescent = -nTypoDescent;
                                 fExtLeading = nTypoLineGap;

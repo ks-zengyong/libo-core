@@ -194,13 +194,16 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     if (!bLeftOverflow)
     {
         nCurY = nBaseY;
+        // 使用 pSibling 跟踪右列最后一个插入的 Frame，确保顺序正确
+        SwFrame* pRightPrev = pLeftSibling;
         for (size_t idx : rightColIndices)
         {
             SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
             auto* pFrame = new SwTextFrame(pTN, pParent);
-            pFrame->InsertBehind(pParent, pLeftSibling);
+            pFrame->InsertBehind(pParent, pRightPrev);
             SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
             pFrame->setFrameArea(aArea);
+            pRightPrev = pFrame;
             pSibling = pFrame;
             nCurY += heights[idx];
         }
@@ -209,14 +212,15 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     {
         // 左列溢出到新页面，右列也放在同一新页面
         nCurY = pLeftBody->getFrameArea().Top() + pLeftBody->getFramePrintArea().Top();
-        SwFrame* pRightSibling = nullptr;
+        SwFrame* pRightPrev = pLeftSibling;
         for (size_t idx : rightColIndices)
         {
             SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
             auto* pFrame = new SwTextFrame(pTN, pLeftBody);
-            pFrame->InsertBehind(pLeftBody, pLeftSibling);
+            pFrame->InsertBehind(pLeftBody, pRightPrev);
             SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
             pFrame->setFrameArea(aArea);
+            pRightPrev = pFrame;
             pSibling = pFrame;
             nCurY += heights[idx];
         }
@@ -282,16 +286,15 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
 
             if (!sLine.empty())
             {
-                SwTwips nLineWidth
-                    = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
+                SwTwips nLineWidth = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
                 if (nLineWidth > nColWidth)
                 {
                     size_t nPos = 0;
                     while (nPos < sLine.size())
                     {
                         std::string sRemain = sLine.substr(nPos);
-                        int nBreak = fontEngine.FindLineBreak(sContentFontName, nContentFontSize,
-                                                              sRemain, nColWidth);
+                        int nBreak
+                            = fontEngine.FindLineBreak(sContentFontName, nContentFontSize, sRemain, nColWidth);
                         if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
                             break;
                         if (nBreak == 0)
@@ -339,7 +342,13 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
         }
     }
 
-    return nSpaceBefore + nLineHeight * nLineCount + nSpaceAfter;
+    SwTwips nTotal = nSpaceBefore + nLineHeight * nLineCount + nSpaceAfter;
+    fprintf(stderr, "[PreCalcNodeHeight] font=%s size=%d lineH=%d lineSpacing=%s lines=%d spaceBefore=%d spaceAfter=%d total=%d text=\"%.30s\"\n",
+            sFontName.c_str(), nFontSize, nLineHeight,
+            pLineSpacing ? pLineSpacing->c_str() : "none",
+            nLineCount, nSpaceBefore, nSpaceAfter, nTotal,
+            rText.c_str());
+    return nTotal;
 }
 
 //===----------------------------------------------------------------------===//
@@ -467,7 +476,8 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                               << " pParent=" << (pParent ? "yes" : "no")
                               << " bMultiColumn=" << bMultiColumn << std::endl;
 
-                    // 处理多列布局（如果新节是多列）
+                    // 节分隔节点本身不创建 Frame（匹配 LO 行为）
+                    // 跳过 MakeFramesForNode，直接处理多列布局或继续循环
                     if (bMultiColumn)
                     {
                         std::cerr << "[MakeFrames] Detected multi-column section "
@@ -475,12 +485,12 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                                   << " pPage=" << (pPage ? pPage->GetPhyPageNum() : 0) << std::endl;
                         bool bHandled = ProcessMultiColumnSection(
                             rDoc, rNodes, pPage, pParent, pSibling, i, nEnd, nCurrentSection);
-                        // 更新 pPage 为最后创建的页面（ProcessMultiColumnSection 可能创建了新页面）
                         pPage = pRoot->GetLastPage();
                         pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
                         if (bHandled)
                             continue;
                     }
+                    continue; // 节分隔节点不创建 Frame
                 }
                 else if (*pBreak == "continuous")
                 {
@@ -533,21 +543,32 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                     }
                     else
                     {
-                        // 单列节：在上一节之后继续
-                        // LO 行为：多列节之后的连续分节符在同一页继续（不创建新页）
-                        // ProcessMultiColumnSection 已经创建了新页面（左列溢出页），
-                        // 所以这里的连续分节符在左列溢出页之后继续
-                        // 更新 pPage 确保后续内容使用最新页面
-                        pPage = pRoot->GetLastPage();
-                        pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
-                        // 设置 pSibling 为当前页 Body 的最后一个子 Frame
-                        pSibling = pParent->GetLower();
-                        if (pSibling)
+                        // 单列节：多列→单列转换时创建新页面（匹配 LO 行为）
+                        // LO 在多列节结束后总是创建新页面
+                        if (bPrevMultiCol)
                         {
-                            while (pSibling->GetNext())
-                                pSibling = pSibling->GetNext();
+                            std::cerr << "[MakeFrames] MultiCol->SingleCol: creating new page"
+                                      << std::endl;
+                            SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+                            pPage = InsertNewPage(pRoot, pDesc);
+                            pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                            pSibling = nullptr;
+                        }
+                        else
+                        {
+                            // 单列→单列：在同一页继续
+                            pPage = pRoot->GetLastPage();
+                            pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                            // 设置 pSibling 为当前页 Body 的最后一个子 Frame
+                            pSibling = pParent->GetLower();
+                            if (pSibling)
+                            {
+                                while (pSibling->GetNext())
+                                    pSibling = pSibling->GetNext();
+                            }
                         }
                     }
+                    continue; // 连续分节符节点不创建 Frame
                 }
             }
         }
