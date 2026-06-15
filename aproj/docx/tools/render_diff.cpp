@@ -22,6 +22,43 @@
 #include <cstring>
 #include <algorithm>
 
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#else
+#include <unistd.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+#endif
+
+// ── Get executable directory ──
+static std::string getExeDir()
+{
+    std::string exePath;
+#ifdef _WIN32
+    char buf[MAX_PATH];
+    DWORD len = GetModuleFileNameA(nullptr, buf, sizeof(buf));
+    if (len > 0)
+        exePath.assign(buf, len);
+#else
+    char buf[4096];
+#ifdef __APPLE__
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) == 0)
+        exePath = buf;
+#else
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0)
+        exePath.assign(buf, len);
+#endif
+#endif
+    auto pos = exePath.find_last_of("/\\");
+    if (pos != std::string::npos)
+        return exePath.substr(0, pos + 1);
+    return "";
+}
+
 // ── 指令类型 ──
 
 enum class CmdType : uint8_t
@@ -527,7 +564,19 @@ static bool isKnownDiff(const DiffResult& diff, const std::vector<KnownDiff>& kn
 static std::string resolveLayerPath(const std::string& testDir, const std::string& prefix,
                                     const std::string& layer)
 {
-    return testDir + "/" + prefix + layer + ".txt";
+    // 如果 testDir 是相对路径，则相对于 exe 所在目录解析
+    std::string resolved = testDir;
+    if (!testDir.empty())
+    {
+#ifdef _WIN32
+        bool isAbsolute = (testDir.size() >= 2 && testDir[1] == ':');
+#else
+        bool isAbsolute = (testDir[0] == '/');
+#endif
+        if (!isAbsolute)
+            resolved = getExeDir() + testDir;
+    }
+    return resolved + "/" + prefix + layer + ".txt";
 }
 
 int main(int argc, char* argv[])
@@ -539,7 +588,7 @@ int main(int argc, char* argv[])
                   << "  render_diff vcl                   Compare VCL layer\n"
                   << "  render_diff <ref.txt> <test.txt>  Compare arbitrary files\n"
                   << "Options:\n"
-                  << "  --test-dir DIR   Test directory (default: test)\n"
+                  << "  --test-dir DIR   Test directory (default: ../test, relative to exe)\n"
                   << "  --known-diffs F  File with known differences to skip\n"
                   << "  --verbose        Show matching lines too\n";
         return 1;
@@ -547,7 +596,7 @@ int main(int argc, char* argv[])
 
     std::string refPath;
     std::string testPath;
-    std::string testDir = "test";
+    std::string testDir = "../test";
     std::string knownDiffsPath;
     bool verbose = false;
 

@@ -53,12 +53,67 @@ static int g_failed = 0;
 #else
 #include <dirent.h>
 #include <sys/stat.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
 #endif
+#include <unistd.h>
+#endif
+
+// ── Get executable directory ─────────────────────────────────
+static std::string getExeDir()
+{
+    std::string exePath;
+#ifdef _WIN32
+    char buf[MAX_PATH];
+    DWORD len = GetModuleFileNameA(nullptr, buf, sizeof(buf));
+    if (len > 0)
+        exePath.assign(buf, len);
+#else
+    char buf[4096];
+#ifdef __APPLE__
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) == 0)
+        exePath = buf;
+#else
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0)
+        exePath.assign(buf, len);
+#endif
+#endif
+    auto pos = exePath.find_last_of("/\\");
+    if (pos != std::string::npos)
+        return exePath.substr(0, pos + 1);
+    return "";
+}
+
+// ── Resolve path relative to exe directory (if relative) ─────
+static std::string resolvePath(const std::string& path)
+{
+    if (path.empty())
+        return path;
+        // 绝对路径直接返回
+#ifdef _WIN32
+    if (path.size() >= 2 && path[1] == ':')
+        return path;
+#else
+    if (path[0] == '/')
+        return path;
+#endif
+    return getExeDir() + path;
+}
 
 // ── Find samples directory ──────────────────────────────────────
 static std::string findSamplesDir()
 {
+    // 搜索相对于 exe 所在目录的路径
+    std::string exeDir = getExeDir();
+    // exe 在 output/ 下，samples 在 ../samples
+    // exe 在 build/Debug/ 下，samples 在 ../../samples
     const char* dirs[] = {
+        // 相对 exe 目录 (output/)
+        "../samples",
+        "../../samples",
+        // 相对 CWD
         "samples",
         "../samples",
         "../../samples",
@@ -68,12 +123,24 @@ static std::string findSamplesDir()
     };
     for (auto d : dirs)
     {
+        // 先尝试相对于 exe 目录
+        std::string exeRelative = exeDir + d;
 #ifdef _WIN32
-        DWORD attr = GetFileAttributesA(d);
+        DWORD attr = GetFileAttributesA(exeRelative.c_str());
+        if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY))
+            return exeRelative;
+        // 再尝试相对于 CWD
+        attr = GetFileAttributesA(d);
         if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY))
             return d;
 #else
-        DIR* dir = opendir(d);
+        DIR* dir = opendir(exeRelative.c_str());
+        if (dir)
+        {
+            closedir(dir);
+            return exeRelative;
+        }
+        dir = opendir(d);
         if (dir)
         {
             closedir(dir);
@@ -247,14 +314,15 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     std::cerr << "[TEST] LogFrameTree done" << std::endl;
 
     std::cerr << "[TEST] WriteFrameLayerToFile..." << std::endl;
-    logger.WriteFrameLayerToFile("test/aproj_frame.txt");
+    logger.WriteFrameLayerToFile(resolvePath("../test/aproj_frame.txt"));
     std::cerr << "[TEST] WriteFrameLayerToFile done" << std::endl;
     std::cerr << "[TEST] WriteVclLayerToFile..." << std::endl;
-    logger.WriteVclLayerToFile("test/aproj_vcl.txt");
+    logger.WriteVclLayerToFile(resolvePath("../test/aproj_vcl.txt"));
     std::cerr << "[TEST] WriteVclLayerToFile done" << std::endl;
 
     // 7. 验证 frame 层
-    std::ifstream fFrame("test/aproj_frame.txt");
+    std::string framePath = resolvePath("../test/aproj_frame.txt");
+    std::ifstream fFrame(framePath);
     TEST_ASSERT_TRUE(fFrame.good(), "test/aproj_frame.txt created");
     int nFrameLines = 0;
     bool hasFramePageStart = false, hasTextFrame = false;
@@ -273,7 +341,8 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     TEST_ASSERT_TRUE(hasTextFrame, "Frame layer has TEXT_FRAME");
 
     // 8. 验证 VCL 层
-    std::ifstream fVcl("test/aproj_vcl.txt");
+    std::string vclPath = resolvePath("../test/aproj_vcl.txt");
+    std::ifstream fVcl(vclPath);
     TEST_ASSERT_TRUE(fVcl.good(), "test/aproj_vcl.txt created");
     int nVclLines = 0;
     bool hasVclPageStart = false, hasTextRun = false, hasSetFont = false;

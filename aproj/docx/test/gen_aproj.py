@@ -29,8 +29,11 @@ def find_project_root():
 
 def find_exe(proj_root):
     """查找 docx_e2e_test.exe 编译产物。"""
-    # 优先查找 Debug 和 Release 配置
+    # 优先查找 output 目录下的 debug 产物
     candidates = [
+        proj_root / "output" / "docx_e2e_test_debug.exe",
+        proj_root / "output" / "docx_e2e_test.exe",
+        proj_root / "build" / "Debug" / "docx_e2e_test_debug.exe",
         proj_root / "build" / "Debug" / "docx_e2e_test.exe",
         proj_root / "build" / "Release" / "docx_e2e_test.exe",
         proj_root / "build" / "RelWithDebInfo" / "docx_e2e_test.exe",
@@ -40,7 +43,7 @@ def find_exe(proj_root):
         if c.exists():
             return str(c)
     # 递归搜索
-    for exe in proj_root.rglob("docx_e2e_test.exe"):
+    for exe in proj_root.rglob("docx_e2e_test*.exe"):
         return str(exe)
     return None
 

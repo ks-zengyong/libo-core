@@ -111,11 +111,13 @@ LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/s
 
 或直接使用 `render_diff`：
 ```powershell
-.\build\Debug\render_diff.exe frame     # 对比 Frame 层
-.\build\Debug\render_diff.exe vcl       # 对比 VCL 层
+.\output\render_diff_debug.exe frame     # 对比 Frame 层（Debug 产物）
+.\output\render_diff_debug.exe vcl       # 对比 VCL 层（Debug 产物）
 ```
 
 对比工具 `tools/render_diff.cpp` 进行严格逐字段比对，不允许容差（tolerance）。支持 `--known-diffs` 跳过已知差异，`--verbose` 显示匹配行。
+
+> **注意**：`render_diff_debug.exe` 的默认 `--test-dir` 为 `../test`（相对于 exe 所在目录 `output/`），即自动定位到 `aproj/docx/test/`。使用快捷模式 `frame`/`vcl` 时无需额外指定路径。
 
 ## 4. Step 2: VCL 渲染指令差异对比（VCL 接入待完成）
 
@@ -207,7 +209,7 @@ Frame 树差异基本消除后再进入 VCL 层对比，因为 VCL 层差异可�
      ↓
 3. 迁移适配: 将 LO 实现移植到 aproj/docx/src/ 对应模块
      ↓
-4. 编译验证: cmake --build build --config Debug
+4. 编译验证: cmake --build build --config Debug && build.bat
      ↓
 5. 差异复检: .\test\diff_frame.bat
      ↓
@@ -220,6 +222,11 @@ Frame 树差异基本消除后再进入 VCL 层对比，因为 VCL 层差异可�
 
 ```
 aproj/docx/
+  ├── output/
+  │   ├── docx_e2e_test_debug.exe      # Debug 编译产物
+  │   ├── render_diff_debug.exe        # Debug 编译产物
+  │   ├── docx_e2e_test.exe            # Release 编译产物
+  │   └── render_diff.exe              # Release 编译产物
   ├── test/
   │   ├── test_end_to_end.cpp        # 端到端测试（C++）
   │   ├── gen_aproj.py               # 运行 e2e 测试并收集产物
@@ -247,13 +254,16 @@ aproj/docx/
 ### 6.3 一体化测试流程
 
 ```powershell
-# 1. 生成 LO 参考输出
-python test/gen_lo.py
+# 1. 编译项目（Debug 配置，自动拷贝到 output/）
+.\build.bat
 
-# 2. 运行 aproj e2e 测试
-python test/gen_aproj.py
+# 2. 生成 LO 参考输出
+python test\gen_lo.py
 
-# 3. 比对差异
+# 3. 运行 aproj e2e 测试
+python test\gen_aproj.py
+
+# 4. 比对差异（使用 output/ 下的 debug 产物）
 .\test\diff_frame.bat
 .\test\diff_vcl.bat
 ```

@@ -72,6 +72,9 @@ target_compile_definitions(docx_e2e_test PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 add_executable(render_diff tools/render_diff.cpp)
 target_compile_definitions(render_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 
+# Debug 编译产物加 _debug 后缀
+set_target_properties(docx_e2e_test render_diff PROPERTIES DEBUG_POSTFIX "_debug")
+
 # MSVC specific
 if(MSVC)
     target_compile_options(docx_e2e_test PRIVATE /W3 /utf-8)
