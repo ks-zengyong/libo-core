@@ -1,0 +1,261 @@
+PAGE_START	1	11906	16838
+SET_FONT	1	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	762	0	0	"WPS Office®"	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	fony family	24	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	1471	0	0	"Welcome to WPS Office - Writer"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	2429	0	0	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	1	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	3939	0	0	"Switch tabs to find different commands to process your document."	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	4198	0	0	"Share your documents with others."	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	4457	0	0	"\nFind all of Writer's commands."	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	5155	0	0	"\nSearch the Help center for answers when you get stuck."	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	5593	0	0	"\nQuickly switch views and adjust the scale of the page display."	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	6031	0	0	"\n"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	6987	0	0	"Count the number of words and pages in your document in real time."	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	7724	0	0	"WPS AI+Writer"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	1	fony family	7	188	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Poppins	24	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	8454	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Poppins	24	16777215	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	fony family	20	144	0
+SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	16777215
+TEXT_RUN	1	284	11824	0	0	"\tto help you \t\twrite and understand your Word document"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	1	fony family	20	144	0
+SET_TEXT_COLOR	1	16777215
+PAGE_END	1
+PAGE_START	2	11906	16838
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	16777215
+TEXT_RUN	2	1004	17558	0	0	"WPS AI-generated content"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	16777215
+TEXT_RUN	2	1004	18036	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	2	Poppins	24	144	0
+SET_TEXT_COLOR	2	16777215
+SET_FONT	2	Poppins	24	144	0
+SET_TEXT_COLOR	2	16777215
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	16777215
+TEXT_RUN	2	1004	19522	0	0	"\nWPS AI-based content rewriting"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	16777215
+TEXT_RUN	2	1004	20478	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	2	Poppins	24	144	0
+SET_TEXT_COLOR	2	16777215
+SET_FONT	2	Poppins SemiBold	40	144	0
+SET_TEXT_COLOR	2	2500134
+PAGE_END	2
+PAGE_START	3	11906	16838
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	1004	34396	0	0	"For all your document process needs"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	1004	35512	0	0	"\nRestrict Editing"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	1004	36468	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	1004	37668	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	1004	41791	0	0	"\n"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	1004	42669	0	0	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	6449	35512	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	6449	36684	0	0	" "	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins	24	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins Medium	36	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Poppins Medium	36	144	0
+SET_TEXT_COLOR	3	16777215
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	6449	40199	0	0	"\nFormat Conversion"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	6449	40969	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Calibri	20	16777215	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	16777215
+TEXT_RUN	3	6449	41269	0	0	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	
+PAGE_END	3
+PAGE_START	4	11906	16838
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	51234	0	0	"Editing and typesetting"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	51872	0	0	"\nFind and Replace"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	52642	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Poppins	24	144	0
+SET_TEXT_COLOR	4	16777215
+SET_FONT	4	Poppins SemiBold	40	144	0
+SET_TEXT_COLOR	4	2500134
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	54023	0	0	"\nEfficient Word Typesetting"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	54793	0	0	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Poppins	24	144	0
+SET_TEXT_COLOR	4	16777215
+SET_FONT	4	Poppins SemiBold	40	144	0
+SET_TEXT_COLOR	4	2500134
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	56774	0	0	"\nSpell Check"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	57544	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Poppins	24	144	0
+SET_TEXT_COLOR	4	16777215
+SET_FONT	4	Poppins SemiBold	40	144	0
+SET_TEXT_COLOR	4	2500134
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	58925	0	0	"\nTrack Changes"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	59695	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Poppins	24	144	0
+SET_TEXT_COLOR	4	16777215
+SET_FONT	4	Poppins SemiBold	40	144	0
+SET_TEXT_COLOR	4	2500134
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	61376	0	0	" "	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	16777215
+TEXT_RUN	4	1004	61864	0	0	"More Popular features"	Calibri	20	16777215	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	62502	0	0	"\n"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	2852	62502	0	0	"Table of Contents\nThe Table of Contents can automatically identify the article chapters and title levels, generating the table of contents in just one second.\n"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	63234	0	0	"\n"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	2852	63234	0	0	"Mail Merge\nIt enables you to batch generate and edit multiple documents, such as emails, invitations, greeting cards, pay slips, and more. Say goodbye to repetitive document editing.\n"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	64454	0	0	"\n"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	2852	64454	0	0	"Table Tools\nYou can create tables directly in Writer without the need to create a new document. We provide a comprehensive table toolbox for beautification, formulas, sorting, and more.\n"	Arial	22	0	144	0	0	0	
+PAGE_END	4
+PAGE_START	5	11906	16838
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	68072	0	0	"\n"	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	2852	68072	0	0	"File Collection\nWith WPS File Collection, you can efficiently manage file sharing among team members. Collected files are automatically aggregated into a shared folder, allowing you to view, edit, and delete them at any time.\n"	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	69292	0	0	"\n"	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	2852	69292	0	0	"Merge & Split\nWPS Writer supports splitting or merging files, and you can customize the number of file splits. It provides an easier way to manage your documents.\n"	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	70512	0	0	"\n"	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	2852	70512	0	0	"Eye Protection Mode\nBy adjusting the screen's color temperature and brightness, you can reduce blue light radiation, minimize eye fatigue, and ensure optimal vision during work and study.\n"	Arial	22	0	144	0	0	0	
+PAGE_END	5
+PAGE_START	6	11906	16838
+SET_FONT	6	Poppins SemiBold	40	144	0
+SET_TEXT_COLOR	6	2500134
+PAGE_END	6
