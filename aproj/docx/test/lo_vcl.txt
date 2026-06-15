@@ -30,172 +30,172 @@ POP	1
 PUSH	1
 SET_LINE_COLOR	1	0
 POP	1
+SET_FONT	1	��>A	24	144	0
+SET_FONT	1	Segoe UI Emoji	2	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
-SET_FONT	1	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
+SET_FONT	1	Segoe UI Emoji	24	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	5580	1078	0	0	"�H�>A "		24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	5580	1078	0	0	"WPS Office®"	Segoe UI Emoji	24	0	144	0	0	0	
-SET_FONT	1	Poppins	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Poppins	24	144	0
-SET_FONT	1	Segoe UI Semibold	72	144	0
+SET_FONT	1	Segoe UI Emoji	72	144	0
 SET_TEXT_COLOR	1	2500134
-SET_FONT	1	Poppins	24	144	0
-SET_FONT	1	Segoe UI Semibold	72	144	0
+SET_FONT	1	Segoe UI Emoji	24	144	0
+SET_FONT	1	Segoe UI Emoji	72	144	0
 SET_TEXT_COLOR	1	2500134
-TEXT_RUN	1	969	2392	0	0	"Welcome to WPS Office - Writer"	Segoe UI Semibold	72	2500134	144	0	0	0	
+TEXT_RUN	1	969	2264	0	0	""	Segoe UI Emoji	72	2500134	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1109	3011	0	0	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As"	Segoe UI Emoji	24	0	144	0	0	0	
-TEXT_RUN	1	11063	3011	0	0	" "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	1109	2883	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	11063	2883	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1574	3268	0	0	"a handy and professional office software, WPS Office allows you to edit files in Writer,"	Segoe UI Emoji	24	0	144	0	0	0	
-TEXT_RUN	1	10599	3268	0	0	" "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	1574	3140	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10599	3140	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	2479	3525	0	0	"Presentation, Spreadsheet, and PDF to improve your work efficiency."	Segoe UI Emoji	24	0	144	0	0	0	
-SET_FONT	1	宋体	36	144	0
+TEXT_RUN	1	2479	3397	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	36	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	宋体	36	144	0
-SET_FONT	1	Segoe UI Emoji	24	144	0
-SET_FONT	1	Segoe UI Emoji	24	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1346	4291	0	0	"Switch tabs to find different commands to process your document."	Segoe UI Emoji	24	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	36	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10606	4549	0	0	"Share your "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	1346	4163	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10606	4806	0	0	"documents "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10606	4421	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10606	5063	0	0	"with others."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10606	4678	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	5833	0	0	"Find all "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10606	4935	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	6052	0	0	"of "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	5705	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	6271	0	0	"Writer's "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	5924	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	6490	0	0	"comman"	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	6143	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	6709	0	0	"ds."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	6362	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	7273	0	0	"Search the Help center for "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	6581	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	7492	0	0	"answers when you get stuck."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	7145	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	8056	0	0	"Quickly switch views and "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	7364	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	8275	0	0	"adjust the scale of the "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	7928	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	8494	0	0	"page display."	Segoe UI Emoji	24	0	144	0	0	0	
-SET_FONT	1	宋体	36	144	0
+TEXT_RUN	1	8886	8147	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1346	9733	0	0	"Count the number of words and pages in your document in real time."	Segoe UI Emoji	24	0	144	0	0	0	
-SET_FONT	1	宋体	36	144	0
-SET_FONT	1	Segoe UI Semibold	48	144	0
+TEXT_RUN	1	8886	8366	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	36	144	0
+SET_FONT	1	Segoe UI Emoji	24	144	0
+SET_FONT	1	Segoe UI Emoji	24	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	1346	9605	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	36	144	0
+SET_FONT	1	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	1	2500134
-SET_FONT	1	宋体	36	144	0
-SET_FONT	1	Segoe UI Semibold	48	144	0
+SET_FONT	1	Segoe UI Emoji	36	144	0
+SET_FONT	1	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	1	2500134
-TEXT_RUN	1	4587	10809	0	0	"WPS AI+Writer"	Segoe UI Semibold	48	2500134	144	0	0	0	
-SET_FONT	1	Poppins	7	188	0
-SET_FONT	1	Segoe UI Semibold	48	144	0
+TEXT_RUN	1	4587	10681	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	48	2500134	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	7	188	0
+SET_FONT	1	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	1	2500134
-SET_FONT	1	Poppins	7	188	0
+SET_FONT	1	Segoe UI Emoji	7	188	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_FONT	1	Poppins	7	188	0
-SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1207	11397	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can"	Segoe UI Emoji	28	0	144	0	0	0	
-TEXT_RUN	1	11244	11397	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	7	188	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	2250	11697	0	0	"use WPS AI to help you write and understand your Word document."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	1	宋体	28	144	0
+TEXT_RUN	1	1207	11269	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	1	11244	11269	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	宋体	28	144	0
-SET_FONT	1	宋体	20	144	0
-SET_FONT	1	宋体	28	144	0
-SET_FONT	1	宋体	20	144	0
-SET_FONT	1	fony family	20	144	0
-SET_FONT	1	宋体	20	144	0
-SET_FONT	1	fony family	20	144	0
-SET_FONT	1	宋体	20	144	0
+TEXT_RUN	1	2250	11569	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_FONT	1	Segoe UI Emoji	20	144	0
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_FONT	1	Segoe UI Emoji	20	144	0
+SET_FONT	1	Segoe UI Emoji	20	144	0
+SET_FONT	1	Segoe UI Emoji	20	144	0
+SET_FONT	1	Segoe UI Emoji	20	144	0
+SET_FONT	1	Segoe UI Emoji	20	144	0
 PUSH	1
 PUSH	1
 SET_CLIP_REGION	1
-BITMAP	1	1784	13247	99	112
+BITMAP	1	1784	13119	99	112
 PUSH	1
 SET_FILL_COLOR	1	6761162
 SET_LINE_COLOR	1	0
 POP	1
-BITMAP	1	2717	13194	162	50
-BITMAP	1	3938	13202	73	48
-BITMAP	1	2745	13822	58	50
-BITMAP	1	3292	13906	41	37
-BITMAP	1	3587	13822	218	63
+BITMAP	1	2717	13066	162	50
+BITMAP	1	3938	13074	73	48
+BITMAP	1	2745	13694	58	50
+BITMAP	1	3292	13778	41	37
+BITMAP	1	3587	13694	218	63
 PUSH	1
 SET_CLIP_REGION	1
 PUSH	1
 SET_LINE_COLOR	1	0
 POP	1
-SET_FONT	1	宋体	15	144	0
-SET_FONT	1	宋体	20	144	0
-SET_FONT	1	宋体	15	144	0
+SET_FONT	1	Segoe UI Emoji	15	144	0
+SET_FONT	1	Segoe UI Emoji	20	144	0
+SET_FONT	1	Segoe UI Emoji	15	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	13195	0	0	"WPS AI, fully embedded with ChatGPT "	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	13067	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	16777215	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	13503	0	0	"capabilities, is coming soon. WPS Pro members "	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	13375	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	16777215	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	13811	0	0	"have the opportunity to secure seats for internal"	Segoe UI Emoji	24	16777215	144	0	0	0	
-TEXT_RUN	1	10682	13811	0	0	" "	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	13683	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	10682	13683	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	16777215	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	14119	0	0	"testing and enjoy a special discount."	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	13991	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	24	16777215	144	0	0	0	
 POP	1
 POP	1
 POP	1
@@ -225,27 +225,27 @@ POP	2
 PUSH	2
 SET_LINE_COLOR	2	0
 POP	2
-SET_FONT	2	Segoe UI Semibold	36	144	0
-SET_FONT	2	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
-SET_FONT	2	Segoe UI Semibold	36	144	0
-SET_FONT	2	Segoe UI Semibold	36	144	0
+SET_FONT	2	Segoe UI Emoji	36	144	0
+SET_FONT	2	Segoe UI Emoji	2	144	0
+SET_FONT	2	Segoe UI Emoji	36	144	0
+SET_FONT	2	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	18515	0	0	"WPS AI-generated content"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	2	1006	18515	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	2	Segoe UI Emoji	28	144	0
-SET_FONT	2	Segoe UI Semibold	36	144	0
+SET_FONT	2	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	2	0
-SET_FONT	2	Segoe UI Emoji	28	144	0
-SET_FONT	2	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	18846	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	19146	0	0	"format, such as brainstorming, to-do lists, working emails, social media posts, and "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	2	1006	18846	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	19446	0	0	"more. The possibilities are endless."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	2	1006	19146	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	2	Segoe UI Emoji	28	144	0
+SET_FONT	2	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	1006	19446	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	2
 SET_CLIP_REGION	2
 PUSH	2
@@ -259,26 +259,26 @@ POP	2
 POP	2
 POP	2
 POP	2
-SET_FONT	2	宋体	20	144	0
+SET_FONT	2	Segoe UI Emoji	20	144	0
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	2	0
-SET_FONT	2	宋体	20	144	0
-SET_FONT	2	Segoe UI Semibold	36	144	0
-SET_FONT	2	Segoe UI Semibold	36	144	0
+SET_FONT	2	Segoe UI Emoji	20	144	0
+SET_FONT	2	Segoe UI Emoji	36	144	0
+SET_FONT	2	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	25094	0	0	"WPS AI-based content rewriting"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	2	Segoe UI Emoji	28	144	0
-SET_FONT	2	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	25425	0	0	"If you already have your text and content. WPS AI can also help you improve it. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	2	1006	25094	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	25725	0	0	"Whether you need to make it shorter, longer, or change format, I've got you "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	2	1006	25425	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1006	26025	0	0	"covered."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	2	1006	25725	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	2	Segoe UI Emoji	28	144	0
+SET_FONT	2	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	1006	26025	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	2
 SET_CLIP_REGION	2
 PUSH	2
@@ -292,7 +292,7 @@ POP	2
 POP	2
 POP	2
 POP	2
-SET_FONT	2	宋体	20	144	0
+SET_FONT	2	Segoe UI Emoji	20	144	0
 PUSH	2
 PUSH	2
 SET_CLIP_REGION	2
@@ -324,107 +324,107 @@ POP	3
 PUSH	3
 SET_LINE_COLOR	3	0
 POP	3
-SET_FONT	3	Segoe UI Semibold	48	144	0
+SET_FONT	3	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	3	2500134
-SET_FONT	3	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
-SET_FONT	3	Segoe UI Semibold	48	144	0
+SET_FONT	3	Segoe UI Emoji	2	144	0
+SET_FONT	3	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	3	2500134
-TEXT_RUN	3	2237	35766	0	0	"For all your document process needs"	Segoe UI Semibold	48	2500134	144	0	0	0	
-SET_FONT	3	Segoe UI Semibold	36	144	0
-SET_FONT	3	Segoe UI Semibold	48	144	0
+TEXT_RUN	3	2237	35766	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	48	2500134	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_FONT	3	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	3	2500134
-SET_FONT	3	Segoe UI Semibold	36	144	0
-SET_FONT	3	Segoe UI Semibold	36	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	37234	0	0	"Restrict Editing"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1006	37234	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
-SET_FONT	3	Segoe UI Semibold	36	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	3	0
-SET_FONT	3	Segoe UI Emoji	28	144	0
-SET_FONT	3	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	37565	0	0	"Sometimes at work, you may need to "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	37865	0	0	"send documents to colleagues but want "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	37565	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	38165	0	0	"to prevent unauthorized changes by "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	37865	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	38465	0	0	"others. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	38165	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	38765	0	0	"Click on Review > Restrict Editing to set "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	38465	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	39065	0	0	"permissions for editing, reading, "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	38765	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	39365	0	0	"commenting, and other actions to "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	39065	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	39665	0	0	"enhance document security."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	3	宋体	24	144	0
-SET_FONT	3	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	3	0
-SET_FONT	3	宋体	24	144	0
-SET_FONT	3	宋体	36	144	0
-SET_FONT	3	宋体	24	144	0
-SET_FONT	3	宋体	36	144	0
-SET_FONT	3	Segoe UI Semibold	36	144	0
-SET_FONT	3	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	44629	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1006	39365	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	44960	0	0	"Share your work with others through "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	39665	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	24	144	0
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Segoe UI Emoji	24	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_FONT	3	Segoe UI Emoji	24	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	1006	44629	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	45260	0	0	"links, QR codes, emails, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	44960	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	45560	0	0	"Everyone can simultaneously edit the "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	45260	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	45860	0	0	"same document, enabling seamless "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	45560	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1006	46160	0	0	"collaboration"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1006	45860	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	2631	46160	0	0	"."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	3	宋体	24	144	0
-SET_FONT	3	宋体	36	144	0
-SET_FONT	3	Segoe UI Semibold	36	144	0
-SET_FONT	3	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6451	40624	0	0	"Format Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1006	46160	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6451	40955	0	0	"Easily convert Word to PDF, PDF to "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	2631	46160	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	24	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_FONT	3	Segoe UI Emoji	36	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	6451	40624	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6451	41255	0	0	"Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	6451	40955	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6451	41555	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	6451	41255	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	6451	41555	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	3
 PUSH	3
 SET_CLIP_REGION	3
@@ -482,45 +482,45 @@ POP	4
 PUSH	4
 SET_LINE_COLOR	4	0
 POP	4
-SET_FONT	4	宋体	36	144	0
-SET_FONT	4	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
-SET_FONT	4	宋体	36	144	0
-SET_FONT	4	Segoe UI Semibold	48	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
+SET_FONT	4	Segoe UI Emoji	2	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
+SET_FONT	4	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	4	2500134
-SET_FONT	4	宋体	36	144	0
-SET_FONT	4	Segoe UI Semibold	48	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
+SET_FONT	4	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	4	2500134
-TEXT_RUN	4	3699	53396	0	0	"Editing and typesetting"	Segoe UI Semibold	48	2500134	144	0	0	0	
-SET_FONT	4	Segoe UI Semibold	36	144	0
-SET_FONT	4	Segoe UI Semibold	48	144	0
+TEXT_RUN	4	3699	53396	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	48	2500134	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	36	144	0
+SET_FONT	4	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	4	2500134
-SET_FONT	4	Segoe UI Semibold	36	144	0
-SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	54291	0	0	"Find and Replace"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	4	1006	54291	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
-SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	4	0
-SET_FONT	4	Segoe UI Emoji	28	144	0
-SET_FONT	4	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	54622	0	0	"Use the Find and Replace function to quickly modify text in your documents, "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	54922	0	0	"enhancing productivity. You can also search for specific formats to meet complex "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	54622	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	55222	0	0	"requirements."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	54922	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	55522	0	0	"Click on Home > Find and Replace, with the shortcut key being Ctrl+F."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	4	宋体	24	144	0
+TEXT_RUN	4	1006	55222	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-SET_FONT	4	宋体	24	144	0
+TEXT_RUN	4	1006	55522	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	24	144	0
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Segoe UI Emoji	24	144	0
 PUSH	4
 SET_CLIP_REGION	4
 PUSH	4
@@ -531,30 +531,30 @@ BITMAP	4	2870	55919	1417	806
 POP	4
 POP	4
 POP	4
-SET_FONT	4	宋体	20	144	0
-SET_FONT	4	宋体	24	144	0
-SET_FONT	4	宋体	20	144	0
-SET_FONT	4	Segoe UI Semibold	36	144	0
-SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_FONT	4	Segoe UI Emoji	20	144	0
+SET_FONT	4	Segoe UI Emoji	24	144	0
+SET_FONT	4	Segoe UI Emoji	20	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	60523	0	0	"Efficient Word Typesetting"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	4	Segoe UI Emoji	28	144	0
-SET_FONT	4	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	60854	0	0	"Using WPS saves time on document layout and leaves more room for creativity."	Segoe UI Emoji	28	0	144	0	0	0	
-TEXT_RUN	4	10807	60854	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	60523	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	61154	0	0	"Click on Home > Word Typesetting. With just one click, you can quickly adjust the "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	60854	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	10807	60854	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	61454	0	0	"document format and bulk delete document content such as blank pages, "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	61154	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	61754	0	0	"separators, text formatting, and objects."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	61454	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1006	61754	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	4
 SET_CLIP_REGION	4
 PUSH	4
@@ -565,21 +565,21 @@ BITMAP	4	3205	62089	1256	822
 POP	4
 POP	4
 POP	4
-SET_FONT	4	宋体	20	144	0
-SET_FONT	4	Segoe UI Semibold	36	144	0
-SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_FONT	4	Segoe UI Emoji	20	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
+SET_FONT	4	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	66832	0	0	"Spell Check"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	4	Segoe UI Emoji	28	144	0
-SET_FONT	4	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	67163	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes"	Segoe UI Emoji	28	0	144	0	0	0	
-TEXT_RUN	4	11400	67163	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	66832	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1006	67463	0	0	"and grammatical errors."	Segoe UI Emoji	28	0	144	0	0	0	
-TEXT_RUN	4	3939	67463	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1006	67163	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	11400	67163	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1006	67463	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	3939	67463	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	4
 PUSH	4
 SET_CLIP_REGION	4
@@ -625,15 +625,15 @@ PUSH	5
 SET_LINE_COLOR	5	0
 POP	5
 SET_FONT	5	Segoe UI Emoji	28	144	0
-SET_FONT	5	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
+SET_FONT	5	Segoe UI Emoji	2	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	69733	0	0	"Click on Review > Spell Check to receive suggestions for corrections. This feature "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	69733	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	70033	0	0	"supports multiple languages."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	70033	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	5
 SET_CLIP_REGION	5
 PUSH	5
@@ -644,50 +644,50 @@ BITMAP	5	3263	70368	1256	838
 POP	5
 POP	5
 POP	5
-SET_FONT	5	宋体	20	144	0
+SET_FONT	5	Segoe UI Emoji	20	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-SET_FONT	5	宋体	20	144	0
-SET_FONT	5	Segoe UI Semibold	36	144	0
-SET_FONT	5	宋体	20	144	0
-SET_FONT	5	Segoe UI Semibold	36	144	0
-SET_FONT	5	Segoe UI Semibold	36	144	0
+SET_FONT	5	Segoe UI Emoji	20	144	0
+SET_FONT	5	Segoe UI Emoji	36	144	0
+SET_FONT	5	Segoe UI Emoji	20	144	0
+SET_FONT	5	Segoe UI Emoji	36	144	0
+SET_FONT	5	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	75111	0	0	"Track Changes"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	5	Segoe UI Emoji	28	144	0
-SET_FONT	5	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	75442	0	0	"Click on Review > Track Changes to assist the original author in identifying changes "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	75111	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	75742	0	0	"made during document editing."	Segoe UI Emoji	28	0	144	0	0	0	
-TEXT_RUN	5	4926	75742	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	75442	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	76042	0	0	"You can filter changes based on the date range or reviser, allowing you to focus on "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	75742	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	4926	75742	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	76342	0	0	"viewing revision records from specific individuals or time periods."	Segoe UI Emoji	28	0	144	0	0	0	
-TEXT_RUN	5	9046	76342	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	76042	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	76642	0	0	"Additionally, you can easily switch between the "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	76342	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	9046	76342	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	6878	76642	0	0	"per-revision"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	1006	76642	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	8353	76642	0	0	" and post-revision states "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	6878	76642	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1006	76942	0	0	"with a single click, facilitating easy comparison of changes."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	5	8353	76642	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	5	Segoe UI Emoji	28	144	0
+SET_FONT	5	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1006	76942	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	5
 SET_CLIP_REGION	5
 PUSH	5
@@ -698,7 +698,7 @@ BITMAP	5	2698	77277	1352	758
 POP	5
 POP	5
 POP	5
-SET_FONT	5	宋体	20	144	0
+SET_FONT	5	Segoe UI Emoji	20	144	0
 PUSH	5
 PUSH	5
 SET_CLIP_REGION	5
@@ -730,15 +730,15 @@ POP	6
 PUSH	6
 SET_LINE_COLOR	6	0
 POP	6
-SET_FONT	6	Segoe UI Semibold	48	144	0
+SET_FONT	6	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	6	2500134
-SET_FONT	6	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
-SET_FONT	6	Segoe UI Semibold	48	144	0
+SET_FONT	6	Segoe UI Emoji	2	144	0
+SET_FONT	6	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	6	2500134
-TEXT_RUN	6	3799	87132	0	0	"More Popular features"	Segoe UI Semibold	48	2500134	144	0	0	0	
-SET_FONT	6	宋体	40	144	0
-SET_FONT	6	Segoe UI Semibold	48	144	0
-SET_FONT	6	宋体	40	144	0
+TEXT_RUN	6	3799	87132	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	48	2500134	144	0	0	0	
+SET_FONT	6	Segoe UI Emoji	40	144	0
+SET_FONT	6	Segoe UI Emoji	48	144	0
+SET_FONT	6	Segoe UI Emoji	40	144	0
 PUSH	6
 PUSH	6
 SET_CLIP_REGION	6
@@ -760,27 +760,27 @@ POP	6
 POP	6
 POP	6
 POP	6
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	宋体	40	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	40	144	0
 SET_TEXT_COLOR	6	2500134
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	88786	0	0	"Table of Contents"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	6	2853	88786	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	6	0
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	89117	0	0	"The Table of Contents can automatically identify the article chapters "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	89417	0	0	"and title levels, generating the table of contents in just one second."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	89117	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	6	0
+TEXT_RUN	6	2853	89417	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	6
 SET_CLIP_REGION	6
 PUSH	6
@@ -791,23 +791,23 @@ BITMAP	6	1395	90722	192	192
 POP	6
 POP	6
 POP	6
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	90847	0	0	"Mail Merge"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	91178	0	0	"It enables you to batch generate and edit multiple documents, such "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	90847	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	91478	0	0	"as emails, invitations, greeting cards, pay slips, and more. Say "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	91178	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	91778	0	0	"goodbye to repetitive document editing."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	91478	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	6	0
+TEXT_RUN	6	2853	91778	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	6
 SET_CLIP_REGION	6
 PUSH	6
@@ -818,23 +818,23 @@ BITMAP	6	1395	92933	192	192
 POP	6
 POP	6
 POP	6
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	93058	0	0	"Table Tools"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	93389	0	0	"You can create tables directly in Writer without the need to create a "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	93058	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	93689	0	0	"new document. We provide a comprehensive table toolbox for "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	93389	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	93989	0	0	"beautification, formulas, sorting, and more."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	93689	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	6	0
+TEXT_RUN	6	2853	93989	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	6
 SET_CLIP_REGION	6
 PUSH	6
@@ -845,27 +845,27 @@ BITMAP	6	1395	95144	192	192
 POP	6
 POP	6
 POP	6
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	95119	0	0	"File Collection"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	95450	0	0	"With WPS File Collection, you can efficiently manage file sharing "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	95119	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	95750	0	0	"among team members. Collected files are automatically aggregated "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	95450	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	96050	0	0	"into a shared folder, allowing you to view, edit, and delete them at "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	95750	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	96350	0	0	"any time."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	96050	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	6	0
+TEXT_RUN	6	2853	96350	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	6
 SET_CLIP_REGION	6
 PUSH	6
@@ -876,23 +876,23 @@ BITMAP	6	1395	97355	192	192
 POP	6
 POP	6
 POP	6
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	97480	0	0	"Merge & Split"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	97811	0	0	"WPS Writer supports splitting or merging files, and you can "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	97480	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	98111	0	0	"customize the number of file splits. It provides an easier way to "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	97811	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	98411	0	0	"manage your documents."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	98111	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	6	0
+TEXT_RUN	6	2853	98411	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 PUSH	6
 SET_CLIP_REGION	6
 PUSH	6
@@ -903,23 +903,23 @@ BITMAP	6	1395	99566	192	192
 POP	6
 POP	6
 POP	6
-SET_FONT	6	宋体	20	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
-SET_FONT	6	Segoe UI Semibold	36	144	0
+SET_FONT	6	Segoe UI Emoji	20	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
+SET_FONT	6	Segoe UI Emoji	36	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	99691	0	0	"Eye Protection Mode"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_FONT	6	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	100022	0	0	"By adjusting the screen's color temperature and brightness, you can "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	99691	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	36	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	100322	0	0	"reduce blue light radiation, minimize eye fatigue, and ensure optimal "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	100022	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_FONT	6	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	6	0
-TEXT_RUN	6	2853	100622	0	0	"vision during work and study."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	6	2853	100322	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_FONT	6	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	6	0
+TEXT_RUN	6	2853	100622	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	28	0	144	0	0	0	
 POP	6
 POP	6
 POP	6
@@ -958,10 +958,10 @@ POP	7
 PUSH	7
 SET_LINE_COLOR	7	0
 POP	7
-SET_FONT	7	宋体	40	144	0
+SET_FONT	7	Segoe UI Emoji	40	144	0
 SET_TEXT_COLOR	7	2500134
-SET_FONT	7	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
-SET_FONT	7	宋体	40	144	0
+SET_FONT	7	Segoe UI Emoji	2	144	0
+SET_FONT	7	Segoe UI Emoji	40	144	0
 SET_TEXT_COLOR	7	2500134
 PUSH	7
 PUSH	7
@@ -971,10 +971,10 @@ SET_CLIP_REGION	7
 PUSH	7
 SET_LINE_COLOR	7	0
 POP	7
-SET_FONT	7	Segoe UI Semibold	48	144	0
-SET_FONT	7	宋体	40	144	0
-SET_FONT	7	Segoe UI Semibold	48	144	0
-TEXT_RUN	7	3101	104326	0	0	"Free ALL-IN-ONE Office Suite"	Segoe UI Semibold	48	2500134	144	0	0	0	
+SET_FONT	7	Segoe UI Emoji	48	144	0
+SET_FONT	7	Segoe UI Emoji	40	144	0
+SET_FONT	7	Segoe UI Emoji	48	144	0
+TEXT_RUN	7	3101	104326	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Segoe UI Emoji	48	2500134	144	0	0	0	
 POP	7
 PUSH	7
 SET_CLIP_REGION	7
@@ -983,7 +983,7 @@ SET_LINE_COLOR	7	0
 POP	7
 SET_FONT	7	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	7	0
-SET_FONT	7	Segoe UI Semibold	48	144	0
+SET_FONT	7	Segoe UI Emoji	48	144	0
 SET_TEXT_COLOR	7	2500134
 SET_FONT	7	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	7	0

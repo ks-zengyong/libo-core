@@ -72,14 +72,21 @@ private:
 
     std::vector<RenderInstruction> m_aInstructions;
     std::ofstream m_File;
+    OString m_sFrameLogPath; // 保存 frame 日志路径，用于重写
     bool m_bLogging = false;
 
     // VCL 层录制
     GDIMetaFile m_aMetaFile;
     MetaToInstructionConverter m_aConverter;
     std::ofstream m_vclFile;
+    OString m_sVclLogPath; // 保存 VCL 日志路径，用于重写
     bool m_bVclLogging = false;
     bool m_bConvertingVcl = false; // 正在 VCL→RenderInstruction 转换中
+
+    // 上次 Frame 树输出，用于检测变化
+    std::vector<RenderInstruction> m_aPrevFrameInstructions;
+    // 上次 VCL 层输出，用于检测变化
+    std::vector<RenderInstruction> m_aPrevVclInstructions;
 };
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

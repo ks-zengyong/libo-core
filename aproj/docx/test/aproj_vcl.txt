@@ -1,4 +1,5 @@
 PAGE_START	1	11906	16838
+PAGE_END	1
 SET_FONT	1	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	1	16777215
 SET_FONT	1	Poppins	24	144	0
@@ -62,8 +63,8 @@ SET_TEXT_COLOR	1	16777215
 TEXT_RUN	1	284	11811	0	0	"\tto help you \t\twrite and understand your Word document"	Calibri	20	16777215	144	0	0	0	
 SET_FONT	1	fony family	20	144	0
 SET_TEXT_COLOR	1	16777215
-PAGE_END	1
 PAGE_START	2	11906	16838
+PAGE_END	2
 SET_FONT	2	Calibri	20	144	0
 SET_TEXT_COLOR	2	16777215
 TEXT_RUN	2	1004	17558	0	0	"WPS AI-generated content"	Calibri	20	16777215	144	0	0	0	
@@ -84,8 +85,8 @@ SET_FONT	2	Poppins	24	144	0
 SET_TEXT_COLOR	2	16777215
 SET_FONT	2	Poppins SemiBold	40	144	0
 SET_TEXT_COLOR	2	2500134
-PAGE_END	2
 PAGE_START	3	11906	16838
+PAGE_END	3
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	16777215
 TEXT_RUN	3	1004	34396	0	0	"For all your document process needs"	Calibri	20	16777215	144	0	0	0	
@@ -165,8 +166,8 @@ TEXT_RUN	3	6449	41041	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TX
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	16777215
 TEXT_RUN	3	6449	41341	0	0	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	
-PAGE_END	3
 PAGE_START	4	11906	16838
+PAGE_END	4
 SET_FONT	4	Calibri	20	144	0
 SET_TEXT_COLOR	4	16777215
 TEXT_RUN	4	1004	51234	0	0	"Editing and typesetting"	Calibri	20	16777215	144	0	0	0	
@@ -234,8 +235,8 @@ TEXT_RUN	4	1004	64419	0	0	"\n"	Arial	22	0	144	0	0	0
 SET_FONT	4	Arial	22	144	0
 SET_TEXT_COLOR	4	0
 TEXT_RUN	4	2852	64419	0	0	"Table Tools\nYou can create tables directly in Writer without the need to create a new document. We provide a comprehensive table toolbox for beautification, formulas, sorting, and more.\n"	Arial	22	0	144	0	0	0	
-PAGE_END	4
 PAGE_START	5	11906	16838
+PAGE_END	5
 SET_FONT	5	Arial	22	144	0
 SET_TEXT_COLOR	5	0
 TEXT_RUN	5	1004	68072	0	0	"\n"	Arial	22	0	144	0	0	0	
@@ -254,8 +255,7 @@ TEXT_RUN	5	1004	70472	0	0	"\n"	Arial	22	0	144	0	0	0
 SET_FONT	5	Arial	22	144	0
 SET_TEXT_COLOR	5	0
 TEXT_RUN	5	2852	70472	0	0	"Eye Protection Mode\nBy adjusting the screen's color temperature and brightness, you can reduce blue light radiation, minimize eye fatigue, and ensure optimal vision during work and study.\n"	Arial	22	0	144	0	0	0	
-PAGE_END	5
 PAGE_START	6	11906	16838
+PAGE_END	6
 SET_FONT	6	Poppins SemiBold	40	144	0
 SET_TEXT_COLOR	6	2500134
-PAGE_END	6
