@@ -108,6 +108,65 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
               << " nPageAvailHeight=" << nPageAvailHeight << " totalNodes=" << colNodes.size()
               << std::endl;
 
+    // LO 行为：多列节的第一个节点如果是全宽标题（字体/字号与后续节点不同），
+    // 应作为全宽 Frame 渲染，不参与列分配
+    // 对应 LO 中节标题跨越全部列宽的行为
+    size_t nFullWidthCount = 0;
+    SwTwips nFullWidthY = nBaseY;
+    if (colNodes.size() >= 2)
+    {
+        SwTextNode* pFirst = static_cast<SwTextNode*>(rNodes[colNodes[0]]);
+        SwTextNode* pSecond = static_cast<SwTextNode*>(rNodes[colNodes[1]]);
+        const std::string* pFirstFont = pFirst->GetAttr(RES_CHRATR_FONT);
+        const std::string* pSecondFont = pSecond->GetAttr(RES_CHRATR_FONT);
+        const std::string* pFirstSize = pFirst->GetAttr(RES_CHRATR_FONTSIZE);
+        const std::string* pSecondSize = pSecond->GetAttr(RES_CHRATR_FONTSIZE);
+
+        bool bFirstIsHeading = false;
+        if (pFirstFont && pSecondFont && *pFirstFont != *pSecondFont)
+            bFirstIsHeading = true;
+        if (pFirstSize && pSecondSize && *pFirstSize != *pSecondSize)
+            bFirstIsHeading = true;
+
+        if (bFirstIsHeading)
+        {
+            // 将第一个节点作为全宽 Frame 渲染
+            SwTwips nFullWidth = pBody ? pBody->getFramePrintArea().Width() : nBodyWidth;
+            SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[0]]);
+            auto* pFrame = new SwTextFrame(pTN, pParent);
+            pFrame->InsertBehind(pParent, pSibling);
+            SwRect aArea(nLeftColX, nFullWidthY, nFullWidth, heights[0]);
+            pFrame->setFrameArea(aArea);
+            pSibling = pFrame;
+            nFullWidthY += heights[0];
+            nFullWidthCount = 1;
+
+            // 更新 nBaseY 为全宽标题之后
+            nBaseY = nFullWidthY;
+            nPageAvailHeight = nBodyBottom - nBaseY;
+            if (nPageAvailHeight < 1000)
+                nPageAvailHeight = 1000;
+
+            std::cerr << "[ProcessMultiCol] Full-width heading: font="
+                      << (pFirstFont ? *pFirstFont : "?")
+                      << " size=" << (pFirstSize ? *pFirstSize : "?") << " height=" << heights[0]
+                      << " text=\"" << pTN->GetText().substr(0, 40) << "\"" << std::endl;
+        }
+    }
+
+    // 移除全宽节点，只对剩余节点进行列分配
+    if (nFullWidthCount > 0)
+    {
+        colNodes.erase(colNodes.begin(), colNodes.begin() + nFullWidthCount);
+        heights.erase(heights.begin(), heights.begin() + nFullWidthCount);
+    }
+
+    if (colNodes.empty())
+    {
+        // all nodes were full-width, already rendered above
+        return true;
+    }
+
     // LO 行为：两列并排在同一页，左列先填，右列放剩余内容
     // 左列放前 N 个节点，右列放剩余节点
     std::vector<size_t> leftColIndices, rightColIndices;
@@ -286,15 +345,16 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
 
             if (!sLine.empty())
             {
-                SwTwips nLineWidth = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
+                SwTwips nLineWidth
+                    = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
                 if (nLineWidth > nColWidth)
                 {
                     size_t nPos = 0;
                     while (nPos < sLine.size())
                     {
                         std::string sRemain = sLine.substr(nPos);
-                        int nBreak
-                            = fontEngine.FindLineBreak(sContentFontName, nContentFontSize, sRemain, nColWidth);
+                        int nBreak = fontEngine.FindLineBreak(sContentFontName, nContentFontSize,
+                                                              sRemain, nColWidth);
                         if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
                             break;
                         if (nBreak == 0)
@@ -343,11 +403,12 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
     }
 
     SwTwips nTotal = nSpaceBefore + nLineHeight * nLineCount + nSpaceAfter;
-    fprintf(stderr, "[PreCalcNodeHeight] font=%s size=%d lineH=%d lineSpacing=%s lines=%d spaceBefore=%d spaceAfter=%d total=%d text=\"%.30s\"\n",
+    fprintf(stderr,
+            "[PreCalcNodeHeight] font=%s size=%d lineH=%d lineSpacing=%s lines=%d spaceBefore=%d "
+            "spaceAfter=%d total=%d text=\"%.30s\"\n",
             sFontName.c_str(), nFontSize, nLineHeight,
-            pLineSpacing ? pLineSpacing->c_str() : "none",
-            nLineCount, nSpaceBefore, nSpaceAfter, nTotal,
-            rText.c_str());
+            pLineSpacing ? pLineSpacing->c_str() : "none", nLineCount, nSpaceBefore, nSpaceAfter,
+            nTotal, rText.c_str());
     return nTotal;
 }
 

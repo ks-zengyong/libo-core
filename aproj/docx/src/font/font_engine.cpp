@@ -114,8 +114,10 @@ SwTwips FontInstance::GetTextWidth(const std::string& text, int fontSizeHalfPt) 
                                         wlen);
                     GetTextExtentPoint32W(hdc, wtext.data(), wlen, &size);
                     SwTwips tw = static_cast<SwTwips>(size.cx * 15);
-                    fprintf(stderr, "[FontEngine] GDI textWidth: font=%s size=%d text=\"%.30s\" px=%d tw=%d\n",
-                            m_fontName.c_str(), fontSizeHalfPt, text.c_str(), size.cx, tw);
+                    fprintf(
+                        stderr,
+                        "[FontEngine] GDI textWidth: font=%s size=%d text=\"%.30s\" px=%d tw=%d\n",
+                        m_fontName.c_str(), fontSizeHalfPt, text.c_str(), size.cx, tw);
                     SelectObject(hdc, hOld);
                     DeleteObject(hFont);
                     DeleteDC(hdc);
@@ -170,8 +172,8 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
     if (!m_valid || !m_info || text.empty())
         return 0;
 
-    // 使用 GDI 进行精确宽度测量（与 GetTextWidth 一致）
-    // 对应 VCL 的 GenericSalLayout::GetTextBreak
+        // 使用 GDI 进行精确宽度测量（与 GetTextWidth 一致）
+        // 对应 VCL 的 GenericSalLayout::GetTextBreak
 #ifdef _WIN32
     if (!m_fontName.empty())
     {
@@ -192,8 +194,9 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
                 if (wlen > 0)
                 {
                     std::vector<wchar_t> wtext(wlen);
-                    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), wtext.data(), wlen);
-                    
+                    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), (int)text.size(), wtext.data(),
+                                        wlen);
+
                     // 二分查找断点
                     int lo = 0, hi = wlen;
                     int lastBreak = 0;
@@ -216,15 +219,16 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
                     SelectObject(hdc, hOld);
                     DeleteObject(hFont);
                     DeleteDC(hdc);
-                    
+
                     if (lastBreak == 0)
                         return 1; // at least one character
                     if (lastBreak >= wlen)
                         return -1; // entire text fits
-                    
+
                     // 将宽字符断点映射回 UTF-8 字节位置
                     // 使用 MultiByteToWideChar 反向映射
-                    int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wtext.data(), lastBreak, NULL, 0, NULL, NULL);
+                    int utf8Len = WideCharToMultiByte(CP_UTF8, 0, wtext.data(), lastBreak, NULL, 0,
+                                                      NULL, NULL);
                     return utf8Len;
                 }
                 SelectObject(hdc, hOld);
@@ -308,6 +312,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
 
                     double fAscent = 0, fDescent = 0, fExtLeading = 0;
                     hb_position_t nWinAscent = 0, nWinDescent = 0;
+                    bool bHheaValid = false;
 
                     // 检查是否为可变字体（有 fvar 表）
                     hb_blob_t* fvar = hb_face_reference_table(hb_font_get_face(font),
@@ -347,6 +352,9 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                             && hb_ot_metrics_get_position(font, DESCENT_HHEA, &nDescent)
                             && hb_ot_metrics_get_position(font, LINEGAP_HHEA, &nLineGap))
                         {
+                            fprintf(stderr,
+                                    "[FontEngine] HHEA: font=%s asc=%d desc=%d lineGap=%d\n",
+                                    m_fontName.c_str(), nAscent, nDescent, nLineGap);
                             // tdf#107605: Some fonts have weird values, check ascender +ve
                             // and descender -ve
                             if (nAscent >= 0 && nDescent <= 0)
@@ -354,6 +362,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                                 fAscent = nAscent;
                                 fDescent = -nDescent;
                                 fExtLeading = nLineGap;
+                                bHheaValid = true;
                             }
                         }
 
@@ -379,8 +388,8 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                             fprintf(stderr,
                                     "[FontEngine] OS/2: font=%s typoAsc=%d typoDesc=%d "
                                     "typoLineGap=%d winAsc=%d winDesc=%d\n",
-                                    m_fontName.c_str(), nTypoAscent, nTypoDescent,
-                                    nTypoLineGap, nWinAscent, nWinDescent);
+                                    m_fontName.c_str(), nTypoAscent, nTypoDescent, nTypoLineGap,
+                                    nWinAscent, nWinDescent);
                             // 如果 hhea 为空，使用 Win metrics
                             if (fAscent == 0.0 && fDescent == 0.0)
                             {
@@ -448,11 +457,12 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                         int result = nAscent + nDescent + nExtLeading;
                         fprintf(stderr,
                                 "[FontEngine] HarfBuzz: font=%s halfPt=%d ascent=%.0f "
-                                "descent=%.0f extLead=%.0f winAscent=%d winDescent=%d em=%.0f "
+                                "descent=%.0f extLead=%.0f winAscent=%d winDescent=%d "
+                                "em=%.0f hheaValid=%d "
                                 "nAscent=%d nDescent=%d nExtLead=%d result=%d\n",
                                 m_fontName.c_str(), fontSizeHalfPt, fAscent, fDescent, fExtLeading,
-                                nWinAscent, nWinDescent, emSize, nAscent, nDescent, nExtLeading,
-                                result);
+                                nWinAscent, nWinDescent, emSize, bHheaValid, nAscent, nDescent,
+                                nExtLeading, result);
                         return result;
                     }
                 }
