@@ -366,11 +366,63 @@ SwPageFrame* SwPageFrame::GetNextPage() const { return static_cast<SwPageFrame*>
 
 SwPageFrame* SwPageFrame::GetPrevPage() const { return static_cast<SwPageFrame*>(GetPrev()); }
 
+SwHeaderFrame* SwPageFrame::FindHeaderFrame() const
+{
+    // 在页面子 Frame 中查找页眉 Frame
+    SwFrame* pLower = GetLower();
+    while (pLower)
+    {
+        if (pLower->IsHeaderFrame())
+            return static_cast<SwHeaderFrame*>(pLower);
+        pLower = pLower->GetNext();
+    }
+    return nullptr;
+}
+
+SwFooterFrame* SwPageFrame::FindFooterFrame() const
+{
+    SwFrame* pLower = GetLower();
+    while (pLower)
+    {
+        if (pLower->IsFooterFrame())
+            return static_cast<SwFooterFrame*>(pLower);
+        pLower = pLower->GetNext();
+    }
+    return nullptr;
+}
+
+SwFootnoteContFrame* SwPageFrame::MakeFootnoteCont()
+{
+    // 创建脚注容器 Frame，对应 LO ftnfrm.cxx: SwPageFrame::MakeFootnoteCont
+    if (m_pFootnoteCont)
+        return m_pFootnoteCont;
+
+    m_pFootnoteCont = new SwFootnoteContFrame(this);
+    m_pFootnoteCont->InsertBehind(this, nullptr);
+
+    // 设置脚注容器区域（页面底部）
+    SwRect aPageArea = getFrameArea();
+    SwRect aPrtArea = getFramePrintArea();
+    SwTwips nFnHeight = 0; // 初始高度为 0，随脚注添加而增长
+    SwRect aFnContArea(aPageArea.Left() + aPrtArea.Left(),
+                       aPageArea.Top() + aPrtArea.Top() + aPrtArea.Height() - nFnHeight,
+                       aPrtArea.Width(), nFnHeight);
+    m_pFootnoteCont->setFrameArea(aFnContArea);
+    m_pFootnoteCont->setFramePrintArea(SwRect(0, 0, aPrtArea.Width(), nFnHeight));
+
+    return m_pFootnoteCont;
+}
+
 //===----------------------------------------------------------------------===//
 // SwBodyFrame
 //===----------------------------------------------------------------------===//
 
 SwBodyFrame::SwBodyFrame(SwPageFrame* pParent)
+    : SwLayoutFrame(SwFrameType::Body, pParent)
+{
+}
+
+SwBodyFrame::SwBodyFrame(SwLayoutFrame* pParent)
     : SwLayoutFrame(SwFrameType::Body, pParent)
 {
 }
@@ -546,6 +598,8 @@ bool SwFlowFrame::s_bMoveBwdJump = false;
 
 //===----------------------------------------------------------------------===//
 // SwTabFrame, SwRowFrame, SwCellFrame, SwSectionFrame
+// SwColumnFrame, SwHeaderFrame, SwFooterFrame, SwFootnoteContFrame,
+// SwFootnoteFrame, SwFlyFrame, SwNoTextFrame
 //===----------------------------------------------------------------------===//
 
 SwTabFrame::SwTabFrame(SwLayoutFrame* pParent)
@@ -579,3 +633,157 @@ SwSectionFrame::SwSectionFrame(SwLayoutFrame* pParent)
 }
 
 SwSectionFrame::~SwSectionFrame() = default;
+
+void SwSectionFrame::Format()
+{
+    // 节 Frame 排版：调整子 Frame 以适应节区域
+    SwRect aArea = getFrameArea();
+    SwFrame* pLower = GetLower();
+    if (pLower)
+    {
+        SwRect aChildArea(0, 0, aArea.Width(), aArea.Height());
+        pLower->setFrameArea(aChildArea);
+        pLower->setFramePrintArea(aChildArea);
+    }
+    SwLayoutFrame::Format();
+}
+
+SwColumnFrame::SwColumnFrame(SwLayoutFrame* pParent)
+    : SwLayoutFrame(SwFrameType::Column, pParent)
+{
+}
+
+SwColumnFrame::~SwColumnFrame() = default;
+
+void SwColumnFrame::Format()
+{
+    // 列 Frame 的排版：调整子 BodyFrame 的尺寸以适应列宽
+    // 对应 LO colfrm.cxx: SwColumnFrame::Format
+    SwFrame* pLower = GetLower();
+    if (pLower && pLower->IsBodyFrame())
+    {
+        SwRect aColArea = getFrameArea();
+        SwRect aBodyRect(0, 0, aColArea.Width(), aColArea.Height());
+        pLower->setFrameArea(aBodyRect);
+        pLower->setFramePrintArea(aBodyRect);
+    }
+    SwLayoutFrame::Format();
+}
+
+void SwColumnFrame::MakeAll()
+{
+    Format();
+}
+
+SwHeaderFrame::SwHeaderFrame(SwLayoutFrame* pParent)
+    : SwLayoutFrame(SwFrameType::Header, pParent)
+{
+}
+
+SwHeaderFrame::~SwHeaderFrame() = default;
+
+void SwHeaderFrame::Format()
+{
+    // 页眉 Frame 排版：调整子 Frame 以适应页眉区域
+    // 对应 LO hffrm.cxx: SwHeadFootFrame::Format
+    SwRect aArea = getFrameArea();
+    SwFrame* pLower = GetLower();
+    if (pLower)
+    {
+        SwRect aChildArea(0, 0, aArea.Width(), aArea.Height());
+        pLower->setFrameArea(aChildArea);
+        pLower->setFramePrintArea(aChildArea);
+    }
+    SwLayoutFrame::Format();
+}
+
+SwFooterFrame::SwFooterFrame(SwLayoutFrame* pParent)
+    : SwLayoutFrame(SwFrameType::Footer, pParent)
+{
+}
+
+SwFooterFrame::~SwFooterFrame() = default;
+
+void SwFooterFrame::Format()
+{
+    // 页脚 Frame 排版：调整子 Frame 以适应页脚区域
+    SwRect aArea = getFrameArea();
+    SwFrame* pLower = GetLower();
+    if (pLower)
+    {
+        SwRect aChildArea(0, 0, aArea.Width(), aArea.Height());
+        pLower->setFrameArea(aChildArea);
+        pLower->setFramePrintArea(aChildArea);
+    }
+    SwLayoutFrame::Format();
+}
+
+SwFootnoteContFrame::SwFootnoteContFrame(SwLayoutFrame* pParent)
+    : SwLayoutFrame(SwFrameType::FootnoteCont, pParent)
+{
+}
+
+SwFootnoteContFrame::~SwFootnoteContFrame() = default;
+
+void SwFootnoteContFrame::Format()
+{
+    // 脚注容器排版：调整子 Frame 以适应容器区域
+    SwRect aArea = getFrameArea();
+    SwFrame* pLower = GetLower();
+    if (pLower)
+    {
+        SwRect aChildArea(0, 0, aArea.Width(), aArea.Height());
+        pLower->setFrameArea(aChildArea);
+        pLower->setFramePrintArea(aChildArea);
+    }
+    SwLayoutFrame::Format();
+}
+
+SwFootnoteFrame::SwFootnoteFrame(SwLayoutFrame* pParent)
+    : SwLayoutFrame(SwFrameType::Footnote, pParent)
+{
+}
+
+SwFootnoteFrame::~SwFootnoteFrame() = default;
+
+void SwFootnoteFrame::Format()
+{
+    SwRect aArea = getFrameArea();
+    SwFrame* pLower = GetLower();
+    if (pLower)
+    {
+        SwRect aChildArea(0, 0, aArea.Width(), aArea.Height());
+        pLower->setFrameArea(aChildArea);
+        pLower->setFramePrintArea(aChildArea);
+    }
+    SwLayoutFrame::Format();
+}
+
+SwFlyFrame::SwFlyFrame(SwLayoutFrame* pParent)
+    : SwLayoutFrame(SwFrameType::Fly, pParent)
+{
+}
+
+SwFlyFrame::~SwFlyFrame() = default;
+
+void SwFlyFrame::Format()
+{
+    // 浮动框排版：调整子 Frame 以适应浮动框区域
+    SwRect aArea = getFrameArea();
+    SwFrame* pLower = GetLower();
+    if (pLower)
+    {
+        SwRect aChildArea(0, 0, aArea.Width(), aArea.Height());
+        pLower->setFrameArea(aChildArea);
+        pLower->setFramePrintArea(aChildArea);
+    }
+    SwLayoutFrame::Format();
+}
+
+SwNoTextFrame::SwNoTextFrame(SwContentNode* pNode, SwLayoutFrame* pParent)
+    : SwContentFrame(SwFrameType::NoTxt, pParent)
+{
+    mpNode = pNode;
+}
+
+SwNoTextFrame::~SwNoTextFrame() = default;

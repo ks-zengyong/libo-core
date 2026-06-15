@@ -525,11 +525,10 @@ void DocxParser::ParseStyles(SwDoc& doc)
     fprintf(stderr, "[Parser] Resolved style fonts:\n");
     for (auto & [ id, def ] : styles_)
     {
-        fprintf(stderr,
-                "[Parser]   styleId='%s' name='%s' font='%s' size=%d"
+        fprintf(stderr, "[Parser]   styleId='%s' name='%s' font='%s' size=%d"
                 " spacingBefore=%d spacingAfter=%d spacingLine=%d\n",
-                id.c_str(), def.name.c_str(), def.fontName.c_str(), def.fontSize, def.spacingBefore,
-                def.spacingAfter, def.spacingLine);
+                id.c_str(), def.name.c_str(), def.fontName.c_str(), def.fontSize,
+                def.spacingBefore, def.spacingAfter, def.spacingLine);
     }
 }
 
@@ -980,8 +979,7 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         if (it != styles_.end())
             pStyleDef = &it->second;
         else
-            std::cerr << "[DEBUG] Style not found: styleId=" << sStyleId
-                      << " mapSize=" << styles_.size() << std::endl;
+            std::cerr << "[DEBUG] Style not found: styleId=" << sStyleId << " mapSize=" << styles_.size() << std::endl;
     }
     if (!pStyleDef)
     {
@@ -992,18 +990,14 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             {
                 pStyleDef = &def;
                 nDefaultCount++;
-                std::cerr << "[DEBUG] Fallback default style: id=" << id << " name=" << def.name
-                          << std::endl;
+                std::cerr << "[DEBUG] Fallback default style: id=" << id << " name=" << def.name << std::endl;
             }
         }
-        std::cerr << "[DEBUG] sStyleId=" << sStyleId << " foundStyle=" << (pStyleDef ? "yes" : "NO")
-                  << " nDefaultCount=" << nDefaultCount << std::endl;
+        std::cerr << "[DEBUG] sStyleId=" << sStyleId << " foundStyle=" << (pStyleDef ? "yes" : "NO") << " nDefaultCount=" << nDefaultCount << std::endl;
     }
     else
     {
-        std::cerr << "[DEBUG] Found style: styleId=" << sStyleId << " name=" << pStyleDef->name
-                  << " fontName=" << pStyleDef->fontName << " fontSize=" << pStyleDef->fontSize
-                  << " basedOn=" << pStyleDef->basedOn << std::endl;
+        std::cerr << "[DEBUG] Found style: styleId=" << sStyleId << " name=" << pStyleDef->name << " fontName=" << pStyleDef->fontName << " fontSize=" << pStyleDef->fontSize << " basedOn=" << pStyleDef->basedOn << std::endl;
     }
 
     // 解析文本内容和 Run 属性
@@ -1134,9 +1128,7 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             {
                 // 文本框（w:txbxContent）属于浮动对象，aproj 尚未实现
                 // 跳过文本框内容，避免将其错误插入主文档流
-                std::cerr
-                    << "[ParseTxbx] Found txbxContent, skipping (floating object not supported)"
-                    << std::endl;
+                std::cerr << "[ParseTxbx] Found txbxContent, skipping (floating object not supported)" << std::endl;
                 return;
             }
             findTxbxContent(n);
@@ -1531,10 +1523,8 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
                     || nName == "txbxContent")
                 {
                     // 文本框（w:txbxContent）属于浮动对象，aproj 尚未实现
-                    // 跳过文本框内容，避免将其错误插入主文档流
-                    std::cerr << "[ParseTxbx] Found txbxContent in table, skipping (floating "
-                                 "object not supported)"
-                              << std::endl;
+                // 跳过文本框内容，避免将其错误插入主文档流
+                std::cerr << "[ParseTxbx] Found txbxContent in table, skipping (floating object not supported)" << std::endl;
                     return;
                 }
                 findTxbxContent(n);

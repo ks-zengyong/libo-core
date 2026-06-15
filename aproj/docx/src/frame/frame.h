@@ -14,6 +14,9 @@ class SwPageFrame;
 class SwContentFrame;
 class SwTextFrame;
 class SwFlowFrame;
+class SwHeaderFrame;
+class SwFooterFrame;
+class SwFootnoteContFrame;
 class SwNode;
 class SwContentNode;
 class SwFrameFormat;
@@ -116,6 +119,12 @@ public:
     bool IsCellFrame() const { return mnFrameType == SwFrameType::Cell; }
     bool IsHeaderFrame() const { return mnFrameType == SwFrameType::Header; }
     bool IsFooterFrame() const { return mnFrameType == SwFrameType::Footer; }
+    bool IsColumnFrame() const { return mnFrameType == SwFrameType::Column; }
+    bool IsFootnoteContFrame() const { return mnFrameType == SwFrameType::FootnoteCont; }
+    bool IsFootnoteFrame() const { return mnFrameType == SwFrameType::Footnote; }
+    bool IsFlyFrame() const { return mnFrameType == SwFrameType::Fly; }
+    bool IsNoTextFrame() const { return mnFrameType == SwFrameType::NoTxt; }
+    bool IsSctFrame() const { return mnFrameType == SwFrameType::Section; }
 
     // 树导航
     SwFrame* GetNext() const { return mpNext; }
@@ -266,6 +275,15 @@ public:
     // 创建页面结构
     void PreparePage();
 
+    // 页眉/页脚
+    SwHeaderFrame* FindHeaderFrame() const;
+    SwFooterFrame* FindFooterFrame() const;
+
+    // 脚注容器
+    SwFootnoteContFrame* GetFootnoteCont() const { return m_pFootnoteCont; }
+    SwFootnoteContFrame* MakeFootnoteCont();
+    void SetFootnoteCont(SwFootnoteContFrame* p) { m_pFootnoteCont = p; }
+
     // 链表
     SwPageFrame* GetNextPage() const;
     SwPageFrame* GetPrevPage() const;
@@ -273,6 +291,7 @@ public:
 private:
     sal_uInt16 m_nPhyPageNum;
     SwFrameFormat* m_pDesc;
+    SwFootnoteContFrame* m_pFootnoteCont = nullptr;
 };
 
 // SwBodyFrame: 正文容器，对应 LibreOffice 的 SwBodyFrame
@@ -280,6 +299,7 @@ class SwBodyFrame : public SwLayoutFrame
 {
 public:
     SwBodyFrame(SwPageFrame* pParent);
+    SwBodyFrame(SwLayoutFrame* pParent);
     ~SwBodyFrame() override;
 };
 
@@ -418,6 +438,70 @@ class SwSectionFrame : public SwLayoutFrame
 public:
     SwSectionFrame(SwLayoutFrame* pParent);
     ~SwSectionFrame() override;
+    void Format() override;
+};
+
+// SwColumnFrame: 分栏 Frame，对应 LibreOffice 的 SwColumnFrame
+class SwColumnFrame : public SwLayoutFrame
+{
+public:
+    SwColumnFrame(SwLayoutFrame* pParent);
+    ~SwColumnFrame() override;
+    void Format() override;
+    void MakeAll() override;
+};
+
+// SwHeaderFrame: 页眉 Frame，对应 LibreOffice 的 SwHeaderFrame
+class SwHeaderFrame : public SwLayoutFrame
+{
+public:
+    SwHeaderFrame(SwLayoutFrame* pParent);
+    ~SwHeaderFrame() override;
+    void Format() override;
+};
+
+// SwFooterFrame: 页脚 Frame，对应 LibreOffice 的 SwFooterFrame
+class SwFooterFrame : public SwLayoutFrame
+{
+public:
+    SwFooterFrame(SwLayoutFrame* pParent);
+    ~SwFooterFrame() override;
+    void Format() override;
+};
+
+// SwFootnoteContFrame: 脚注容器 Frame，对应 LibreOffice 的 SwFootnoteContFrame
+class SwFootnoteContFrame : public SwLayoutFrame
+{
+public:
+    SwFootnoteContFrame(SwLayoutFrame* pParent);
+    ~SwFootnoteContFrame() override;
+    void Format() override;
+};
+
+// SwFootnoteFrame: 脚注 Frame，对应 LibreOffice 的 SwFootnoteFrame
+class SwFootnoteFrame : public SwLayoutFrame
+{
+public:
+    SwFootnoteFrame(SwLayoutFrame* pParent);
+    ~SwFootnoteFrame() override;
+    void Format() override;
+};
+
+// SwFlyFrame: 浮动框 Frame，对应 LibreOffice 的 SwFlyFrame
+class SwFlyFrame : public SwLayoutFrame
+{
+public:
+    SwFlyFrame(SwLayoutFrame* pParent);
+    ~SwFlyFrame() override;
+    void Format() override;
+};
+
+// SwNoTextFrame: 非文本内容 Frame (图片/OLE)，对应 LibreOffice 的 SwNoTextFrame
+class SwNoTextFrame : public SwContentFrame
+{
+public:
+    SwNoTextFrame(SwContentNode* pNode, SwLayoutFrame* pParent);
+    ~SwNoTextFrame() override;
 };
 
 // 内联实现

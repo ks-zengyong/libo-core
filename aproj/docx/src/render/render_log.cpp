@@ -294,6 +294,19 @@ void RenderLogger::LogImageFrame(int pageNum, int x, int y, int width, int heigh
     OnInstruction(inst);
 }
 
+void RenderLogger::LogSectionFrame(int pageNum, int x, int y, int width, int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::SECTION_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = width;
+    inst.height = height;
+    OnInstruction(inst);
+}
+
 void RenderLogger::LogRect(int pageNum, int x, int y, int width, int height)
 {
     RenderInstruction inst;
@@ -390,18 +403,12 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                         {
                             sStyleName = "Default Paragraph Style";
                         }
-                        // 字体替换在 LO 中由 VCL 层的 ImplFontSubstitute 处理
-                        // 参考 vcl/source/font/DirectFontSubstitution.cxx
-                        // aproj 使用系统字体，不需要额外的字体替换逻辑
 
                         // LibreOffice 无头模式默认前景色为白色 (0xFFFFFF)
                         uint32_t fontColor = 0xFFFFFF;
-                        // 与 VCL 层一致：FontWeight::Bold=700, FontWeight::Normal=400
-                        // 截断为 uint8_t：700→188, 400→144
                         uint8_t fontWeight = (pWeight && *pWeight == "bold") ? 188 : 144;
                         uint8_t fontItalic = (pItalic && *pItalic == "italic") ? 1 : 0;
 
-                        // 样式名已在上方设置
                         const char* styleName = StoreString(sStyleName.c_str());
 
                         SwRect aArea = pTextFrame->getFrameArea();
@@ -414,9 +421,43 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                     // VCL 层：PaintSwFrame 输出 SET_FONT + TEXT_RUN
                     pFrame->PaintSwFrame(&aOutDev);
                 }
+                else if (pFrame->IsNoTextFrame())
+                {
+                    // NoTextFrame: 图片/OLE Frame，输出 IMAGE_FRAME
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogImageFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                }
+                else if (pFrame->IsTabFrame())
+                {
+                    // TabFrame: 输出 TABLE_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogTableFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsRowFrame())
+                {
+                    // RowFrame: 输出 TABLE_ROW，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogTableRow(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsCellFrame())
+                {
+                    // CellFrame: 输出 TABLE_CELL，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogTableCell(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsSctFrame())
+                {
+                    // SectionFrame: 输出 SECTION_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogSectionFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
                 else if (pFrame->IsLayoutFrame())
                 {
-                    // LayoutFrame: 只递归进入子 Frame（不调用 PaintSwFrame，避免重复绘制）
+                    // 其他 LayoutFrame: 只递归进入子 Frame（Header, Footer, Column, Footnote 等）
                     logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
                 }
                 else

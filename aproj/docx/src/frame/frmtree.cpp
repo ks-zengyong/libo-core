@@ -219,67 +219,74 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
               << " rightCol=" << rightColIndices.size() << " rightH=" << nRightHeight
               << " bLeftOverflow=" << bLeftOverflow << std::endl;
 
-    // LO 行为：两列并排在同一页，左列溢出则创建新页面
-    SwTwips nCurY = nBaseY;
+    // 创建节 Frame，内含列 Frame（对应 LO: SectionFrame → ColumnFrame → BodyFrame）
+    auto* pSectionFrame = new SwSectionFrame(pParent);
+    pSectionFrame->InsertBehind(pParent, pSibling);
+    pSibling = pSectionFrame;
 
-    // 左列填当前页（或新页面如果溢出）
-    SwLayoutFrame* pLeftBody = pParent;
-    SwFrame* pLeftSibling = pSibling;
+    // 处理溢出：创建新页面
+    SwLayoutFrame* pSectParent = pSectionFrame;
     if (bLeftOverflow)
     {
-        // 左列溢出：创建新页面
         SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
         SwRootFrame* pRoot = rDoc.GetRootFrame();
         SwPageFrame* pNewPage = InsertNewPage(pRoot, pDesc);
-        pLeftBody = static_cast<SwLayoutFrame*>(pNewPage->GetLower());
-        pLeftSibling = nullptr;
-        nCurY = pNewPage->getFrameArea().Top() + pNewPage->getFramePrintArea().Top();
+        SwLayoutFrame* pNewBody = static_cast<SwLayoutFrame*>(pNewPage->GetLower());
+        auto* pNewSectFrame = new SwSectionFrame(pNewBody);
+        pNewSectFrame->InsertBehind(pNewBody, nullptr);
+        pSectParent = pNewSectFrame;
+        pSibling = pNewSectFrame;
+        pSectionFrame = pNewSectFrame;
         std::cerr << "[ProcessMultiCol] Left col overflow to page " << pNewPage->GetPhyPageNum()
                   << std::endl;
     }
 
+    // 创建左列 Frame（对应 LO: SwColumnFrame 内含 SwBodyFrame）
+    auto* pLeftColFrame = new SwColumnFrame(pSectParent);
+    pLeftColFrame->InsertBehind(pSectParent, nullptr);
+    // 在 ColumnFrame 内创建 BodyFrame
+    auto* pLeftColBody = new SwBodyFrame(pParent);
+    pLeftColBody->InsertBehind(pLeftColFrame, nullptr);
+
+    SwTwips nCurY = nBaseY;
+    SwFrame* pLeftSibling = nullptr;
     for (size_t idx : leftColIndices)
     {
         SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
-        auto* pFrame = new SwTextFrame(pTN, pLeftBody);
-        pFrame->InsertBehind(pLeftBody, pLeftSibling);
+        auto* pFrame = new SwTextFrame(pTN, pLeftColBody);
+        pFrame->InsertBehind(pLeftColBody, pLeftSibling);
         SwRect aArea(nLeftColX, nCurY, nColWidth, heights[idx]);
         pFrame->setFrameArea(aArea);
         pLeftSibling = pFrame;
         nCurY += heights[idx];
     }
 
-    // 右列在当前页（与左列并排，如果左列未溢出；如果左列溢出，右列也在新页面）
-    if (!bLeftOverflow)
+    // 创建右列 Frame
+    if (!rightColIndices.empty())
     {
-        nCurY = nBaseY;
-        // 使用 pSibling 跟踪右列最后一个插入的 Frame，确保顺序正确
-        SwFrame* pRightPrev = pLeftSibling;
-        for (size_t idx : rightColIndices)
+        auto* pRightColFrame = new SwColumnFrame(pSectParent);
+        pRightColFrame->InsertBehind(pSectParent, pLeftColFrame);
+        auto* pRightColBody = new SwBodyFrame(pParent);
+        pRightColBody->InsertBehind(pRightColFrame, nullptr);
+
+        if (!bLeftOverflow)
         {
-            SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
-            auto* pFrame = new SwTextFrame(pTN, pParent);
-            pFrame->InsertBehind(pParent, pRightPrev);
-            SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
-            pFrame->setFrameArea(aArea);
-            pRightPrev = pFrame;
-            pSibling = pFrame;
-            nCurY += heights[idx];
+            nCurY = nBaseY;
         }
-    }
-    else
-    {
-        // 左列溢出到新页面，右列也放在同一新页面
-        nCurY = pLeftBody->getFrameArea().Top() + pLeftBody->getFramePrintArea().Top();
-        SwFrame* pRightPrev = pLeftSibling;
+        else
+        {
+            nCurY = pSectParent->getFrameArea().Top() + pSectParent->getFrameArea().Top();
+        }
+
+        SwFrame* pRightSibling = nullptr;
         for (size_t idx : rightColIndices)
         {
             SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
-            auto* pFrame = new SwTextFrame(pTN, pLeftBody);
-            pFrame->InsertBehind(pLeftBody, pRightPrev);
+            auto* pFrame = new SwTextFrame(pTN, pRightColBody);
+            pFrame->InsertBehind(pRightColBody, pRightSibling);
             SwRect aArea(nRightColX, nCurY, nColWidth, heights[idx]);
             pFrame->setFrameArea(aArea);
-            pRightPrev = pFrame;
+            pRightSibling = pFrame;
             pSibling = pFrame;
             nCurY += heights[idx];
         }
@@ -686,6 +693,18 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                               << std::endl;
                     nEnd = nNewEnd;
                 }
+            }
+        }
+
+        // 如果是节节点，跳过其所有子节点
+        // 对应 LO: InsertCnt_ 中 IsSectionNode() 分支递归处理节内容
+        if (pNode->IsSectionNode())
+        {
+            SwSectionNode* pSection = static_cast<SwSectionNode*>(pNode);
+            SwEndNode* pEnd = pSection->GetEndOfSection();
+            if (pEnd)
+            {
+                i = pEnd->GetIndex();
             }
         }
 
@@ -1268,9 +1287,61 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         aTabRect.SetHeight(nTotalHeight);
         pTabFrame->setFrameArea(aTabRect);
     }
+    else if (rNode.IsGrfNode() || rNode.IsOLENode())
+    {
+        // 创建非文本内容 Frame（图片/OLE），对应 LibreOffice 的 SwNoTextFrame
+        // 对应 LO: InsertCnt_ 中 IsContentNode() 分支调用 pNode->MakeFrame(pLay)
+        SwContentNode* pContentNode = rNode.GetContentNode();
+        if (pContentNode)
+        {
+            auto* pFrame = new SwNoTextFrame(pContentNode, pParent);
+            pFrame->InsertBehind(pParent, pSibling);
+
+            // 确保 pPage 已初始化
+            if (!pPage)
+            {
+                SwFrame* pF = pParent;
+                while (pF && !pF->IsPageFrame())
+                    pF = pF->GetUpper();
+                if (pF)
+                    pPage = static_cast<SwPageFrame*>(pF);
+            }
+
+            // 计算 Y 位置
+            SwTwips nY = 0;
+            if (pSibling)
+                nY = pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height();
+            else
+                nY = pPage ? pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top() : 0;
+
+            // 获取 Body 宽度
+            SwTwips nPageWidth = 11906;
+            if (pPage)
+            {
+                SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                if (pBody)
+                    nPageWidth = pBody->getFramePrintArea().Width();
+            }
+
+            const SwTwips nDefaultIndent = 284;
+            // 默认图片/OLE 高度（在无实际图片数据时使用）
+            SwTwips nDefaultHeight = 1440; // 1 inch
+
+            SwRect aFrameArea(nDefaultIndent, nY, nPageWidth - nDefaultIndent, nDefaultHeight);
+            pFrame->setFrameArea(aFrameArea);
+        }
+    }
+    else if (rNode.IsSectionNode())
+    {
+        // 创建节 Frame，对应 LibreOffice 的 SwSectionFrame
+        // 对应 LO: InsertCnt_ 中 IsSectionNode() 分支
+        auto* pSectionFrame = new SwSectionFrame(pParent);
+        pSectionFrame->InsertBehind(pParent, pSibling);
+    }
     else if (rNode.IsStartNode())
     {
-        // 节区开始，可能需要创建子布局
+        // 其他 StartNode 类型（如 FlyStartNode, HeaderStartNode, FooterStartNode 等）
+        // 暂不处理，留待后续迁移
     }
 }
 

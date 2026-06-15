@@ -42,6 +42,7 @@ public:
     void LogTableRow(int pageNum, int x, int y, int width, int height);
     void LogTableCell(int pageNum, int x, int y, int width, int height);
     void LogImageFrame(int pageNum, int x, int y, int width, int height);
+    void LogSectionFrame(int pageNum, int x, int y, int width, int height);
     void LogRect(int pageNum, int x, int y, int width, int height);
     void LogLine(int pageNum, int x1, int y1, int x2, int y2);
 
