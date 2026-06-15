@@ -12,7 +12,16 @@ cd aproj/docx
 cmake -B build -G "Visual Studio 17 2022" -A x64
 ```
 
-## 编译
+## 编译 (使用 build.bat)
+```bash
+# Debug 模式 (默认)
+build.bat
+
+# Release 模式
+build.bat Release
+```
+
+## 手动编译
 ```bash
 cmake --build build --config Debug
 # 或
@@ -21,7 +30,7 @@ cmake --build build --config Release
 
 ## 运行测试
 ```bash
-./build/Debug/docx_e2e_test.exe
+./output/docx_e2e_test.exe
 ```
 
 ## 构建产物
@@ -30,3 +39,5 @@ cmake --build build --config Release
 | `docx_core` | 静态库 | 核心 DOCX 解析/布局/渲染管线 |
 | `docx_e2e_test` | 可执行 | 端到端测试 |
 | `render_diff` | 可执行 | 渲染结果对比工具 |
+
+> `build.bat` 编译完成后会将产物自动复制到 `output/` 目录下。
