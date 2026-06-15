@@ -31,6 +31,7 @@ $(eval $(call gb_Library_set_include,sw,\
     -I$(SRCDIR)/sw/source/uibase/inc \
     -I$(SRCDIR)/sw/inc \
     -I$(WORKDIR)/SdiTarget/sw/sdi \
+    -I$(SRCDIR)/render_common \
     $$(INCLUDE) \
 ))
 
@@ -367,6 +368,8 @@ $(eval $(call gb_Library_add_exception_objects,sw,\
     sw/source/core/layout/paintfrm \
     sw/source/core/layout/paint_listener \
     sw/source/core/layout/meta_to_instruction \
+    render_common/render_format \
+    render_common/frame_tree_walker \
     sw/source/core/layout/sectfrm \
     sw/source/core/layout/softpagebreak \
     sw/source/core/layout/sortedobjs \

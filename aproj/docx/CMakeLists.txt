@@ -42,6 +42,18 @@ if(MSVC)
     target_compile_options(harfbuzz PRIVATE /W0 /utf-8)
 endif()
 
+# Render common (shared rendering utilities used by both sw and aproj)
+set(RENDER_COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../render_common)
+add_library(render_common STATIC
+    ${RENDER_COMMON_DIR}/render_format.cxx
+    ${RENDER_COMMON_DIR}/frame_tree_walker.cxx
+)
+target_include_directories(render_common PUBLIC ${RENDER_COMMON_DIR})
+target_compile_definitions(render_common PRIVATE _CRT_SECURE_NO_WARNINGS=1)
+if(MSVC)
+    target_compile_options(render_common PRIVATE /W3 /utf-8)
+endif()
+
 # Core library (LibreOffice-compatible docx pipeline)
 add_library(docx_core STATIC
     src/core/bparr.cpp
@@ -58,18 +70,19 @@ add_library(docx_core STATIC
     src/render/render_output_device.cpp
 )
 target_include_directories(docx_core PUBLIC src/render src/core src/frame src/filter src/font src/layout ${THIRD_PARTY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../sw/source/core/inc)  # 共享 instruction_builder.h (src/render takes precedence)
+    ${RENDER_COMMON_DIR})
 target_compile_definitions(docx_core PRIVATE _CRT_SECURE_NO_WARNINGS=1)
-target_link_libraries(docx_core PUBLIC harfbuzz)
+target_link_libraries(docx_core PUBLIC harfbuzz render_common)
 
 # End-to-end test (SwDoc pipeline)
 add_executable(docx_e2e_test test/test_end_to_end.cpp)
-target_include_directories(docx_e2e_test PRIVATE src/core src/frame src/filter src/font src/layout src/render ${THIRD_PARTY_DIR})
+target_include_directories(docx_e2e_test PRIVATE src/core src/frame src/filter src/font src/layout src/render ${THIRD_PARTY_DIR} ${RENDER_COMMON_DIR})
 target_link_libraries(docx_e2e_test PRIVATE miniz pugixml docx_core)
 target_compile_definitions(docx_e2e_test PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 
 # Comparison tool (standalone, no external deps)
 add_executable(render_diff tools/render_diff.cpp)
+target_include_directories(render_diff PRIVATE ${RENDER_COMMON_DIR})
 target_compile_definitions(render_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 
 # Debug 编译产物加 _debug 后缀

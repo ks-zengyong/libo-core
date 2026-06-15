@@ -22,7 +22,7 @@
 #include <cstring>
 #include <algorithm>
 
-#include "../../../../render_common/render_instruction.h"
+#include "../../../render_common/render_instruction.h"
 
 #ifdef _WIN32
 #define NOMINMAX

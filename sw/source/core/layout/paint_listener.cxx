@@ -274,23 +274,14 @@ void SwPaintEventListener::LogFrameTree(SwRootFrame* pRoot)
     if (!m_bLogging || !pRoot)
         return;
 
-    // 收集所有页面
-    SwPageFrame* pPage = pRoot->GetLastPage();
-    std::vector<SwPageFrame*> pages;
-    while (pPage)
+    // 正序遍历所有页面
+    int pageNum = 1;
+    for (SwFrame* pFrame = pRoot->GetLower(); pFrame; pFrame = pFrame->GetNext())
     {
-        pages.push_back(pPage);
-        pPage = pPage->GetPrevPage();
-    }
-    // 反转为正序
-    for (size_t i = 0; i < pages.size() / 2; ++i)
-        std::swap(pages[i], pages[pages.size() - 1 - i]);
-
-    for (size_t i = 0; i < pages.size(); ++i)
-    {
-        int pageNum = static_cast<int>(i) + 1;
-        LoFrameNode rootNode(pages[i], pageNum);
+        SwPageFrame* pPage = static_cast<SwPageFrame*>(pFrame);
+        LoFrameNode rootNode(pPage, pageNum);
         WalkFrameTreeAndLog(&rootNode, *this);
+        ++pageNum;
     }
 }
 
