@@ -115,12 +115,9 @@ void RenderLogger::WriteInstructionToStream(std::ostream& out, const RenderInstr
 // RenderLogger
 //===----------------------------------------------------------------------===//
 
-RenderLogger::RenderLogger()
-    : m_bLogging(false)
-{
-}
+RenderLogger::RenderLogger() {}
 
-RenderLogger::~RenderLogger() { EndLog(); }
+RenderLogger::~RenderLogger() {}
 
 const char* RenderLogger::StoreString(const char* s)
 {
@@ -139,23 +136,6 @@ const char* RenderLogger::StoreString(const char* s)
     }
 }
 
-void RenderLogger::StartLog(const std::string& filePath)
-{
-    m_File.open(filePath);
-    m_bLogging = true;
-    m_aInstructions.clear();
-    m_aStrings.clear();
-}
-
-void RenderLogger::EndLog()
-{
-    if (m_File.is_open())
-    {
-        m_File.close();
-    }
-    m_bLogging = false;
-}
-
 void RenderLogger::OnInstruction(const RenderInstruction& inst)
 {
     // 存储字符串副本，避免指针悬空
@@ -168,10 +148,6 @@ void RenderLogger::OnInstruction(const RenderInstruction& inst)
         copy.styleName = StoreString(copy.styleName);
 
     m_aInstructions.push_back(copy);
-    if (m_bLogging && m_File.is_open())
-    {
-        WriteInstructionToStream(m_File, copy);
-    }
 }
 
 //===----------------------------------------------------------------------===//

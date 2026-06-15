@@ -24,9 +24,7 @@ public:
     void OnInstruction(const RenderInstruction& inst) override;
 
     // ── 记录控制 ──
-    void StartLog(const std::string& filePath);
-    void EndLog();
-    bool IsLogging() const { return m_bLogging; }
+    bool IsLogging() const { return !m_aInstructions.empty(); }
 
     // ── 高级接口 — 由调用方构建指令后提交 ──
     void LogPageStart(int pageNum, int width, int height);
@@ -71,6 +69,4 @@ private:
 
     std::vector<RenderInstruction> m_aInstructions;
     std::deque<std::string> m_aStrings; // 字符串存储池 (deque 不会使已有指针失效)
-    std::ofstream m_File;
-    bool m_bLogging;
 };

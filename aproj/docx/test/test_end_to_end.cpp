@@ -243,9 +243,7 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     // 6. 渲染指令输出 (分层)
     RenderLogger logger;
     std::cerr << "[TEST] LogFrameTree..." << std::endl;
-    logger.StartLog("test/aproj_all.log");
     logger.LogFrameTree(pRoot);
-    logger.EndLog();
     std::cerr << "[TEST] LogFrameTree done" << std::endl;
 
     std::cerr << "[TEST] WriteFrameLayerToFile..." << std::endl;
