@@ -39,6 +39,19 @@ enum class CmdType : uint8_t
     SECTION_FRAME,
     RECT,
     LINE,
+    // VCL 绘制指令
+    POLYGON,
+    BITMAP,
+    ELLIPSE,
+    POLYLINE,
+    // VCL 状态指令
+    SET_FONT,
+    SET_LINE_COLOR,
+    SET_FILL_COLOR,
+    SET_TEXT_COLOR,
+    SET_CLIP_REGION,
+    PUSH,
+    POP,
 };
 
 static CmdType parseCmdType(const std::string& s)
@@ -67,6 +80,28 @@ static CmdType parseCmdType(const std::string& s)
         return CmdType::RECT;
     if (s == "LINE")
         return CmdType::LINE;
+    if (s == "POLYGON")
+        return CmdType::POLYGON;
+    if (s == "BITMAP")
+        return CmdType::BITMAP;
+    if (s == "ELLIPSE")
+        return CmdType::ELLIPSE;
+    if (s == "POLYLINE")
+        return CmdType::POLYLINE;
+    if (s == "SET_FONT")
+        return CmdType::SET_FONT;
+    if (s == "SET_LINE_COLOR")
+        return CmdType::SET_LINE_COLOR;
+    if (s == "SET_FILL_COLOR")
+        return CmdType::SET_FILL_COLOR;
+    if (s == "SET_TEXT_COLOR")
+        return CmdType::SET_TEXT_COLOR;
+    if (s == "SET_CLIP_REGION")
+        return CmdType::SET_CLIP_REGION;
+    if (s == "PUSH")
+        return CmdType::PUSH;
+    if (s == "POP")
+        return CmdType::POP;
     return CmdType::UNKNOWN;
 }
 
@@ -98,6 +133,28 @@ static const char* cmdTypeName(CmdType t)
             return "RECT";
         case CmdType::LINE:
             return "LINE";
+        case CmdType::POLYGON:
+            return "POLYGON";
+        case CmdType::BITMAP:
+            return "BITMAP";
+        case CmdType::ELLIPSE:
+            return "ELLIPSE";
+        case CmdType::POLYLINE:
+            return "POLYLINE";
+        case CmdType::SET_FONT:
+            return "SET_FONT";
+        case CmdType::SET_LINE_COLOR:
+            return "SET_LINE_COLOR";
+        case CmdType::SET_FILL_COLOR:
+            return "SET_FILL_COLOR";
+        case CmdType::SET_TEXT_COLOR:
+            return "SET_TEXT_COLOR";
+        case CmdType::SET_CLIP_REGION:
+            return "SET_CLIP_REGION";
+        case CmdType::PUSH:
+            return "PUSH";
+        case CmdType::POP:
+            return "POP";
         default:
             return "UNKNOWN";
     }
@@ -121,6 +178,7 @@ struct Instruction
     int underline;
     int strikeout;
     std::string styleName;
+    int color; // for SET_TEXT_COLOR/SET_FILL_COLOR/SET_LINE_COLOR
 };
 
 // ── 解析字段 ──
@@ -186,6 +244,7 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
     inst.fontItalic = 0;
     inst.underline = 0;
     inst.strikeout = 0;
+    inst.color = 0;
 
     auto fields = splitTSV(line);
     if (fields.empty())
@@ -193,6 +252,7 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
 
     inst.type = parseCmdType(fields[0]);
 
+    // PAGE_START: TYPE pageNum width height
     if (inst.type == CmdType::PAGE_START)
     {
         if (fields.size() >= 2)
@@ -202,11 +262,14 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
         if (fields.size() >= 4)
             inst.height = parseInt(fields[3]);
     }
-    else if (inst.type == CmdType::PAGE_END)
+    // PAGE_END / SET_CLIP_REGION / PUSH / POP: TYPE pageNum
+    else if (inst.type == CmdType::PAGE_END || inst.type == CmdType::SET_CLIP_REGION
+             || inst.type == CmdType::PUSH || inst.type == CmdType::POP)
     {
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
     }
+    // TEXT_FRAME / TEXT_LINE / TEXT_RUN: TYPE pageNum x y w h "text" fontName fontSize fontColor fontWeight fontItalic underline strikeout styleName
     else if (inst.type == CmdType::TEXT_FRAME || inst.type == CmdType::TEXT_LINE
              || inst.type == CmdType::TEXT_RUN)
     {
@@ -227,7 +290,7 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
         if (fields.size() >= 9)
             inst.fontSize = parseInt(fields[8]);
         if (fields.size() >= 10)
-            inst.fontColor = parseInt(fields[9]); // 十进制格式（0xRRGGBB 的十进制表示）
+            inst.fontColor = parseInt(fields[9]);
         if (fields.size() >= 11)
             inst.fontWeight = parseInt(fields[10]);
         if (fields.size() >= 12)
@@ -239,9 +302,46 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
         if (fields.size() >= 15)
             inst.styleName = fields[14];
     }
+    // SET_FONT: TYPE pageNum fontName fontSize fontWeight fontItalic
+    else if (inst.type == CmdType::SET_FONT)
+    {
+        if (fields.size() >= 2)
+            inst.pageNum = parseInt(fields[1]);
+        if (fields.size() >= 3)
+            inst.fontName = fields[2];
+        if (fields.size() >= 4)
+            inst.fontSize = parseInt(fields[3]);
+        if (fields.size() >= 5)
+            inst.fontWeight = parseInt(fields[4]);
+        if (fields.size() >= 6)
+            inst.fontItalic = parseInt(fields[5]);
+    }
+    // SET_TEXT_COLOR / SET_FILL_COLOR / SET_LINE_COLOR: TYPE pageNum color
+    else if (inst.type == CmdType::SET_TEXT_COLOR || inst.type == CmdType::SET_FILL_COLOR
+             || inst.type == CmdType::SET_LINE_COLOR)
+    {
+        if (fields.size() >= 2)
+            inst.pageNum = parseInt(fields[1]);
+        if (fields.size() >= 3)
+            inst.color = parseInt(fields[2]);
+    }
+    // LINE / POLYLINE: TYPE pageNum x1 y1 x2 y2
+    else if (inst.type == CmdType::LINE || inst.type == CmdType::POLYLINE)
+    {
+        if (fields.size() >= 2)
+            inst.pageNum = parseInt(fields[1]);
+        if (fields.size() >= 3)
+            inst.x = parseInt(fields[2]);
+        if (fields.size() >= 4)
+            inst.y = parseInt(fields[3]);
+        if (fields.size() >= 5)
+            inst.width = parseInt(fields[4]); // x2
+        if (fields.size() >= 6)
+            inst.height = parseInt(fields[5]); // y2
+    }
+    // TABLE/IMAGE/SECTION/RECT/POLYGON/BITMAP/ELLIPSE: TYPE pageNum x y w h
     else
     {
-        // TABLE/IMAGE/SECTION/RECT/LINE: pageNum x y w h
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
         if (fields.size() >= 3)
@@ -325,28 +425,52 @@ static std::vector<DiffResult> compareInstructions(const std::vector<Instruction
             fieldDiff("width", r.width, t.width);
             fieldDiff("height", r.height, t.height);
         }
-        else if (r.type == CmdType::PAGE_END)
+        else if (r.type == CmdType::PAGE_END || r.type == CmdType::SET_CLIP_REGION
+                 || r.type == CmdType::PUSH || r.type == CmdType::POP)
         {
-            // 只有 pageNum
+            // 只有 pageNum，已在上方比较
         }
-        else
+        else if (r.type == CmdType::SET_FONT)
+        {
+            strDiff("fontName", r.fontName, t.fontName);
+            fieldDiff("fontSize", r.fontSize, t.fontSize);
+            fieldDiff("fontWeight", r.fontWeight, t.fontWeight);
+            fieldDiff("fontItalic", r.fontItalic, t.fontItalic);
+        }
+        else if (r.type == CmdType::SET_TEXT_COLOR || r.type == CmdType::SET_FILL_COLOR
+                 || r.type == CmdType::SET_LINE_COLOR)
+        {
+            fieldDiff("color", r.color, t.color);
+        }
+        else if (r.type == CmdType::LINE || r.type == CmdType::POLYLINE)
+        {
+            fieldDiff("x1", r.x, t.x);
+            fieldDiff("y1", r.y, t.y);
+            fieldDiff("x2", r.width, t.width);
+            fieldDiff("y2", r.height, t.height);
+        }
+        else if (r.type == CmdType::TEXT_FRAME || r.type == CmdType::TEXT_LINE
+                 || r.type == CmdType::TEXT_RUN)
         {
             fieldDiff("x", r.x, t.x);
             fieldDiff("y", r.y, t.y);
             fieldDiff("width", r.width, t.width);
             fieldDiff("height", r.height, t.height);
-
-            if (r.type == CmdType::TEXT_FRAME || r.type == CmdType::TEXT_LINE
-                || r.type == CmdType::TEXT_RUN)
-            {
-                strDiff("text", r.text, t.text);
-                strDiff("fontName", r.fontName, t.fontName);
-                fieldDiff("fontSize", r.fontSize, t.fontSize);
-                fieldDiff("fontColor", r.fontColor, t.fontColor);
-                fieldDiff("fontWeight", r.fontWeight, t.fontWeight);
-                fieldDiff("fontItalic", r.fontItalic, t.fontItalic);
-                strDiff("styleName", r.styleName, t.styleName);
-            }
+            strDiff("text", r.text, t.text);
+            strDiff("fontName", r.fontName, t.fontName);
+            fieldDiff("fontSize", r.fontSize, t.fontSize);
+            fieldDiff("fontColor", r.fontColor, t.fontColor);
+            fieldDiff("fontWeight", r.fontWeight, t.fontWeight);
+            fieldDiff("fontItalic", r.fontItalic, t.fontItalic);
+            strDiff("styleName", r.styleName, t.styleName);
+        }
+        else
+        {
+            // TABLE/IMAGE/SECTION/RECT/POLYGON/BITMAP/ELLIPSE
+            fieldDiff("x", r.x, t.x);
+            fieldDiff("y", r.y, t.y);
+            fieldDiff("width", r.width, t.width);
+            fieldDiff("height", r.height, t.height);
         }
     }
 

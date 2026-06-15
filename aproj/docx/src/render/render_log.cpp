@@ -461,6 +461,7 @@ static bool IsFrameLayerInstruction(RenderCmdType type)
         case RenderCmdType::TABLE_ROW:
         case RenderCmdType::TABLE_CELL:
         case RenderCmdType::IMAGE_FRAME:
+        case RenderCmdType::SECTION_FRAME:
             return true;
         default:
             return false;
@@ -482,8 +483,10 @@ static bool IsVclLayerInstruction(RenderCmdType type)
         case RenderCmdType::TEXT_RUN:
         case RenderCmdType::RECT:
         case RenderCmdType::LINE:
+        case RenderCmdType::POLYGON:
         case RenderCmdType::ELLIPSE:
         case RenderCmdType::BITMAP:
+        case RenderCmdType::POLYLINE:
         case RenderCmdType::PUSH:
         case RenderCmdType::POP:
             return true;

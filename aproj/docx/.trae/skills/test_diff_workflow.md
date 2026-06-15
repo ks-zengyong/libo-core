@@ -136,6 +136,8 @@ VCL 层记录的是**绘制级指令**——即最终渲染时对 `OutputDevice`
 | `RECT` | pageNum, x, y, w, h | 矩形绘制 |
 | `LINE` | pageNum, x1, y1, x2, y2 | 线段绘制 |
 | `ELLIPSE` | pageNum, x, y, w, h | 椭圆绘制 |
+| `POLYGON` | pageNum, x, y, w, h | 多边形绘制 |
+| `POLYLINE` | pageNum, x1, y1, x2, y2 | 折线绘制 |
 | `BITMAP` | pageNum, x, y, w, h | 位图绘制 |
 | `PUSH` / `POP` | pageNum | 状态保存/恢复 |
 
