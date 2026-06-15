@@ -74,9 +74,3 @@ private:
     std::ofstream m_File;
     bool m_bLogging;
 };
-
-// DumpFrameTree: 将 Frame 树转储为 XML (调试用)
-void DumpFrameTreeXml(SwRootFrame* pRoot, const std::string& filePath);
-
-// DumpNodesXml: 将 SwNodes 转储为 XML (调试用)
-void DumpNodesXml(SwDoc& doc, const std::string& filePath);

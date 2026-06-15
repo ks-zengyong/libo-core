@@ -169,9 +169,6 @@ void test_swdoc_parse(const std::string& filePath)
         }
     }
     TEST_ASSERT_TRUE(hasContent, "At least one text node has content");
-
-    DumpNodesXml(doc, "tests/nodes_dump.xml");
-    std::cout << "  Nodes dumped to nodes_dump.xml" << std::endl;
 }
 
 // ── Test 2: Layout + Render 完整管线 ─────────────────────────
@@ -246,21 +243,21 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     // 6. 渲染指令输出 (分层)
     RenderLogger logger;
     std::cerr << "[TEST] LogFrameTree..." << std::endl;
-    logger.StartLog("tests/aproj_all.log");
+    logger.StartLog("test/aproj_all.log");
     logger.LogFrameTree(pRoot);
     logger.EndLog();
     std::cerr << "[TEST] LogFrameTree done" << std::endl;
 
     std::cerr << "[TEST] WriteFrameLayerToFile..." << std::endl;
-    logger.WriteFrameLayerToFile("tests/aproj_frame.txt");
+    logger.WriteFrameLayerToFile("test/aproj_frame.txt");
     std::cerr << "[TEST] WriteFrameLayerToFile done" << std::endl;
     std::cerr << "[TEST] WriteVclLayerToFile..." << std::endl;
-    logger.WriteVclLayerToFile("tests/aproj_vcl.txt");
+    logger.WriteVclLayerToFile("test/aproj_vcl.txt");
     std::cerr << "[TEST] WriteVclLayerToFile done" << std::endl;
 
     // 7. 验证 frame 层
-    std::ifstream fFrame("tests/aproj_frame.txt");
-    TEST_ASSERT_TRUE(fFrame.good(), "tests/aproj_frame.txt created");
+    std::ifstream fFrame("test/aproj_frame.txt");
+    TEST_ASSERT_TRUE(fFrame.good(), "test/aproj_frame.txt created");
     int nFrameLines = 0;
     bool hasFramePageStart = false, hasTextFrame = false;
     std::string line;
@@ -278,8 +275,8 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     TEST_ASSERT_TRUE(hasTextFrame, "Frame layer has TEXT_FRAME");
 
     // 8. 验证 VCL 层
-    std::ifstream fVcl("tests/aproj_vcl.txt");
-    TEST_ASSERT_TRUE(fVcl.good(), "tests/aproj_vcl.txt created");
+    std::ifstream fVcl("test/aproj_vcl.txt");
+    TEST_ASSERT_TRUE(fVcl.good(), "test/aproj_vcl.txt created");
     int nVclLines = 0;
     bool hasVclPageStart = false, hasTextRun = false, hasSetFont = false;
     while (std::getline(fVcl, line))
@@ -298,9 +295,7 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     TEST_ASSERT_TRUE(hasTextRun, "VCL layer has TEXT_RUN");
     TEST_ASSERT_TRUE(hasSetFont, "VCL layer has SET_FONT");
 
-    // 9. 输出调试文件
-    DumpFrameTreeXml(pRoot, "tests/frmtree_dump.xml");
-
+    // 9. 汇总
     std::cout << "  Summary: " << nTextNodes << " text nodes" << std::endl;
 }
 
