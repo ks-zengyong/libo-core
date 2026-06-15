@@ -43,6 +43,12 @@ public:
     void LogTableCell(int pageNum, int x, int y, int width, int height);
     void LogImageFrame(int pageNum, int x, int y, int width, int height);
     void LogSectionFrame(int pageNum, int x, int y, int width, int height);
+    void LogColumnFrame(int pageNum, int x, int y, int width, int height);
+    void LogHeaderFrame(int pageNum, int x, int y, int width, int height);
+    void LogFooterFrame(int pageNum, int x, int y, int width, int height);
+    void LogFootnoteContFrame(int pageNum, int x, int y, int width, int height);
+    void LogFootnoteFrame(int pageNum, int x, int y, int width, int height);
+    void LogFlyFrame(int pageNum, int x, int y, int width, int height);
     void LogRect(int pageNum, int x, int y, int width, int height);
     void LogLine(int pageNum, int x1, int y1, int x2, int y2);
 
@@ -53,16 +59,12 @@ public:
     // ── 输出 ──
     // 获取所有记录的指令
     const std::vector<RenderInstruction>& GetInstructions() const { return m_aInstructions; }
-    // 将指令写入文件 (与 LibreOffice 相同的 TSV 格式)
+    // 将指令写入文件 (与 LibreOffice 相同的 TSV 格式，使用 render_common 共享实现)
     void WriteToFile(const std::string& filePath);
     // 分层输出：frame 层 (TEXT_FRAME, TABLE_FRAME 等语义指令)
     void WriteFrameLayerToFile(const std::string& filePath);
     // 分层输出：VCL 层 (SET_FONT, TEXT_RUN, RECT 等绘制指令)
     void WriteVclLayerToFile(const std::string& filePath);
-
-    // ── 格式化工具 (静态) ──
-    // 将单条指令格式化为 TSV 行 (与 LibreOffice 完全相同的格式)
-    static void WriteInstructionToStream(std::ostream& out, const RenderInstruction& inst);
 
 private:
     // 存储字符串副本，确保指针在指令生命周期内有效

@@ -73,8 +73,6 @@ private:
     SwPaintEventListener(const SwPaintEventListener&) = delete;
     SwPaintEventListener& operator=(const SwPaintEventListener&) = delete;
 
-    static void WriteInstructionToStream(std::ostream& out, const RenderInstruction& inst);
-
     std::vector<RenderInstruction> m_aInstructions;
     std::ofstream m_File;
     bool m_bLogging = false;

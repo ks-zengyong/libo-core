@@ -24,6 +24,8 @@
 #include <rtl/strbuf.hxx>
 #include <tools/color.hxx>
 
+#include "../../../../render_common/render_format.h"
+
 #include <iostream>
 #include <sstream>
 #include <cstring>
@@ -210,101 +212,6 @@ void SwPaintEventListener::OnTextFrame(const SwTextFrame* pFrame)
     inst.styleName = s_styleBuf.empty() ? nullptr : s_styleBuf.c_str();
 
     OnInstruction(inst);
-}
-
-// ── 格式化 ──
-
-// 转义字符串中的换行符和制表符，确保 TSV 每条指令一行
-static OString EscapeForTsv(const char* s)
-{
-    if (!s)
-        return OString();
-    OStringBuffer buf;
-    for (; *s; ++s)
-    {
-        switch (*s)
-        {
-            case '\n':
-                buf.append("\\n");
-                break;
-            case '\r':
-                buf.append("\\r");
-                break;
-            case '\t':
-                buf.append("\\t");
-                break;
-            case '"':
-                buf.append("\\\"");
-                break;
-            default:
-                if (static_cast<unsigned char>(*s) < 0x20)
-                    buf.append(' ');
-                else
-                    buf.append(*s);
-                break;
-        }
-    }
-    return buf.makeStringAndClear();
-}
-
-void SwPaintEventListener::WriteInstructionToStream(std::ostream& out,
-                                                    const RenderInstruction& inst)
-{
-    out << RenderCmdTypeName(inst.type);
-    switch (inst.type)
-    {
-        case RenderCmdType::PAGE_START:
-            out << "\t" << inst.pageNum << "\t" << inst.width << "\t" << inst.height;
-            break;
-        case RenderCmdType::PAGE_END:
-            out << "\t" << inst.pageNum;
-            break;
-        case RenderCmdType::TEXT_FRAME:
-        case RenderCmdType::TEXT_LINE:
-        case RenderCmdType::TEXT_RUN:
-            out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
-                << "\t" << inst.height << "\t\"" << EscapeForTsv(inst.text).getStr() << "\""
-                << "\t" << EscapeForTsv(inst.fontName).getStr() << "\t" << inst.fontSize << "\t"
-                << inst.fontColor << "\t" << static_cast<int>(inst.fontWeight) << "\t"
-                << static_cast<int>(inst.fontItalic) << "\t" << static_cast<int>(inst.underline)
-                << "\t" << static_cast<int>(inst.strikeout) << "\t"
-                << EscapeForTsv(inst.styleName).getStr();
-            break;
-        case RenderCmdType::TABLE_FRAME:
-        case RenderCmdType::TABLE_ROW:
-        case RenderCmdType::TABLE_CELL:
-        case RenderCmdType::IMAGE_FRAME:
-        case RenderCmdType::SECTION_FRAME:
-        case RenderCmdType::RECT:
-        case RenderCmdType::POLYGON:
-        case RenderCmdType::BITMAP:
-        case RenderCmdType::ELLIPSE:
-            out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
-                << "\t" << inst.height;
-            break;
-        case RenderCmdType::LINE:
-        case RenderCmdType::POLYLINE:
-            out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
-                << "\t" << inst.height;
-            break;
-        // 状态变更指令
-        case RenderCmdType::SET_FONT:
-            out << "\t" << inst.pageNum << "\t" << (inst.fontName ? inst.fontName : "") << "\t"
-                << inst.fontSize << "\t" << static_cast<int>(inst.fontWeight) << "\t"
-                << static_cast<int>(inst.fontItalic);
-            break;
-        case RenderCmdType::SET_TEXT_COLOR:
-        case RenderCmdType::SET_FILL_COLOR:
-        case RenderCmdType::SET_LINE_COLOR:
-            out << "\t" << inst.pageNum << "\t" << inst.fontColor;
-            break;
-        case RenderCmdType::SET_CLIP_REGION:
-        case RenderCmdType::PUSH:
-        case RenderCmdType::POP:
-            out << "\t" << inst.pageNum;
-            break;
-    }
-    out << "\n";
 }
 
 void SwPaintEventListener::Flush()

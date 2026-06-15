@@ -22,6 +22,8 @@
 #include <cstring>
 #include <algorithm>
 
+#include "../../../../render_common/render_instruction.h"
+
 #ifdef _WIN32
 #define NOMINMAX
 #include <windows.h>
@@ -60,142 +62,7 @@ static std::string getExeDir()
 }
 
 // ── 指令类型 ──
-
-enum class CmdType : uint8_t
-{
-    UNKNOWN = 0,
-    PAGE_START,
-    PAGE_END,
-    TEXT_FRAME,
-    TEXT_LINE,
-    TEXT_RUN,
-    TABLE_FRAME,
-    TABLE_ROW,
-    TABLE_CELL,
-    IMAGE_FRAME,
-    SECTION_FRAME,
-    RECT,
-    LINE,
-    // VCL 绘制指令
-    POLYGON,
-    BITMAP,
-    ELLIPSE,
-    POLYLINE,
-    // VCL 状态指令
-    SET_FONT,
-    SET_LINE_COLOR,
-    SET_FILL_COLOR,
-    SET_TEXT_COLOR,
-    SET_CLIP_REGION,
-    PUSH,
-    POP,
-};
-
-static CmdType parseCmdType(const std::string& s)
-{
-    if (s == "PAGE_START")
-        return CmdType::PAGE_START;
-    if (s == "PAGE_END")
-        return CmdType::PAGE_END;
-    if (s == "TEXT_FRAME")
-        return CmdType::TEXT_FRAME;
-    if (s == "TEXT_LINE")
-        return CmdType::TEXT_LINE;
-    if (s == "TEXT_RUN")
-        return CmdType::TEXT_RUN;
-    if (s == "TABLE_FRAME")
-        return CmdType::TABLE_FRAME;
-    if (s == "TABLE_ROW")
-        return CmdType::TABLE_ROW;
-    if (s == "TABLE_CELL")
-        return CmdType::TABLE_CELL;
-    if (s == "IMAGE_FRAME")
-        return CmdType::IMAGE_FRAME;
-    if (s == "SECTION_FRAME")
-        return CmdType::SECTION_FRAME;
-    if (s == "RECT")
-        return CmdType::RECT;
-    if (s == "LINE")
-        return CmdType::LINE;
-    if (s == "POLYGON")
-        return CmdType::POLYGON;
-    if (s == "BITMAP")
-        return CmdType::BITMAP;
-    if (s == "ELLIPSE")
-        return CmdType::ELLIPSE;
-    if (s == "POLYLINE")
-        return CmdType::POLYLINE;
-    if (s == "SET_FONT")
-        return CmdType::SET_FONT;
-    if (s == "SET_LINE_COLOR")
-        return CmdType::SET_LINE_COLOR;
-    if (s == "SET_FILL_COLOR")
-        return CmdType::SET_FILL_COLOR;
-    if (s == "SET_TEXT_COLOR")
-        return CmdType::SET_TEXT_COLOR;
-    if (s == "SET_CLIP_REGION")
-        return CmdType::SET_CLIP_REGION;
-    if (s == "PUSH")
-        return CmdType::PUSH;
-    if (s == "POP")
-        return CmdType::POP;
-    return CmdType::UNKNOWN;
-}
-
-static const char* cmdTypeName(CmdType t)
-{
-    switch (t)
-    {
-        case CmdType::PAGE_START:
-            return "PAGE_START";
-        case CmdType::PAGE_END:
-            return "PAGE_END";
-        case CmdType::TEXT_FRAME:
-            return "TEXT_FRAME";
-        case CmdType::TEXT_LINE:
-            return "TEXT_LINE";
-        case CmdType::TEXT_RUN:
-            return "TEXT_RUN";
-        case CmdType::TABLE_FRAME:
-            return "TABLE_FRAME";
-        case CmdType::TABLE_ROW:
-            return "TABLE_ROW";
-        case CmdType::TABLE_CELL:
-            return "TABLE_CELL";
-        case CmdType::IMAGE_FRAME:
-            return "IMAGE_FRAME";
-        case CmdType::SECTION_FRAME:
-            return "SECTION_FRAME";
-        case CmdType::RECT:
-            return "RECT";
-        case CmdType::LINE:
-            return "LINE";
-        case CmdType::POLYGON:
-            return "POLYGON";
-        case CmdType::BITMAP:
-            return "BITMAP";
-        case CmdType::ELLIPSE:
-            return "ELLIPSE";
-        case CmdType::POLYLINE:
-            return "POLYLINE";
-        case CmdType::SET_FONT:
-            return "SET_FONT";
-        case CmdType::SET_LINE_COLOR:
-            return "SET_LINE_COLOR";
-        case CmdType::SET_FILL_COLOR:
-            return "SET_FILL_COLOR";
-        case CmdType::SET_TEXT_COLOR:
-            return "SET_TEXT_COLOR";
-        case CmdType::SET_CLIP_REGION:
-            return "SET_CLIP_REGION";
-        case CmdType::PUSH:
-            return "PUSH";
-        case CmdType::POP:
-            return "POP";
-        default:
-            return "UNKNOWN";
-    }
-}
+// 使用共享的 render_instruction.h 中的 RenderCmdType / RenderCmdTypeName / RenderCmdTypeFromName
 
 // ── 解析后的指令 ──
 
@@ -203,7 +70,7 @@ struct Instruction
 {
     int lineNum;
     std::string rawLine;
-    CmdType type;
+    RenderCmdType type;
     int pageNum;
     int x, y, width, height;
     std::string text;
@@ -272,7 +139,7 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
     Instruction inst;
     inst.lineNum = lineNum;
     inst.rawLine = line;
-    inst.type = CmdType::UNKNOWN;
+    inst.type = RenderCmdType::PAGE_START;
     inst.pageNum = 0;
     inst.x = inst.y = inst.width = inst.height = 0;
     inst.fontSize = 0;
@@ -287,10 +154,10 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
     if (fields.empty())
         return inst;
 
-    inst.type = parseCmdType(fields[0]);
+    inst.type = RenderCmdTypeFromName(fields[0].c_str());
 
     // PAGE_START: TYPE pageNum width height
-    if (inst.type == CmdType::PAGE_START)
+    if (inst.type == RenderCmdType::PAGE_START)
     {
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
@@ -300,15 +167,15 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
             inst.height = parseInt(fields[3]);
     }
     // PAGE_END / SET_CLIP_REGION / PUSH / POP: TYPE pageNum
-    else if (inst.type == CmdType::PAGE_END || inst.type == CmdType::SET_CLIP_REGION
-             || inst.type == CmdType::PUSH || inst.type == CmdType::POP)
+    else if (inst.type == RenderCmdType::PAGE_END || inst.type == RenderCmdType::SET_CLIP_REGION
+             || inst.type == RenderCmdType::PUSH || inst.type == RenderCmdType::POP)
     {
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
     }
     // TEXT_FRAME / TEXT_LINE / TEXT_RUN: TYPE pageNum x y w h "text" fontName fontSize fontColor fontWeight fontItalic underline strikeout styleName
-    else if (inst.type == CmdType::TEXT_FRAME || inst.type == CmdType::TEXT_LINE
-             || inst.type == CmdType::TEXT_RUN)
+    else if (inst.type == RenderCmdType::TEXT_FRAME || inst.type == RenderCmdType::TEXT_LINE
+             || inst.type == RenderCmdType::TEXT_RUN)
     {
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
@@ -340,7 +207,7 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
             inst.styleName = fields[14];
     }
     // SET_FONT: TYPE pageNum fontName fontSize fontWeight fontItalic
-    else if (inst.type == CmdType::SET_FONT)
+    else if (inst.type == RenderCmdType::SET_FONT)
     {
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
@@ -354,8 +221,8 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
             inst.fontItalic = parseInt(fields[5]);
     }
     // SET_TEXT_COLOR / SET_FILL_COLOR / SET_LINE_COLOR: TYPE pageNum color
-    else if (inst.type == CmdType::SET_TEXT_COLOR || inst.type == CmdType::SET_FILL_COLOR
-             || inst.type == CmdType::SET_LINE_COLOR)
+    else if (inst.type == RenderCmdType::SET_TEXT_COLOR || inst.type == RenderCmdType::SET_FILL_COLOR
+             || inst.type == RenderCmdType::SET_LINE_COLOR)
     {
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
@@ -363,7 +230,7 @@ static Instruction parseInstruction(const std::string& line, int lineNum)
             inst.color = parseInt(fields[2]);
     }
     // LINE / POLYLINE: TYPE pageNum x1 y1 x2 y2
-    else if (inst.type == CmdType::LINE || inst.type == CmdType::POLYLINE)
+    else if (inst.type == RenderCmdType::LINE || inst.type == RenderCmdType::POLYLINE)
     {
         if (fields.size() >= 2)
             inst.pageNum = parseInt(fields[1]);
@@ -431,8 +298,8 @@ static std::vector<DiffResult> compareInstructions(const std::vector<Instruction
         if (r.type != t.type)
         {
             diffs.push_back({ r.lineNum, t.lineNum,
-                              std::string("Type: ref=") + cmdTypeName(r.type)
-                                  + " test=" + cmdTypeName(t.type) });
+                              std::string("Type: ref=") + RenderCmdTypeName(r.type)
+                                  + " test=" + RenderCmdTypeName(t.type) });
             continue; // 类型不同，跳过详细比较
         }
 
@@ -457,37 +324,37 @@ static std::vector<DiffResult> compareInstructions(const std::vector<Instruction
 
         fieldDiff("pageNum", r.pageNum, t.pageNum);
 
-        if (r.type == CmdType::PAGE_START)
+        if (r.type == RenderCmdType::PAGE_START)
         {
             fieldDiff("width", r.width, t.width);
             fieldDiff("height", r.height, t.height);
         }
-        else if (r.type == CmdType::PAGE_END || r.type == CmdType::SET_CLIP_REGION
-                 || r.type == CmdType::PUSH || r.type == CmdType::POP)
+        else if (r.type == RenderCmdType::PAGE_END || r.type == RenderCmdType::SET_CLIP_REGION
+                 || r.type == RenderCmdType::PUSH || r.type == RenderCmdType::POP)
         {
             // 只有 pageNum，已在上方比较
         }
-        else if (r.type == CmdType::SET_FONT)
+        else if (r.type == RenderCmdType::SET_FONT)
         {
             strDiff("fontName", r.fontName, t.fontName);
             fieldDiff("fontSize", r.fontSize, t.fontSize);
             fieldDiff("fontWeight", r.fontWeight, t.fontWeight);
             fieldDiff("fontItalic", r.fontItalic, t.fontItalic);
         }
-        else if (r.type == CmdType::SET_TEXT_COLOR || r.type == CmdType::SET_FILL_COLOR
-                 || r.type == CmdType::SET_LINE_COLOR)
+        else if (r.type == RenderCmdType::SET_TEXT_COLOR || r.type == RenderCmdType::SET_FILL_COLOR
+                 || r.type == RenderCmdType::SET_LINE_COLOR)
         {
             fieldDiff("color", r.color, t.color);
         }
-        else if (r.type == CmdType::LINE || r.type == CmdType::POLYLINE)
+        else if (r.type == RenderCmdType::LINE || r.type == RenderCmdType::POLYLINE)
         {
             fieldDiff("x1", r.x, t.x);
             fieldDiff("y1", r.y, t.y);
             fieldDiff("x2", r.width, t.width);
             fieldDiff("y2", r.height, t.height);
         }
-        else if (r.type == CmdType::TEXT_FRAME || r.type == CmdType::TEXT_LINE
-                 || r.type == CmdType::TEXT_RUN)
+        else if (r.type == RenderCmdType::TEXT_FRAME || r.type == RenderCmdType::TEXT_LINE
+                 || r.type == RenderCmdType::TEXT_RUN)
         {
             fieldDiff("x", r.x, t.x);
             fieldDiff("y", r.y, t.y);
@@ -697,7 +564,7 @@ int main(int argc, char* argv[])
 
     // 统计各类型指令数
     auto countByType = [](const std::vector<Instruction>& insts) {
-        std::vector<std::pair<CmdType, int>> counts;
+        std::vector<std::pair<RenderCmdType, int>> counts;
         for (const auto& inst : insts)
         {
             bool found = false;
@@ -733,7 +600,7 @@ int main(int argc, char* argv[])
             }
         }
         bool match = (rc.second == tc);
-        std::cout << "  " << cmdTypeName(rc.first) << "  " << rc.second << "    " << tc
+        std::cout << "  " << RenderCmdTypeName(rc.first) << "  " << rc.second << "    " << tc
                   << (match ? "   OK" : "   MISMATCH") << std::endl;
     }
     std::cout << std::endl;

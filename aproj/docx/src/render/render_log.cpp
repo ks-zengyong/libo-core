@@ -9,107 +9,12 @@
 #include "../core/format.h"
 #include "../frame/frame.h"
 #include "instruction_builder.h"
+#include "../../../../render_common/render_format.h"
 #include <functional>
 #include <iostream>
 #include <sstream>
 #include <cstring>
 #include <functional>
-
-//===----------------------------------------------------------------------===//
-// 格式化工具 — 与 LibreOffice 完全一致的 TSV 输出
-//===----------------------------------------------------------------------===//
-
-// 转义字符串中的换行符和制表符，确保 TSV 每条指令一行
-static std::string EscapeForTsv(const char* s)
-{
-    if (!s)
-        return "";
-    std::string result;
-    for (unsigned char c = *s; *s; c = *(++s))
-    {
-        switch (c)
-        {
-            case '\n':
-                result += "\\n";
-                break;
-            case '\r':
-                result += "\\r";
-                break;
-            case '\t':
-                result += "\\t";
-                break;
-            case '"':
-                result += "\\\"";
-                break;
-            default:
-                if (c < 0x20)
-                    result += " "; // 替换其他控制字符为空格
-                else
-                    result += c;
-                break;
-        }
-    }
-    return result;
-}
-
-void RenderLogger::WriteInstructionToStream(std::ostream& out, const RenderInstruction& inst)
-{
-    out << RenderCmdTypeName(inst.type);
-    switch (inst.type)
-    {
-        case RenderCmdType::PAGE_START:
-            out << "\t" << inst.pageNum << "\t" << inst.width << "\t" << inst.height;
-            break;
-        case RenderCmdType::PAGE_END:
-            out << "\t" << inst.pageNum;
-            break;
-        case RenderCmdType::TEXT_FRAME:
-        case RenderCmdType::TEXT_LINE:
-        case RenderCmdType::TEXT_RUN:
-            out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
-                << "\t" << inst.height << "\t\"" << EscapeForTsv(inst.text) << "\""
-                << "\t" << EscapeForTsv(inst.fontName) << "\t" << inst.fontSize << "\t"
-                << inst.fontColor << "\t" << static_cast<int>(inst.fontWeight) << "\t"
-                << static_cast<int>(inst.fontItalic) << "\t" << static_cast<int>(inst.underline)
-                << "\t" << static_cast<int>(inst.strikeout) << "\t" << EscapeForTsv(inst.styleName);
-            break;
-        case RenderCmdType::TABLE_FRAME:
-        case RenderCmdType::TABLE_ROW:
-        case RenderCmdType::TABLE_CELL:
-        case RenderCmdType::IMAGE_FRAME:
-        case RenderCmdType::SECTION_FRAME:
-        case RenderCmdType::RECT:
-        case RenderCmdType::POLYGON:
-        case RenderCmdType::BITMAP:
-        case RenderCmdType::ELLIPSE:
-            out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t" << inst.width
-                << "\t" << inst.height;
-            break;
-        case RenderCmdType::LINE:
-        case RenderCmdType::POLYLINE:
-            out << "\t" << inst.pageNum << "\t" << inst.x << "\t" << inst.y << "\t"
-                << inst.width // x2
-                << "\t" << inst.height; // y2
-            break;
-        // 状态变更指令
-        case RenderCmdType::SET_FONT:
-            out << "\t" << inst.pageNum << "\t" << (inst.fontName ? inst.fontName : "") << "\t"
-                << inst.fontSize << "\t" << static_cast<int>(inst.fontWeight) << "\t"
-                << static_cast<int>(inst.fontItalic);
-            break;
-        case RenderCmdType::SET_TEXT_COLOR:
-        case RenderCmdType::SET_FILL_COLOR:
-        case RenderCmdType::SET_LINE_COLOR:
-            out << "\t" << inst.pageNum << "\t" << inst.fontColor;
-            break;
-        case RenderCmdType::SET_CLIP_REGION:
-        case RenderCmdType::PUSH:
-        case RenderCmdType::POP:
-            out << "\t" << inst.pageNum;
-            break;
-    }
-    out << "\n";
-}
 
 //===----------------------------------------------------------------------===//
 // RenderLogger
@@ -307,6 +212,84 @@ void RenderLogger::LogSectionFrame(int pageNum, int x, int y, int width, int hei
     OnInstruction(inst);
 }
 
+void RenderLogger::LogColumnFrame(int pageNum, int x, int y, int width, int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::COLUMN_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = width;
+    inst.height = height;
+    OnInstruction(inst);
+}
+
+void RenderLogger::LogHeaderFrame(int pageNum, int x, int y, int width, int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::HEADER_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = width;
+    inst.height = height;
+    OnInstruction(inst);
+}
+
+void RenderLogger::LogFooterFrame(int pageNum, int x, int y, int width, int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::FOOTER_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = width;
+    inst.height = height;
+    OnInstruction(inst);
+}
+
+void RenderLogger::LogFootnoteContFrame(int pageNum, int x, int y, int width, int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::FOOTNOTE_CONT_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = width;
+    inst.height = height;
+    OnInstruction(inst);
+}
+
+void RenderLogger::LogFootnoteFrame(int pageNum, int x, int y, int width, int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::FOOTNOTE_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = width;
+    inst.height = height;
+    OnInstruction(inst);
+}
+
+void RenderLogger::LogFlyFrame(int pageNum, int x, int y, int width, int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::FLY_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = width;
+    inst.height = height;
+    OnInstruction(inst);
+}
+
 void RenderLogger::LogRect(int pageNum, int x, int y, int width, int height)
 {
     RenderInstruction inst;
@@ -377,7 +360,12 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
         std::function<void(SwFrame*)> logFrame = [&](SwFrame* pFrame) {
             while (pFrame)
             {
-                if (pFrame->IsTextFrame())
+                if (pFrame->IsPageFrame())
+                {
+                    // PageFrame: 直接递归子 Frame（Page 区域由 LogPageStart/End 描述）
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsTextFrame())
                 {
                     // TextFrame: 先输出 frame 层 TEXT_FRAME，再输出 VCL 层指令
                     SwTextFrame* pTextFrame = static_cast<SwTextFrame*>(pFrame);
@@ -455,9 +443,56 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
                     LogSectionFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
                     logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
                 }
+                else if (pFrame->IsColumnFrame())
+                {
+                    // ColumnFrame: 输出 COLUMN_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogColumnFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsHeaderFrame())
+                {
+                    // HeaderFrame: 输出 HEADER_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogHeaderFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsFooterFrame())
+                {
+                    // FooterFrame: 输出 FOOTER_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogFooterFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsFootnoteContFrame())
+                {
+                    // FootnoteContFrame: 输出 FOOTNOTE_CONT_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogFootnoteContFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsFootnoteFrame())
+                {
+                    // FootnoteFrame: 输出 FOOTNOTE_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogFootnoteFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsFlyFrame())
+                {
+                    // FlyFrame: 输出 FLY_FRAME，然后递归子 Frame
+                    const SwRect& aArea = pFrame->getFrameArea();
+                    LogFlyFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
+                else if (pFrame->IsBodyFrame())
+                {
+                    // BodyFrame: 直接递归（Body 区域由父容器决定，不单独输出）
+                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
+                }
                 else if (pFrame->IsLayoutFrame())
                 {
-                    // 其他 LayoutFrame: 只递归进入子 Frame（Header, Footer, Column, Footnote 等）
+                    // 其他 LayoutFrame: 只递归进入子 Frame
                     logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
                 }
                 else

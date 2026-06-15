@@ -57,8 +57,8 @@ add_library(docx_core STATIC
     src/render/render_log.cpp
     src/render/render_output_device.cpp
 )
-target_include_directories(docx_core PUBLIC src/core src/frame src/filter src/font src/layout src/render ${THIRD_PARTY_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../sw/source/core/inc)  # 共享 instruction_builder.h / render_instruction.h
+target_include_directories(docx_core PUBLIC src/render src/core src/frame src/filter src/font src/layout ${THIRD_PARTY_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/../../sw/source/core/inc)  # 共享 instruction_builder.h (src/render takes precedence)
 target_compile_definitions(docx_core PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 target_link_libraries(docx_core PUBLIC harfbuzz)
 
