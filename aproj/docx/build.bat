@@ -1,7 +1,7 @@
 @echo off
 setlocal
 
-:: ── Parse config ──────────────────────────
+:: -- Parse config ---------------------------------
 set "BUILD_CONFIG=Debug"
 if not "%~1"=="" (
     if /I "%~1"=="Debug"   set "BUILD_CONFIG=Debug"
@@ -17,7 +17,7 @@ echo ========================================
 echo   aproj/docx Build [%BUILD_CONFIG%]
 echo ========================================
 
-:: ── CMake Configure ──────────────────────
+:: -- CMake Configure --------------------------
 echo [1/3] Configuring...
 cmake -B build -G "Visual Studio 17 2022" -A x64
 if %ERRORLEVEL% neq 0 (
@@ -25,7 +25,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: ── MSBuild Compile ──────────────────────
+:: -- MSBuild Compile --------------------------
 echo [2/3] Building...
 cmake --build build --config %BUILD_CONFIG%
 if %ERRORLEVEL% neq 0 (
@@ -33,7 +33,7 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-:: ── Copy to output ───────────────────────
+:: -- Copy to output ----------------------------
 echo [3/3] Copying artifacts...
 if not exist output mkdir output
 copy /Y build\%BUILD_CONFIG%\docx_e2e_test.exe output\ >nul
