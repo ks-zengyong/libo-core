@@ -83,10 +83,10 @@ private:
     bool m_bVclLogging = false;
     bool m_bConvertingVcl = false; // 正在 VCL→RenderInstruction 转换中
 
-    // 上次 Frame 树输出，用于检测变化
-    std::vector<RenderInstruction> m_aPrevFrameInstructions;
-    // 上次 VCL 层输出，用于检测变化
-    std::vector<RenderInstruction> m_aPrevVclInstructions;
+    // 上次 Frame 树输出（TSV 字符串），用于检测变化
+    std::string m_aPrevFrameContent;
+    // 上次 VCL 层输出（TSV 字符串），用于检测变化
+    std::string m_aPrevVclContent;
 };
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

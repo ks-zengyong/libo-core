@@ -203,7 +203,7 @@ void SwPaintEventListener::StartLog(const OString& filePath)
     m_File.open(filePath.getStr(), std::ios::out | std::ios::binary);
     m_bLogging = true;
     m_aInstructions.clear();
-    m_aPrevFrameInstructions.clear();
+    m_aPrevFrameContent.clear();
 }
 
 void SwPaintEventListener::EndLog()
@@ -261,14 +261,22 @@ void SwPaintEventListener::Flush()
 
 namespace
 {
-// 将 RenderInstruction 序列化为 TSV 字符串用于比较
-std::string SerializeInstructions(const std::vector<RenderInstruction>& instructions)
+// TempSink: 边走边序列化，避免 const char* 指针在 LoFrameNode 销毁后失效
+struct SerializingSink : RenderInstructionSink
 {
-    std::ostringstream oss;
-    for (const auto& inst : instructions)
+    std::string& content;
+    explicit SerializingSink(std::string& c)
+        : content(c)
+    {
+    }
+    void OnInstruction(const RenderInstruction& inst) override
+    {
+        // 立即序列化（此时 LoFrameNode 的 buffer 仍然有效）
+        std::ostringstream oss;
         WriteInstructionToStream(oss, inst);
-    return oss.str();
-}
+        content += oss.str();
+    }
+};
 } // namespace
 
 void SwPaintEventListener::LogFrameTree(SwRootFrame* pRoot)
@@ -276,39 +284,25 @@ void SwPaintEventListener::LogFrameTree(SwRootFrame* pRoot)
     if (!m_bLogging || !pRoot)
         return;
 
-    // 收集新一帧的 frame 指令到临时 buffer
-    std::vector<RenderInstruction> newInstructions;
+    // 收集新一帧的 frame 指令，边走边序列化为 TSV
+    std::string newContent;
 
     int pageNum = 1;
     for (SwFrame* pFrame = pRoot->GetLower(); pFrame; pFrame = pFrame->GetNext())
     {
         SwPageFrame* pPage = static_cast<SwPageFrame*>(pFrame);
         LoFrameNode rootNode(pPage, pageNum);
-
-        // 临时收集器，不写入 m_File
-        struct TempSink : RenderInstructionSink
-        {
-            std::vector<RenderInstruction>& buf;
-            explicit TempSink(std::vector<RenderInstruction>& b)
-                : buf(b)
-            {
-            }
-            void OnInstruction(const RenderInstruction& inst) override { buf.push_back(inst); }
-        } sink(newInstructions);
-
+        SerializingSink sink(newContent);
         WalkFrameTreeAndLog(&rootNode, sink);
         ++pageNum;
     }
 
     // 与上次比较
-    std::string newContent = SerializeInstructions(newInstructions);
-    std::string prevContent = SerializeInstructions(m_aPrevFrameInstructions);
-
-    if (newContent != prevContent || m_aPrevFrameInstructions.empty())
+    if (newContent != m_aPrevFrameContent || m_aPrevFrameContent.empty())
     {
         std::cerr << "[FrameTree] output changed"
-                  << " (prev=" << m_aPrevFrameInstructions.size()
-                  << " now=" << newInstructions.size() << ")" << std::endl;
+                  << " (prev=" << m_aPrevFrameContent.size()
+                  << " now=" << newContent.size() << ")" << std::endl;
 
         // 重写文件（覆盖而非追加）
         m_File.close();
@@ -319,7 +313,7 @@ void SwPaintEventListener::LogFrameTree(SwRootFrame* pRoot)
             m_File.flush();
         }
 
-        m_aPrevFrameInstructions = std::move(newInstructions);
+        m_aPrevFrameContent = std::move(newContent);
     }
 }
 
@@ -330,7 +324,7 @@ void SwPaintEventListener::StartVclLog(const OString& filePath)
     m_sVclLogPath = filePath;
     m_vclFile.open(filePath.getStr(), std::ios::out | std::ios::binary);
     m_bVclLogging = true;
-    m_aPrevVclInstructions.clear();
+    m_aPrevVclContent.clear();
 }
 
 void SwPaintEventListener::EndVclLog()
@@ -358,42 +352,26 @@ void SwPaintEventListener::StopPageRecordAndConvert(int pageNum)
     // 停止录制
     m_aMetaFile.Stop();
 
-    // 收集本页 VCL 指令
-    std::vector<RenderInstruction> pageVcl;
-    struct TempSink : RenderInstructionSink
-    {
-        std::vector<RenderInstruction>& buf;
-        explicit TempSink(std::vector<RenderInstruction>& b)
-            : buf(b)
-        {
-        }
-        void OnInstruction(const RenderInstruction& inst) override { buf.push_back(inst); }
-    } sink(pageVcl);
-
+    // 边走边序列化（避免 const char* 指针在 static thread_local buffer 复用后失效）
+    std::string pageContent;
+    SerializingSink sink(pageContent);
     m_aConverter.Convert(m_aMetaFile, sink, pageNum);
 
-    // 追加到累积的 VCL 指令中
-    m_aInstructions.insert(m_aInstructions.end(), pageVcl.begin(), pageVcl.end());
+    // 追加到累积的 VCL 内容中
+    m_aPrevVclContent += pageContent;
 
-    // 与上次比较，有变化则重写文件
-    std::string newContent = SerializeInstructions(m_aInstructions);
-    std::string prevContent = SerializeInstructions(m_aPrevVclInstructions);
+    std::cerr << "[VCL] page " << pageNum << " recorded ("
+              << pageContent.size() << " bytes, total "
+              << m_aPrevVclContent.size() << " bytes)" << std::endl;
 
-    if (newContent != prevContent || m_aPrevVclInstructions.empty())
+    // 重写 VCL 文件（覆盖模式）
+    m_vclFile.close();
+    m_vclFile.open(m_sVclLogPath.getStr(),
+                   std::ios::out | std::ios::trunc | std::ios::binary);
+    if (m_vclFile.is_open())
     {
-        std::cerr << "[VCL] output changed (page=" << pageNum
-                  << " prev=" << m_aPrevVclInstructions.size() << " now=" << m_aInstructions.size()
-                  << ")" << std::endl;
-
-        m_vclFile.close();
-        m_vclFile.open(m_sVclLogPath.getStr(), std::ios::out | std::ios::trunc | std::ios::binary);
-        if (m_vclFile.is_open())
-        {
-            m_vclFile << newContent;
-            m_vclFile.flush();
-        }
-
-        m_aPrevVclInstructions = m_aInstructions;
+        m_vclFile << m_aPrevVclContent;
+        m_vclFile.flush();
     }
 
     // 清空 MetaFile 准备下一页
