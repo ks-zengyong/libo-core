@@ -284,11 +284,17 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
     if (!m_valid || !m_info)
         return 0;
 
-    // 半点 → twips: halfPt * 10
-    int fontSizeTwips = fontSizeHalfPt * 10;
+    // 半点 → 像素: halfPt / 2 = pt, pt * 96/72 = px → halfPt * 2/3
+    float pixelHeight = static_cast<float>(fontSizeHalfPt) * 2.0f / 3.0f;
 
     // 使用 HarfBuzz 获取字体度量（与 LO 一致）
     // 参考 LibreOffice 的 vcl/source/font/fontmetric.cxx: ImplCalcLineSpacing
+    // LO 流程：
+    //   1. fScale = pixelHeight / emSize（像素缩放因子）
+    //   2. pixelAscent = round(fontUnitAscent * fScale)
+    //   3. pixelDescent = round(fontUnitDescent * fScale)
+    //   4. pixelExtLeading = round(fontUnitExtLeading * fScale)
+    //   5. twips = (pixelAscent + pixelDescent + pixelExtLeading) * 15
     if (!m_data.empty())
     {
         // 创建 HarfBuzz blob 和 face
@@ -307,9 +313,6 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
 
                 if (font)
                 {
-                    // 不设置缩放，使用原始字体单位
-                    // 稍后手动应用缩放（与 LO 的 GetScale() + fScale 一致）
-
                     double fAscent = 0, fDescent = 0, fExtLeading = 0;
                     hb_position_t nWinAscent = 0, nWinDescent = 0;
                     bool bHheaValid = false;
@@ -322,7 +325,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
 
                     if (isVariable)
                     {
-                        // 可变字体：直接使用 HarfBuzz 的度量值
+                        // 可变字体：直接使用 HarfBuzz 的度量值（已包含 variation）
                         hb_position_t nAscent, nDescent, nLineGap;
                         if (hb_ot_metrics_get_position(font, HB_OT_METRICS_TAG_HORIZONTAL_ASCENDER,
                                                        &nAscent)
@@ -352,9 +355,6 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                             && hb_ot_metrics_get_position(font, DESCENT_HHEA, &nDescent)
                             && hb_ot_metrics_get_position(font, LINEGAP_HHEA, &nLineGap))
                         {
-                            fprintf(stderr,
-                                    "[FontEngine] HHEA: font=%s asc=%d desc=%d lineGap=%d\n",
-                                    m_fontName.c_str(), nAscent, nDescent, nLineGap);
                             // tdf#107605: Some fonts have weird values, check ascender +ve
                             // and descender -ve
                             if (nAscent >= 0 && nDescent <= 0)
@@ -384,12 +384,6 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                                    font, HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_DESCENT,
                                    &nWinDescent))
                         {
-                            // DEBUG: print OS/2 sTypo values
-                            fprintf(stderr,
-                                    "[FontEngine] OS/2: font=%s typoAsc=%d typoDesc=%d "
-                                    "typoLineGap=%d winAsc=%d winDesc=%d\n",
-                                    m_fontName.c_str(), nTypoAscent, nTypoDescent, nTypoLineGap,
-                                    nWinAscent, nWinDescent);
                             // 如果 hhea 为空，使用 Win metrics
                             if (fAscent == 0.0 && fDescent == 0.0)
                             {
@@ -422,11 +416,6 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
 
                             if (bUseTypoMetrics && nTypoAscent >= 0 && nTypoDescent <= 0)
                             {
-                                fprintf(stderr,
-                                        "[FontEngine] USE_TYPO_METRICS: font=%s using typo "
-                                        "asc=%d desc=%d lineGap=%d\n",
-                                        m_fontName.c_str(), nTypoAscent, nTypoDescent,
-                                        nTypoLineGap);
                                 fAscent = nTypoAscent;
                                 fDescent = -nTypoDescent;
                                 fExtLeading = nTypoLineGap;
@@ -437,32 +426,30 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                     hb_font_destroy(font);
 
                     // 计算最终高度（twips）
-                    // HarfBuzz 返回的值是字体单位，需要缩放到 twips
-                    // 对应 LO 的 ImplCalcLineSpacing + GetFontHeight：
-                    //   fScale = mnHeight / UnitsPerEm （像素高度/em单位）
-                    //   mnAscent = round(fAscent * fScale)
-                    //   mnDescent = round(fDescent * fScale)
-                    //   mnExtLeading = round(fExtLeading * fScale)
-                    //   total = mnAscent + mnDescent + mnExtLeading
-                    // 然后通过 lcl_pixelToLogic 转换为 twips：
-                    //   twips = llround(pixel / fMap / DPI) = llround(pixel * 15) (at 96 DPI)
-                    // 等价于直接缩放到 twips 并对每个 metric 单独 round
+                    // 与 LO 的 ImplCalcLineSpacing 完全一致的处理：
+                    //   LO: fScale = pixelHeight / emSize
+                    //   LO: pixelAscent = round(fontUnitAscent * fScale)
+                    //   LO: pixelDescent = round(fontUnitDescent * fScale)
+                    //   LO: pixelExtLeading = round(fontUnitExtLeading * fScale)
+                    //   LO: twips = (pixelAscent + pixelDescent + pixelExtLeading) * 15
+                    // 注意：LO 是先 round 到像素，再 *15 转 twips，不是直接 round 到 twips
                     if (fAscent > 0 || fDescent > 0)
                     {
                         float emSize = 1.0f / stbtt_ScaleForMappingEmToPixels(m_info, 1.0f);
-                        double fScale = static_cast<double>(fontSizeTwips) / emSize;
-                        int nAscent = static_cast<int>(std::llround(fAscent * fScale));
-                        int nDescent = static_cast<int>(std::llround(fDescent * fScale));
-                        int nExtLeading = static_cast<int>(std::llround(fExtLeading * fScale));
-                        int result = nAscent + nDescent + nExtLeading;
+                        double fScale = static_cast<double>(pixelHeight) / emSize;
+                        int nPixelAscent = static_cast<int>(std::round(fAscent * fScale));
+                        int nPixelDescent = static_cast<int>(std::round(fDescent * fScale));
+                        int nPixelExtLeading = static_cast<int>(std::round(fExtLeading * fScale));
+                        int nPixelTotal = nPixelAscent + nPixelDescent + nPixelExtLeading;
+                        int result = nPixelTotal * 15;
                         fprintf(stderr,
                                 "[FontEngine] HarfBuzz: font=%s halfPt=%d ascent=%.0f "
                                 "descent=%.0f extLead=%.0f winAscent=%d winDescent=%d "
                                 "em=%.0f hheaValid=%d "
-                                "nAscent=%d nDescent=%d nExtLead=%d result=%d\n",
+                                "pixelAsc=%d pixelDesc=%d pixelExt=%d pixelTotal=%d result=%d\n",
                                 m_fontName.c_str(), fontSizeHalfPt, fAscent, fDescent, fExtLeading,
-                                nWinAscent, nWinDescent, emSize, bHheaValid, nAscent, nDescent,
-                                nExtLeading, result);
+                                nWinAscent, nWinDescent, emSize, bHheaValid, nPixelAscent,
+                                nPixelDescent, nPixelExtLeading, nPixelTotal, result);
                         return result;
                     }
                 }
@@ -470,14 +457,15 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
         }
     }
 
-    // 回退到 stb_truetype
+    // 回退到 stb_truetype（与 LO 一致的像素级舍入）
     int ascent, descent, lineGap;
     stbtt_GetFontVMetrics(m_info, &ascent, &descent, &lineGap);
-    float scale = stbtt_ScaleForMappingEmToPixels(m_info, fontSizeTwips);
-    int nAscent = static_cast<int>(std::llround(ascent * scale));
-    int nDescent = static_cast<int>(std::llround(-descent * scale));
-    int nLineGap = static_cast<int>(std::llround(lineGap * scale));
-    return nAscent + nDescent + nLineGap;
+    float emSize = 1.0f / stbtt_ScaleForMappingEmToPixels(m_info, 1.0f);
+    double fScale = static_cast<double>(pixelHeight) / emSize;
+    int nPixelAscent = static_cast<int>(std::round(ascent * fScale));
+    int nPixelDescent = static_cast<int>(std::round(-descent * fScale));
+    int nPixelLineGap = static_cast<int>(std::round(lineGap * fScale));
+    return (nPixelAscent + nPixelDescent + nPixelLineGap) * 15;
 }
 
 //===----------------------------------------------------------------------===//
