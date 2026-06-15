@@ -1,8 +1,17 @@
 // render_diff.cpp — 渲染指令比对工具
 // 比对 LibreOffice 和 aproj/docx 的渲染指令输出
-// 用法: render_diff <reference.txt> <test.txt> [--tolerance N] [--known-diffs file]
 //
-// 编译: cl /std:c++17 /EHsc render_diff.cpp /Fe:render_diff.exe
+// 用法:
+//   render_diff frame                   对比 test/lo_frame.txt 和 test/aproj_frame.txt
+//   render_diff vcl                     对比 test/lo_vcl.txt 和 test/aproj_vcl.txt
+//   render_diff <ref.txt> <test.txt>    对比任意两个文件
+//
+// 选项:
+//   --test-dir DIR   指定 test 目录，默认 "test"
+//   --known-diffs F  已知差异文件 (跳过匹配差异)
+//   --verbose        显示匹配行
+//
+// 编译: cmake --build build
 
 #include <iostream>
 #include <fstream>
@@ -11,7 +20,6 @@
 #include <vector>
 #include <cstdlib>
 #include <cstring>
-#include <cmath>
 #include <algorithm>
 
 // ── 指令类型 ──
@@ -258,16 +266,8 @@ struct DiffResult
     std::string description;
 };
 
-struct CompareOptions
-{
-    int tolerance = 10; // twips
-};
-
-static bool compareInt(int a, int b, int tol) { return std::abs(a - b) <= tol; }
-
 static std::vector<DiffResult> compareInstructions(const std::vector<Instruction>& ref,
-                                                   const std::vector<Instruction>& test,
-                                                   const CompareOptions& opts)
+                                                   const std::vector<Instruction>& test)
 {
     std::vector<DiffResult> diffs;
     size_t maxLen = std::max(ref.size(), test.size());
@@ -299,16 +299,13 @@ static std::vector<DiffResult> compareInstructions(const std::vector<Instruction
             continue; // 类型不同，跳过详细比较
         }
 
-        // 比较各字段
-        auto fieldDiff = [&](const std::string& name, auto refVal, auto testVal, int tol) {
-            if (!compareInt(static_cast<int>(refVal), static_cast<int>(testVal), tol))
+        // 比较各字段 — 严格相等，不允许容差
+        auto fieldDiff = [&](const std::string& name, auto refVal, auto testVal) {
+            if (refVal != testVal)
             {
                 diffs.push_back({ r.lineNum, t.lineNum,
                                   name + ": ref=" + std::to_string(refVal)
-                                      + " test=" + std::to_string(testVal) + " (diff="
-                                      + std::to_string(std::abs(static_cast<int>(refVal)
-                                                                - static_cast<int>(testVal)))
-                                      + ", tol=" + std::to_string(tol) + ")" });
+                                      + " test=" + std::to_string(testVal) });
             }
         };
 
@@ -321,12 +318,12 @@ static std::vector<DiffResult> compareInstructions(const std::vector<Instruction
             }
         };
 
-        fieldDiff("pageNum", r.pageNum, t.pageNum, 0);
+        fieldDiff("pageNum", r.pageNum, t.pageNum);
 
         if (r.type == CmdType::PAGE_START)
         {
-            fieldDiff("width", r.width, t.width, opts.tolerance);
-            fieldDiff("height", r.height, t.height, opts.tolerance);
+            fieldDiff("width", r.width, t.width);
+            fieldDiff("height", r.height, t.height);
         }
         else if (r.type == CmdType::PAGE_END)
         {
@@ -334,20 +331,20 @@ static std::vector<DiffResult> compareInstructions(const std::vector<Instruction
         }
         else
         {
-            fieldDiff("x", r.x, t.x, opts.tolerance);
-            fieldDiff("y", r.y, t.y, opts.tolerance);
-            fieldDiff("width", r.width, t.width, opts.tolerance);
-            fieldDiff("height", r.height, t.height, opts.tolerance);
+            fieldDiff("x", r.x, t.x);
+            fieldDiff("y", r.y, t.y);
+            fieldDiff("width", r.width, t.width);
+            fieldDiff("height", r.height, t.height);
 
             if (r.type == CmdType::TEXT_FRAME || r.type == CmdType::TEXT_LINE
                 || r.type == CmdType::TEXT_RUN)
             {
                 strDiff("text", r.text, t.text);
                 strDiff("fontName", r.fontName, t.fontName);
-                fieldDiff("fontSize", r.fontSize, t.fontSize, 0);
-                fieldDiff("fontColor", r.fontColor, t.fontColor, 0);
-                fieldDiff("fontWeight", r.fontWeight, t.fontWeight, 0);
-                fieldDiff("fontItalic", r.fontItalic, t.fontItalic, 0);
+                fieldDiff("fontSize", r.fontSize, t.fontSize);
+                fieldDiff("fontColor", r.fontColor, t.fontColor);
+                fieldDiff("fontWeight", r.fontWeight, t.fontWeight);
+                fieldDiff("fontItalic", r.fontItalic, t.fontItalic);
                 strDiff("styleName", r.styleName, t.styleName);
             }
         }
@@ -403,37 +400,76 @@ static bool isKnownDiff(const DiffResult& diff, const std::vector<KnownDiff>& kn
 
 // ── Main ──
 
+static std::string resolveLayerPath(const std::string& testDir, const std::string& prefix,
+                                    const std::string& layer)
+{
+    return testDir + "/" + prefix + layer + ".txt";
+}
+
 int main(int argc, char* argv[])
 {
-    if (argc < 3)
+    if (argc < 2)
     {
-        std::cerr << "Usage: render_diff <reference.txt> <test.txt> [options]\n"
+        std::cerr << "Usage:\n"
+                  << "  render_diff frame                 Compare frame layer\n"
+                  << "  render_diff vcl                   Compare VCL layer\n"
+                  << "  render_diff <ref.txt> <test.txt>  Compare arbitrary files\n"
                   << "Options:\n"
-                  << "  --tolerance N    Position/size tolerance in twips (default: 10)\n"
+                  << "  --test-dir DIR   Test directory (default: test)\n"
                   << "  --known-diffs F  File with known differences to skip\n"
                   << "  --verbose        Show matching lines too\n";
         return 1;
     }
 
-    std::string refPath = argv[1];
-    std::string testPath = argv[2];
-    CompareOptions opts;
+    std::string refPath;
+    std::string testPath;
+    std::string testDir = "test";
     std::string knownDiffsPath;
     bool verbose = false;
 
-    for (int i = 3; i < argc; ++i)
+    // 解析第一个参数：判断是 layer 名称还是文件路径
+    std::string arg1 = argv[1];
+    bool isLayer = (arg1 == "frame" || arg1 == "vcl");
+
+    // 解析 --test-dir (必须在其他参数之前，因为可能影响 layer 路径解析)
+    for (int i = 1; i < argc; ++i)
     {
-        if (strcmp(argv[i], "--tolerance") == 0 && i + 1 < argc)
+        if (strcmp(argv[i], "--test-dir") == 0 && i + 1 < argc)
         {
-            opts.tolerance = parseInt(argv[++i]);
+            testDir = argv[++i];
         }
-        else if (strcmp(argv[i], "--known-diffs") == 0 && i + 1 < argc)
+    }
+
+    if (isLayer)
+    {
+        // 快捷模式: render_diff frame / render_diff vcl
+        refPath = resolveLayerPath(testDir, "lo_", arg1);
+        testPath = resolveLayerPath(testDir, "aproj_", arg1);
+        // 从第 2 个参数开始解析选项
+        for (int i = 2; i < argc; ++i)
         {
-            knownDiffsPath = argv[++i];
+            if (strcmp(argv[i], "--known-diffs") == 0 && i + 1 < argc)
+                knownDiffsPath = argv[++i];
+            else if (strcmp(argv[i], "--verbose") == 0)
+                verbose = true;
         }
-        else if (strcmp(argv[i], "--verbose") == 0)
+    }
+    else
+    {
+        // 传统模式: render_diff <ref.txt> <test.txt>
+        if (argc < 3)
         {
-            verbose = true;
+            std::cerr << "ERROR: two file paths required in file mode\n";
+            return 1;
+        }
+        refPath = argv[1];
+        testPath = argv[2];
+        for (int i = 3; i < argc; ++i)
+        {
+            if (strcmp(argv[i], "--known-diffs") == 0 && i + 1 < argc)
+                knownDiffsPath = argv[++i];
+            else if (strcmp(argv[i], "--verbose") == 0)
+                verbose = true;
         }
     }
 
@@ -472,7 +508,7 @@ int main(int argc, char* argv[])
     }
 
     // 比对
-    auto diffs = compareInstructions(refInsts, testInsts, opts);
+    auto diffs = compareInstructions(refInsts, testInsts);
 
     // 分类差异
     int knownCount = 0;
@@ -484,7 +520,6 @@ int main(int argc, char* argv[])
               << std::endl;
     std::cout << "Test:      " << testPath << " (" << testInsts.size() << " instructions)"
               << std::endl;
-    std::cout << "Tolerance: " << opts.tolerance << " twips" << std::endl;
     std::cout << std::endl;
 
     // 统计各类型指令数
