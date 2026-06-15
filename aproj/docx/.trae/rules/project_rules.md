@@ -28,3 +28,45 @@
 - **使用现有 `*.docx`**（`aproj/docx/samples/*.docx`），**不要自己生成 docx 测试文件**
 - 测试差异即为frame和vcl指令记录的差异项
 - 测试目标是两个指标差异数为 **0**
+
+## 目录结构说明
+当以 `aproj` 作为工作区根目录打开时，其相对位置和目录结构如下：
+
+```
+libo-core/                    # LibreOffice 源代码根目录（即 aproj 的父目录）
+├── sw/                       # Writer 模块（DOCX 解析与排版核心代码）
+├── vcl/                      # VCL 渲染层模块
+├── oox/                      # OOXML 解析模块
+├── sax/                      # XML 解析模块
+├── svl/                      # 共享工具库
+├── svx/                      # 图形/编辑引擎
+├── tools/                    # 通用工具库
+├── sal/                      # 系统抽象层
+├── ...                       # 其他 LO 模块
+│
+└── aproj/                    # 本项目工作区根目录
+    ├── docx/                 # DOCX 独立解析排版引擎
+    │   ├── src/
+    │   │   ├── core/         # 核心数据结构（doc, node, format, types 等）
+    │   │   ├── filter/       # DOCX 文件解析器
+    │   │   ├── font/         # 字体引擎
+    │   │   ├── frame/        # Frame 排版树
+    │   │   ├── layout/       # 排版动作（layact）
+    │   │   └── render/       # 渲染层（接入 LO 的 VCL）
+    │   ├── test/             # 测试用例与差异对比脚本
+    │   ├── samples/          # 测试用 .docx 样本文件
+    │   ├── third_party/      # 三方库（如 harfbuzz）
+    │   └── .trae/            # Trae IDE 配置（规则、技能、代理）
+    │
+    ├── cache/                # 缓存目录（机器配置信息等）
+    └── .trae/                # 项目级 Trae IDE 配置
+        └── rules/            # 项目规则文件
+```
+
+### 重要说明
+
+- **LibreOffice 源码位置**: `aproj` 的父目录 `libo-core/` 即为 LibreOffice 的源代码目录。当需要查找 LO 原始代码实现时，应向上查找 `../` 即可访问 `libo-core` 下的各模块（如 `../sw/`、`../vcl/`、`../oox/` 等）。
+- **路径对应关系**: 以 `aproj` 为工作区根目录时，`../` = `libo-core/`。例如：
+  - `../sw/` → LibreOffice Writer 模块
+  - `../vcl/` → LibreOffice VCL 渲染模块
+  - `../oox/` → LibreOffice OOXML 解析模块
