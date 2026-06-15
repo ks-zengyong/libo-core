@@ -10,6 +10,7 @@
 #include "../frame/frame.h"
 #include "instruction_builder.h"
 #include "../../../../render_common/render_format.h"
+#include "../../../../render_common/frame_tree_walker.h"
 #include <functional>
 #include <iostream>
 #include <sstream>
@@ -17,8 +18,168 @@
 #include <functional>
 
 //===----------------------------------------------------------------------===//
-// RenderLogger
+// IFrameNode 包装器：将 aproj 的 SwFrame 适配为共享遍历接口
 //===----------------------------------------------------------------------===//
+
+namespace
+{
+class AprojFrameNode : public IFrameNode
+{
+public:
+    AprojFrameNode(SwFrame* pFrame, int pageNum)
+        : m_pFrame(pFrame)
+        , m_pageNum(pageNum)
+    {
+        if (pFrame && pFrame->IsTextFrame())
+            ExtractTextInfo();
+    }
+
+    FrameNodeType GetNodeType() const override
+    {
+        if (!m_pFrame)
+            return FrameNodeType::Unknown;
+        switch (m_pFrame->GetType())
+        {
+            case SwFrameType::Page:
+                return FrameNodeType::Page;
+            case SwFrameType::Body:
+                return FrameNodeType::Body;
+            case SwFrameType::Header:
+                return FrameNodeType::Header;
+            case SwFrameType::Footer:
+                return FrameNodeType::Footer;
+            case SwFrameType::Section:
+                return FrameNodeType::Section;
+            case SwFrameType::Column:
+                return FrameNodeType::Column;
+            case SwFrameType::Txt:
+                return FrameNodeType::Text;
+            case SwFrameType::Tab:
+                return FrameNodeType::Table;
+            case SwFrameType::Row:
+                return FrameNodeType::TabRow;
+            case SwFrameType::Cell:
+                return FrameNodeType::TabCell;
+            case SwFrameType::FootnoteCont:
+                return FrameNodeType::FootnoteCont;
+            case SwFrameType::Footnote:
+                return FrameNodeType::Footnote;
+            case SwFrameType::Fly:
+                return FrameNodeType::Fly;
+            case SwFrameType::NoTxt:
+                return FrameNodeType::NoText;
+            default:
+                return FrameNodeType::Unknown;
+        }
+    }
+
+    int GetPageNum() const override { return m_pageNum; }
+
+    void GetRect(int& x, int& y, int& w, int& h) const override
+    {
+        if (!m_pFrame)
+            return;
+        const SwRect& r = m_pFrame->getFrameArea();
+        x = r.Left();
+        y = r.Top();
+        w = r.Width();
+        h = r.Height();
+    }
+
+    const char* GetText() const override
+    {
+        return m_textBuf.empty() ? nullptr : m_textBuf.c_str();
+    }
+    int GetTextLen() const override { return static_cast<int>(m_textBuf.size()); }
+    const char* GetFontName() const override
+    {
+        return m_fontBuf.empty() ? nullptr : m_fontBuf.c_str();
+    }
+    int GetFontSize() const override { return m_fontSize; }
+    uint32_t GetFontColor() const override { return m_fontColor; }
+    uint8_t GetFontWeight() const override { return m_fontWeight; }
+    uint8_t GetFontItalic() const override { return m_fontItalic; }
+    const char* GetStyleName() const override
+    {
+        return m_styleBuf.empty() ? nullptr : m_styleBuf.c_str();
+    }
+
+    IFrameNode* GetFirstChild() const override
+    {
+        if (!m_pFrame || !m_pFrame->IsLayoutFrame())
+            return nullptr;
+        SwFrame* pLower = static_cast<SwLayoutFrame*>(m_pFrame)->GetLower();
+        return pLower ? new AprojFrameNode(pLower, m_pageNum) : nullptr;
+    }
+
+    IFrameNode* GetNextSibling() const override
+    {
+        if (!m_pFrame)
+            return nullptr;
+        SwFrame* pNext = m_pFrame->GetNext();
+        return pNext ? new AprojFrameNode(pNext, m_pageNum) : nullptr;
+    }
+
+private:
+    void ExtractTextInfo()
+    {
+        SwTextFrame* pTextFrame = static_cast<SwTextFrame*>(m_pFrame);
+        SwContentNode* pContentNode = pTextFrame->GetNode();
+        if (!pContentNode || !pContentNode->IsTextNode())
+            return;
+
+        SwTextNode* pTextNode = static_cast<SwTextNode*>(pContentNode);
+        m_textBuf = pTextNode->GetText();
+
+        const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+        const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+        const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
+        const std::string* pItalic = pTextNode->GetAttr(RES_CHRATR_POSTURE);
+
+        m_fontBuf = (pFont && !pFont->empty()) ? *pFont : "Calibri";
+        m_fontSize = pSize ? std::stoi(*pSize) : 20;
+        m_fontWeight = (pWeight && *pWeight == "bold") ? 700 : 400;
+        m_fontItalic = (pItalic && *pItalic == "italic") ? 1 : 0;
+        m_fontColor = 0xFFFFFF; // 无头模式默认白色
+
+        m_styleBuf = pTextNode->GetStyleName();
+        if (m_styleBuf.empty() || m_styleBuf == "Normal" || m_styleBuf == "1")
+            m_styleBuf = "Default Paragraph Style";
+    }
+
+    SwFrame* m_pFrame;
+    int m_pageNum;
+    std::string m_textBuf;
+    std::string m_fontBuf;
+    std::string m_styleBuf;
+    int m_fontSize = 0;
+    uint32_t m_fontColor = 0;
+    uint8_t m_fontWeight = 0;
+    uint8_t m_fontItalic = 0;
+};
+
+// VCL 层遍历：递归遍历 Frame 树并调用 PaintSwFrame
+static void TraverseVclLayer(SwFrame* pFrame, OutputDevice* pOutDev)
+{
+    while (pFrame)
+    {
+        if (pFrame->IsPageFrame())
+        {
+            TraverseVclLayer(static_cast<SwLayoutFrame*>(pFrame)->GetLower(), pOutDev);
+        }
+        else if (pFrame->IsTextFrame())
+        {
+            pFrame->PaintSwFrame(pOutDev);
+        }
+        else if (pFrame->IsLayoutFrame())
+        {
+            TraverseVclLayer(static_cast<SwLayoutFrame*>(pFrame)->GetLower(), pOutDev);
+        }
+        pFrame = pFrame->GetNext();
+    }
+}
+
+} // namespace
 
 RenderLogger::RenderLogger() {}
 
@@ -56,267 +217,6 @@ void RenderLogger::OnInstruction(const RenderInstruction& inst)
 }
 
 //===----------------------------------------------------------------------===//
-// 高级接口
-//===----------------------------------------------------------------------===//
-
-void RenderLogger::LogPageStart(int pageNum, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::PAGE_START;
-    inst.pageNum = pageNum;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogPageEnd(int pageNum)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::PAGE_END;
-    inst.pageNum = pageNum;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogTextFrame(int pageNum, int x, int y, int width, int height, const char* text,
-                                int textLen, const char* fontName, int fontSize, uint32_t fontColor,
-                                uint8_t fontWeight, uint8_t fontItalic, const char* styleName)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TEXT_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    inst.text = text;
-    inst.textLen = textLen;
-    inst.fontName = fontName;
-    inst.fontSize = fontSize;
-    inst.fontColor = fontColor;
-    inst.fontWeight = fontWeight;
-    inst.fontItalic = fontItalic;
-    inst.styleName = styleName;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogTextLine(int pageNum, int x, int y, int width, int height, const char* text,
-                               int textLen, const char* fontName, int fontSize, uint32_t fontColor,
-                               uint8_t fontWeight, uint8_t fontItalic, const char* styleName)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TEXT_LINE;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    inst.text = text;
-    inst.textLen = textLen;
-    inst.fontName = fontName;
-    inst.fontSize = fontSize;
-    inst.fontColor = fontColor;
-    inst.fontWeight = fontWeight;
-    inst.fontItalic = fontItalic;
-    inst.styleName = styleName;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogTextRun(int pageNum, int x, int y, int width, int height, const char* text,
-                              int textLen, const char* fontName, int fontSize, uint32_t fontColor,
-                              uint8_t fontWeight, uint8_t fontItalic)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TEXT_RUN;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    inst.text = text;
-    inst.textLen = textLen;
-    inst.fontName = fontName;
-    inst.fontSize = fontSize;
-    inst.fontColor = fontColor;
-    inst.fontWeight = fontWeight;
-    inst.fontItalic = fontItalic;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogTableFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TABLE_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogTableRow(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TABLE_ROW;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogTableCell(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TABLE_CELL;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogImageFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::IMAGE_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogSectionFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::SECTION_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogColumnFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::COLUMN_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogHeaderFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::HEADER_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogFooterFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FOOTER_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogFootnoteContFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FOOTNOTE_CONT_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogFootnoteFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FOOTNOTE_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogFlyFrame(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FLY_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogRect(int pageNum, int x, int y, int width, int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::RECT;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void RenderLogger::LogLine(int pageNum, int x1, int y1, int x2, int y2)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::LINE;
-    inst.pageNum = pageNum;
-    inst.x = x1;
-    inst.y = y1;
-    inst.width = x2;
-    inst.height = y2;
-    OnInstruction(inst);
-}
-
-//===----------------------------------------------------------------------===//
 // Frame 树遍历
 //===----------------------------------------------------------------------===//
 
@@ -325,25 +225,19 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
     if (!pRoot)
         return;
 
-    // 创建 RenderInstructionOutputDevice — 通过 OutputDevice 接口绘制
-    // 与 LibreOffice 的 PaintSwFrame → OutputDevice → GDIMetaFile 路径对称
+    // 创建 RenderInstructionOutputDevice — 通过 OutputDevice 接口绘制（VCL 层）
     RenderInstructionOutputDevice aOutDev(*this, 1);
 
-    // 遍历页面 (从最后一个页面开始，与 LibreOffice 的遍历方向一致)
+    // 收集所有页面，反转为正序
     SwPageFrame* pPage = pRoot->GetLastPage();
-
-    // 收集所有页面到数组，以便正序遍历
     std::vector<SwPageFrame*> pages;
     while (pPage)
     {
         pages.push_back(pPage);
         pPage = pPage->GetPrevPage();
     }
-    // 反转为正序 (第 1 页在前)
     for (size_t i = 0; i < pages.size() / 2; ++i)
-    {
         std::swap(pages[i], pages[pages.size() - 1 - i]);
-    }
 
     for (size_t i = 0; i < pages.size(); ++i)
     {
@@ -351,162 +245,14 @@ void RenderLogger::LogFrameTree(SwRootFrame* pRoot)
         int pn = static_cast<int>(i) + 1;
         aOutDev.SetPageNum(pn);
 
-        LogPageStart(pn, pPage->getFrameArea().Width(), pPage->getFrameArea().Height());
+        // Frame 层：使用 render_common 共享遍历器（WalkFrameTreeAndLog）
+        // 生成 PAGE_START + 所有 Frame 类型指令 + PAGE_END
+        AprojFrameNode pageNode(pPage, pn);
+        WalkFrameTreeAndLog(&pageNode, *this);
 
-        // 遍历 Frame 树，输出 frame 层语义指令 + VCL 层绘制指令
-        // 与 LibreOffice 的双层录制架构对称：
-        //   frame 层: TEXT_FRAME (语义级，来自 SwTextFrame::Paint)
-        //   VCL 层:   SET_FONT / TEXT_RUN (绘制级，来自 OutputDevice)
-        std::function<void(SwFrame*)> logFrame = [&](SwFrame* pFrame) {
-            while (pFrame)
-            {
-                if (pFrame->IsPageFrame())
-                {
-                    // PageFrame: 直接递归子 Frame（Page 区域由 LogPageStart/End 描述）
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsTextFrame())
-                {
-                    // TextFrame: 先输出 frame 层 TEXT_FRAME，再输出 VCL 层指令
-                    SwTextFrame* pTextFrame = static_cast<SwTextFrame*>(pFrame);
-                    SwContentNode* pContentNode = pTextFrame->GetNode();
-                    if (pContentNode && pContentNode->IsTextNode())
-                    {
-                        SwTextNode* pTextNode = static_cast<SwTextNode*>(pContentNode);
-                        const std::string& rText = pTextNode->GetText();
-
-                        const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
-                        const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
-                        const std::string* pColor = pTextNode->GetAttr(RES_CHRATR_COLOR);
-                        const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
-                        const std::string* pItalic = pTextNode->GetAttr(RES_CHRATR_POSTURE);
-
-                        const char* fontName
-                            = (pFont && !pFont->empty()) ? pFont->c_str() : "Calibri";
-                        int fontSize = pSize ? std::stoi(*pSize) : 20; // 默认 10pt (20 半点)
-
-                        // 样式名处理
-                        std::string sStyleName = pTextNode->GetStyleName();
-                        if (sStyleName.empty() || sStyleName == "Normal" || sStyleName == "1")
-                        {
-                            sStyleName = "Default Paragraph Style";
-                        }
-
-                        // LibreOffice 无头模式默认前景色为白色 (0xFFFFFF)
-                        uint32_t fontColor = 0xFFFFFF;
-                        uint8_t fontWeight = (pWeight && *pWeight == "bold") ? 188 : 144;
-                        uint8_t fontItalic = (pItalic && *pItalic == "italic") ? 1 : 0;
-
-                        const char* styleName = StoreString(sStyleName.c_str());
-
-                        SwRect aArea = pTextFrame->getFrameArea();
-                        BuildTextFrameInstruction(
-                            *this, pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height(),
-                            rText.c_str(), static_cast<int>(rText.size()), fontName, fontSize,
-                            fontColor, fontWeight, fontItalic, styleName);
-                    }
-
-                    // VCL 层：PaintSwFrame 输出 SET_FONT + TEXT_RUN
-                    pFrame->PaintSwFrame(&aOutDev);
-                }
-                else if (pFrame->IsNoTextFrame())
-                {
-                    // NoTextFrame: 图片/OLE Frame，输出 IMAGE_FRAME
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogImageFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                }
-                else if (pFrame->IsTabFrame())
-                {
-                    // TabFrame: 输出 TABLE_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogTableFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsRowFrame())
-                {
-                    // RowFrame: 输出 TABLE_ROW，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogTableRow(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsCellFrame())
-                {
-                    // CellFrame: 输出 TABLE_CELL，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogTableCell(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsSctFrame())
-                {
-                    // SectionFrame: 输出 SECTION_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogSectionFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsColumnFrame())
-                {
-                    // ColumnFrame: 输出 COLUMN_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogColumnFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsHeaderFrame())
-                {
-                    // HeaderFrame: 输出 HEADER_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogHeaderFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsFooterFrame())
-                {
-                    // FooterFrame: 输出 FOOTER_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogFooterFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsFootnoteContFrame())
-                {
-                    // FootnoteContFrame: 输出 FOOTNOTE_CONT_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogFootnoteContFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsFootnoteFrame())
-                {
-                    // FootnoteFrame: 输出 FOOTNOTE_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogFootnoteFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsFlyFrame())
-                {
-                    // FlyFrame: 输出 FLY_FRAME，然后递归子 Frame
-                    const SwRect& aArea = pFrame->getFrameArea();
-                    LogFlyFrame(pn, aArea.Left(), aArea.Top(), aArea.Width(), aArea.Height());
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsBodyFrame())
-                {
-                    // BodyFrame: 直接递归（Body 区域由父容器决定，不单独输出）
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else if (pFrame->IsLayoutFrame())
-                {
-                    // 其他 LayoutFrame: 只递归进入子 Frame
-                    logFrame(static_cast<SwLayoutFrame*>(pFrame)->GetLower());
-                }
-                else
-                {
-                    pFrame->PaintSwFrame(&aOutDev);
-                }
-
-                pFrame = pFrame->GetNext();
-            }
-        };
-
-        logFrame(pPage->GetLower());
-
-        LogPageEnd(pn);
+        // VCL 层：递归遍历 Frame 树并调用 PaintSwFrame
+        // 生成 SET_FONT / TEXT_RUN / RECT 等绘制指令
+        TraverseVclLayer(pPage->GetLower(), &aOutDev);
     }
 }
 
@@ -538,6 +284,12 @@ static bool IsFrameLayerInstruction(RenderCmdType type)
         case RenderCmdType::TABLE_CELL:
         case RenderCmdType::IMAGE_FRAME:
         case RenderCmdType::SECTION_FRAME:
+        case RenderCmdType::COLUMN_FRAME:
+        case RenderCmdType::HEADER_FRAME:
+        case RenderCmdType::FOOTER_FRAME:
+        case RenderCmdType::FOOTNOTE_CONT_FRAME:
+        case RenderCmdType::FOOTNOTE_FRAME:
+        case RenderCmdType::FLY_FRAME:
             return true;
         default:
             return false;

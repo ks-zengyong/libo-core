@@ -13,7 +13,14 @@
 #include <txtfrm.hxx>
 #include <tabfrm.hxx>
 #include <pagefrm.hxx>
+#include <rootfrm.hxx>
 #include <frame.hxx>
+#include <ftnfrm.hxx>
+#include <flyfrm.hxx>
+#include <sectfrm.hxx>
+#include <colfrm.hxx>
+#include <hffrm.hxx>
+#include <notxtfrm.hxx>
 #include <ndtxt.hxx>
 #include <swrect.hxx>
 #include <hintids.hxx>
@@ -25,10 +32,160 @@
 #include <tools/color.hxx>
 
 #include "../../../../render_common/render_format.h"
+#include "../../../../render_common/frame_tree_walker.h"
 
 #include <iostream>
 #include <sstream>
 #include <cstring>
+#include <deque>
+
+// ── IFrameNode 包装器：将 LO 的 SwFrame 适配为共享遍历接口 ──
+
+namespace
+{
+class LoFrameNode : public IFrameNode
+{
+public:
+    LoFrameNode(const SwFrame* pFrame, int pageNum)
+        : m_pFrame(pFrame)
+        , m_pageNum(pageNum)
+    {
+        if (pFrame && pFrame->IsTextFrame())
+            ExtractTextInfo();
+    }
+
+    FrameNodeType GetNodeType() const override
+    {
+        if (!m_pFrame)
+            return FrameNodeType::Unknown;
+        if (m_pFrame->IsPageFrame())
+            return FrameNodeType::Page;
+        if (m_pFrame->IsBodyFrame())
+            return FrameNodeType::Body;
+        if (m_pFrame->IsHeaderFrame())
+            return FrameNodeType::Header;
+        if (m_pFrame->IsFooterFrame())
+            return FrameNodeType::Footer;
+        if (m_pFrame->IsSctFrame())
+            return FrameNodeType::Section;
+        if (m_pFrame->IsColumnFrame())
+            return FrameNodeType::Column;
+        if (m_pFrame->IsTextFrame())
+            return FrameNodeType::Text;
+        if (m_pFrame->IsTabFrame())
+            return FrameNodeType::Table;
+        if (m_pFrame->IsRowFrame())
+            return FrameNodeType::TabRow;
+        if (m_pFrame->IsCellFrame())
+            return FrameNodeType::TabCell;
+        if (m_pFrame->IsFootnoteContFrame())
+            return FrameNodeType::FootnoteCont;
+        if (m_pFrame->IsFootnoteFrame())
+            return FrameNodeType::Footnote;
+        if (m_pFrame->IsFlyFrame())
+            return FrameNodeType::Fly;
+        if (m_pFrame->IsNoTextFrame())
+            return FrameNodeType::NoText;
+        return FrameNodeType::Unknown;
+    }
+
+    int GetPageNum() const override { return m_pageNum; }
+
+    void GetRect(int& x, int& y, int& w, int& h) const override
+    {
+        if (!m_pFrame)
+            return;
+        const SwRect& r = m_pFrame->getFrameArea();
+        x = static_cast<int>(r.Left());
+        y = static_cast<int>(r.Top());
+        w = static_cast<int>(r.Width());
+        h = static_cast<int>(r.Height());
+    }
+
+    const char* GetText() const override { return m_textBuf.empty() ? nullptr : m_textBuf.c_str(); }
+    int GetTextLen() const override { return static_cast<int>(m_textBuf.size()); }
+    const char* GetFontName() const override
+    {
+        return m_fontBuf.empty() ? nullptr : m_fontBuf.c_str();
+    }
+    int GetFontSize() const override { return m_fontSize; }
+    uint32_t GetFontColor() const override { return m_fontColor; }
+    uint8_t GetFontWeight() const override { return m_fontWeight; }
+    uint8_t GetFontItalic() const override { return m_fontItalic; }
+    const char* GetStyleName() const override
+    {
+        return m_styleBuf.empty() ? nullptr : m_styleBuf.c_str();
+    }
+
+    IFrameNode* GetFirstChild() const override
+    {
+        if (!m_pFrame || !m_pFrame->IsLayoutFrame())
+            return nullptr;
+        const SwFrame* pLower = static_cast<const SwLayoutFrame*>(m_pFrame)->GetLower();
+        return pLower ? new LoFrameNode(pLower, m_pageNum) : nullptr;
+    }
+
+    IFrameNode* GetNextSibling() const override
+    {
+        if (!m_pFrame)
+            return nullptr;
+        const SwFrame* pNext = m_pFrame->GetNext();
+        return pNext ? new LoFrameNode(pNext, m_pageNum) : nullptr;
+    }
+
+private:
+    void ExtractTextInfo()
+    {
+        const SwTextFrame* pTextFrame = static_cast<const SwTextFrame*>(m_pFrame);
+        const SwTextNode* pNode = pTextFrame->GetTextNodeFirst();
+        if (!pNode)
+            return;
+
+        const OUString& rText = pNode->GetText();
+        OString utf8 = OUStringToOString(rText, RTL_TEXTENCODING_UTF8);
+        m_textBuf = utf8.getStr();
+
+        const SwAttrSet& rAttrSet = pNode->GetSwAttrSet();
+
+        const SvxFontItem& rFont = rAttrSet.GetFont();
+        OString fn = OUStringToOString(rFont.GetFamilyName(), RTL_TEXTENCODING_UTF8);
+        m_fontBuf = fn.getStr();
+
+        const SvxFontHeightItem& rSize = rAttrSet.GetSize();
+        m_fontSize = static_cast<int>(rSize.GetHeight() / 10);
+
+        const SvxWeightItem& rWeight = rAttrSet.GetWeight();
+        m_fontWeight = (rWeight.GetWeight() >= WEIGHT_BOLD) ? 700 : 400;
+
+        const SvxPostureItem& rPosture = rAttrSet.GetPosture();
+        m_fontItalic = (rPosture.GetPosture() != ITALIC_NONE) ? 1 : 0;
+
+        const SvxColorItem& rColor = rAttrSet.GetColor();
+        Color aColor = rColor.GetValue();
+        m_fontColor = (static_cast<uint32_t>(aColor.GetRed()) << 16)
+                      | (static_cast<uint32_t>(aColor.GetGreen()) << 8)
+                      | static_cast<uint32_t>(aColor.GetBlue());
+
+        const SwFormatColl* pColl = pNode->GetFormatColl();
+        if (pColl)
+        {
+            OString sn = OUStringToOString(pColl->GetName().toString(), RTL_TEXTENCODING_UTF8);
+            m_styleBuf = sn.getStr();
+        }
+    }
+
+    const SwFrame* m_pFrame;
+    int m_pageNum;
+    std::string m_textBuf;
+    std::string m_fontBuf;
+    std::string m_styleBuf;
+    int m_fontSize = 0;
+    uint32_t m_fontColor = 0;
+    uint8_t m_fontWeight = 0;
+    uint8_t m_fontItalic = 0;
+};
+
+} // namespace
 
 // ── 单例 ──
 
@@ -103,122 +260,38 @@ void SwPaintEventListener::OnInstruction(const RenderInstruction& inst)
     }
 }
 
-// ── 高级接口 ──
-
-void SwPaintEventListener::OnPageStart(int pageNum, int width, int height)
-{
-    if (!m_bLogging)
-        return;
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::PAGE_START;
-    inst.pageNum = pageNum;
-    inst.width = width;
-    inst.height = height;
-    OnInstruction(inst);
-}
-
-void SwPaintEventListener::OnPageEnd(int pageNum)
-{
-    if (!m_bLogging)
-        return;
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::PAGE_END;
-    inst.pageNum = pageNum;
-    OnInstruction(inst);
-}
-
-void SwPaintEventListener::OnTextFrame(const SwTextFrame* pFrame)
-{
-    if (!m_bLogging || !pFrame)
-        return;
-
-    // 获取 Frame 几何
-    const SwRect& rArea = pFrame->getFrameArea();
-
-    // 获取文本节点
-    const SwTextNode* pNode = pFrame->GetTextNodeFirst();
-    if (!pNode)
-        return;
-
-    // 获取文本
-    const OUString& rText = pNode->GetText();
-    OString utf8Text = OUStringToOString(rText, RTL_TEXTENCODING_UTF8);
-
-    // 获取属性
-    const SwAttrSet& rAttrSet = pNode->GetSwAttrSet();
-
-    // 字体名
-    const SvxFontItem& rFont = rAttrSet.GetFont();
-    OString fontName = OUStringToOString(rFont.GetFamilyName(), RTL_TEXTENCODING_UTF8);
-
-    // 字号 (FontHeight 是 twips, 转为半点: twips / 10)
-    const SvxFontHeightItem& rSize = rAttrSet.GetSize();
-    int fontSize = static_cast<int>(rSize.GetHeight() / 10);
-
-    // 粗体
-    const SvxWeightItem& rWeight = rAttrSet.GetWeight();
-    uint8_t fontWeight = (rWeight.GetWeight() >= WEIGHT_BOLD) ? 700 : 400;
-
-    // 斜体
-    const SvxPostureItem& rPosture = rAttrSet.GetPosture();
-    uint8_t fontItalic = (rPosture.GetPosture() != ITALIC_NONE) ? 1 : 0;
-
-    // 颜色
-    const SvxColorItem& rColor = rAttrSet.GetColor();
-    Color aColor = rColor.GetValue();
-    uint32_t fontColor = (static_cast<uint32_t>(aColor.GetRed()) << 16)
-                         | (static_cast<uint32_t>(aColor.GetGreen()) << 8)
-                         | static_cast<uint32_t>(aColor.GetBlue());
-
-    // 样式名
-    const SwFormatColl* pColl = pNode->GetFormatColl();
-    OString styleName;
-    if (pColl)
-        styleName = OUStringToOString(pColl->GetName().toString(), RTL_TEXTENCODING_UTF8);
-
-    // 页码
-    const SwPageFrame* pPage = pFrame->FindPageFrame();
-    int pageNum = pPage ? pPage->GetPhyPageNum() : 1;
-
-    // 构造指令
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TEXT_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = static_cast<int>(rArea.Left());
-    inst.y = static_cast<int>(rArea.Top());
-    inst.width = static_cast<int>(rArea.Width());
-    inst.height = static_cast<int>(rArea.Height());
-
-    // 文本需要持久化 (指令存储的是指针)
-    // 使用静态缓冲区避免频繁分配
-    static thread_local std::string s_textBuf;
-    static thread_local std::string s_fontBuf;
-    static thread_local std::string s_styleBuf;
-
-    s_textBuf = utf8Text.getStr();
-    s_fontBuf = fontName.getStr();
-    s_styleBuf = styleName.getStr();
-
-    inst.text = s_textBuf.c_str();
-    inst.textLen = static_cast<int>(s_textBuf.size());
-    inst.fontName = s_fontBuf.c_str();
-    inst.fontSize = fontSize;
-    inst.fontColor = fontColor;
-    inst.fontWeight = fontWeight;
-    inst.fontItalic = fontItalic;
-    inst.styleName = s_styleBuf.empty() ? nullptr : s_styleBuf.c_str();
-
-    OnInstruction(inst);
-}
-
 void SwPaintEventListener::Flush()
 {
     // 所有指令已实时写入，这里只需 flush 缓冲区
     if (m_File.is_open())
         m_File.flush();
+}
+
+// ── Frame 树遍历（使用 render_common 共享遍历器） ──
+
+void SwPaintEventListener::LogFrameTree(SwRootFrame* pRoot)
+{
+    if (!m_bLogging || !pRoot)
+        return;
+
+    // 收集所有页面
+    SwPageFrame* pPage = pRoot->GetLastPage();
+    std::vector<SwPageFrame*> pages;
+    while (pPage)
+    {
+        pages.push_back(pPage);
+        pPage = pPage->GetPrevPage();
+    }
+    // 反转为正序
+    for (size_t i = 0; i < pages.size() / 2; ++i)
+        std::swap(pages[i], pages[pages.size() - 1 - i]);
+
+    for (size_t i = 0; i < pages.size(); ++i)
+    {
+        int pageNum = static_cast<int>(i) + 1;
+        LoFrameNode rootNode(pages[i], pageNum);
+        WalkFrameTreeAndLog(&rootNode, *this);
+    }
 }
 
 // ── VCL 层录制 (GDIMetaFile 方式) ──

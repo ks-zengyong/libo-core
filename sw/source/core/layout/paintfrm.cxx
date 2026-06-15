@@ -3299,6 +3299,12 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
             pSh->Imp()->DeletePaintRegion();
     }
 
+    // --- 渲染指令记录: Frame 层完整遍历 ---
+    // 在 layout 完成后、paint 循环前，遍历整个 Frame 树记录所有 Frame 类型
+    // 使用 render_common 共享的 WalkFrameTreeAndLog 实现
+    if (SwPaintEventListener::Get().IsLogging())
+        SwPaintEventListener::Get().LogFrameTree(const_cast<SwRootFrame*>(this));
+
     aRect.Intersection( pSh->VisArea() );
 
     const bool bExtraData = ::IsExtraData( GetFormat()->GetDoc() );
@@ -3359,7 +3365,7 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
         const bool bRightSidebar = pPage->SidebarPosition() == sw::sidebarwindows::SidebarPosition::RIGHT;
 
         // 跟踪当前页是否调用了 OnPageStart
-        bool bPageStarted = false;
+        bool bVclStarted = false;
 
         if ( !pPage->IsEmptyPage() )
         {
@@ -3376,16 +3382,12 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
                 }
                 gProp.pBLines.reset(new BorderLines);
 
-                // --- 渲染指令记录: PAGE_START ---
-                SwPaintEventListener::Get().OnPageStart(
-                    pPage->GetPhyPageNum(),
-                    static_cast<int>(pPage->getFrameArea().Width()),
-                    static_cast<int>(pPage->getFrameArea().Height()));
-                bPageStarted = true;
-
                 // --- VCL 层渲染指令记录: 开始录制当前页的所有 VCL 绘制操作 ---
                 if (SwPaintEventListener::Get().IsVclLogging())
+                {
                     SwPaintEventListener::Get().StartPageRecord(pSh->GetOut());
+                    bVclStarted = true;
+                }
 
                 aPaintRect.Intersection_( aRect );
 
@@ -3601,12 +3603,8 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
         }
 
         // --- VCL 层渲染指令记录: 停止录制并转换 ---
-        if (bPageStarted && SwPaintEventListener::Get().IsVclLogging())
+        if (bVclStarted && SwPaintEventListener::Get().IsVclLogging())
             SwPaintEventListener::Get().StopPageRecordAndConvert(pPage->GetPhyPageNum());
-
-        // --- 渲染指令记录: PAGE_END ---
-        if (bPageStarted)
-            SwPaintEventListener::Get().OnPageEnd(pPage->GetPhyPageNum());
 
         OSL_ENSURE( !pPage->GetNext() || pPage->GetNext()->IsPageFrame(),
                 "Neighbour of page is not a page." );

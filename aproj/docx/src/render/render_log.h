@@ -26,34 +26,8 @@ public:
     // ── 记录控制 ──
     bool IsLogging() const { return !m_aInstructions.empty(); }
 
-    // ── 高级接口 — 由调用方构建指令后提交 ──
-    void LogPageStart(int pageNum, int width, int height);
-    void LogPageEnd(int pageNum);
-    void LogTextFrame(int pageNum, int x, int y, int width, int height, const char* text,
-                      int textLen, const char* fontName, int fontSize, uint32_t fontColor,
-                      uint8_t fontWeight, uint8_t fontItalic, const char* styleName);
-    void LogTextLine(int pageNum, int x, int y, int width, int height, const char* text,
-                     int textLen, const char* fontName, int fontSize, uint32_t fontColor,
-                     uint8_t fontWeight, uint8_t fontItalic, const char* styleName);
-    void LogTextRun(int pageNum, int x, int y, int width, int height, const char* text, int textLen,
-                    const char* fontName, int fontSize, uint32_t fontColor, uint8_t fontWeight,
-                    uint8_t fontItalic);
-    void LogTableFrame(int pageNum, int x, int y, int width, int height);
-    void LogTableRow(int pageNum, int x, int y, int width, int height);
-    void LogTableCell(int pageNum, int x, int y, int width, int height);
-    void LogImageFrame(int pageNum, int x, int y, int width, int height);
-    void LogSectionFrame(int pageNum, int x, int y, int width, int height);
-    void LogColumnFrame(int pageNum, int x, int y, int width, int height);
-    void LogHeaderFrame(int pageNum, int x, int y, int width, int height);
-    void LogFooterFrame(int pageNum, int x, int y, int width, int height);
-    void LogFootnoteContFrame(int pageNum, int x, int y, int width, int height);
-    void LogFootnoteFrame(int pageNum, int x, int y, int width, int height);
-    void LogFlyFrame(int pageNum, int x, int y, int width, int height);
-    void LogRect(int pageNum, int x, int y, int width, int height);
-    void LogLine(int pageNum, int x1, int y1, int x2, int y2);
-
     // ── Frame 树遍历 ──
-    // 遍历整个 Frame 树，生成渲染指令
+    // 遍历整个 Frame 树，通过 render_common 共享的 WalkFrameTreeAndLog 生成渲染指令
     void LogFrameTree(SwRootFrame* pRoot);
 
     // ── 输出 ──

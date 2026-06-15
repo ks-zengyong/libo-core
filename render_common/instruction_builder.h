@@ -97,6 +97,27 @@ inline void BuildTextRunInstruction(RenderInstructionSink& rSink, int pageNum, i
 
 // ── Frame 层语义指令构建 ──
 
+inline void BuildPageStartInstruction(RenderInstructionSink& rSink, int pageNum, int width,
+                                      int height)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::PAGE_START;
+    inst.pageNum = pageNum;
+    inst.width = width;
+    inst.height = height;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildPageEndInstruction(RenderInstructionSink& rSink, int pageNum)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::PAGE_END;
+    inst.pageNum = pageNum;
+    rSink.OnInstruction(inst);
+}
+
 inline void BuildTextFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
                                       int w, int h, const char* text, int textLen,
                                       const char* fontName, int fontSize, uint32_t fontColor,
@@ -151,6 +172,34 @@ inline void BuildTableFrameInstruction(RenderInstructionSink& rSink, int pageNum
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::TABLE_FRAME;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = w;
+    inst.height = h;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildTableRowInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
+                                     int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TABLE_ROW;
+    inst.pageNum = pageNum;
+    inst.x = x;
+    inst.y = y;
+    inst.width = w;
+    inst.height = h;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildTableCellInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
+                                      int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TABLE_CELL;
     inst.pageNum = pageNum;
     inst.x = x;
     inst.y = y;

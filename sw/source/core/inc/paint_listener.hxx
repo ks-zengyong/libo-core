@@ -21,9 +21,7 @@
 #include <vector>
 #include <memory>
 
-class SwTextFrame;
-class SwTabFrame;
-class SwPageFrame;
+class SwRootFrame;
 class OutputDevice;
 
 /**
@@ -47,10 +45,9 @@ public:
     // RenderInstructionSink 接口
     void OnInstruction(const RenderInstruction& inst) override;
 
-    // 高级接口 — 由 PaintSwFrame 调用
-    void OnPageStart(int pageNum, int width, int height);
-    void OnPageEnd(int pageNum);
-    void OnTextFrame(const SwTextFrame* pFrame);
+    // Frame 树遍历 — 遍历整个 Frame 树，记录所有 Frame 类型
+    // 使用 render_common 的 WalkFrameTreeAndLog 共享实现
+    void LogFrameTree(SwRootFrame* pRoot);
 
     // ── VCL 层录制 (GDIMetaFile 方式) ──
     void StartVclLog(const OString& filePath);
