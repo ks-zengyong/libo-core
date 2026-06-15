@@ -21,7 +21,7 @@
 
 # 集成测试技术方案框架
 - **如何生成frame树记录和vcl渲染指令记录** frame树记录即解析排版完成后以RootFrame为根的整个树以一定格式打印相关信息出来。vcl渲染记录为真正在渲染层的绘制指令记录，为了避免渲染框架的不同而导致渲染指令的不同，`aproj/docx也接入libo-core的vcl模块，不单独实现渲染框架`，这样渲染指令的不同只可能来自aproj/docx自身排版等逻辑的差异。
-- **frame树差异对比** 将libreoffie生成的frame树（lo_frame.txt）和vcl层渲染指令记录（lo_vcl.txt）与
+- **frame树差异对比** 将 LibreOffice 生成的 frame 树记录（`lo_frame.txt`）和 VCL 层渲染指令记录（`lo_vcl.txt`）与 aproj/docx 生成的对应记录（`aproj_frame.txt`、`aproj_vcl.txt`）进行逐字段严格比对，不设容差（tolerance）
 - **测试差异迭代改进策略** 不一定完全按照差异总数递减或者页面总数不同来验证方案可行性，还可以按照差异项的顺序，按顺序逐个解决，每次在前面已解决的顺序序列上，能解决按顺序的下一个或多个也是一种解决方案。
 
 ## 测试标准

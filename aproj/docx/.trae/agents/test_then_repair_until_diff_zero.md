@@ -26,6 +26,7 @@
 | `build_aproj_docx.md` | 编译 aproj/docx 项目（CMake + MSVC） |
 | `build_lo.md` | 编译 libo-core（MSYS2 + make） |
 | `lo_docx_structure.md` | LibreOffice DOCX 组件架构、文档模型、布局引擎、导入导出管线的完整参考 |
+| `test_diff_workflow.md` | 测试差异对比与迭代修复工作流 |
 
 ---
 
@@ -67,19 +68,23 @@ render_diff.exe → 与 LO 参考对比 (lo_frame.txt / aproj_frame.txt)
 
 ### Phase 1: 构建 & 基线
 
-```bash
+```powershell
 # 1. 编译 aproj/docx
-cd E:/lo/libo-core/aproj/docx
+cd aproj/docx
 cmake --build build --config Debug
 
 # 2. 运行测试
-./build/Debug/docx_e2e_test.exe
+.\build\Debug\docx_e2e_test.exe
 
-# 3. 生成 LO 参考帧数据（如不存在）
-#    使用 tools/dump_lo.py 或 dump_lo_nodes.py
+# 3. 生成 LO 参考输出
+python test/gen_lo.py
 
-# 4. 运行差异比对
-./build/Debug/render_diff.exe tests/lo_frame.txt tests/aproj_frame.txt
+# 4. 运行 aproj e2e 测试并收集产物
+python test/gen_aproj.py
+
+# 5. 运行差异比对
+.\test\diff_frame.bat
+.\test\diff_vcl.bat
 ```
 
 记录当前差异数作为基线。
@@ -121,42 +126,21 @@ cmake --build build --config Debug
 
 ### Phase 5: 验证
 
-```bash
+```powershell
 # 重新编译
 cmake --build build --config Debug
 
 # 运行测试
-./build/Debug/docx_e2e_test.exe
+.\build\Debug\docx_e2e_test.exe
 
 # 比对差异
-./build/Debug/render_diff.exe tests/lo_frame.txt tests/aproj_frame.txt
+.\test\diff_frame.bat
+.\test\diff_vcl.bat
 ```
 
 - 差异数减少 → 继续 Phase 2
 - 差异数不变或增加 → 回滚，重新分析 Phase 3
 - 差异数为 0 → 完成
-
----
-
-## 当前状态快照 (2026-06-13)
-
-- **Frame 差异**: 370 (从 847 → 392 → 370)
-- **页面数**: 6 (LO 参考为 7)
-- **测试**: 21/21 passed
-
-### 已完成的修复
-- ✅ OOXML ZIP → XML 解析 → DocumentModel → Frame 树 → Layout → Render 管线
-- ✅ Section margins / 多列布局 / 连续分节符
-- ✅ 字体引擎独立模块 (FontEngine 单例 + FontInstance 缓存)
-- ✅ 字体度量基础 (stb_truetype + OS/2 fsSelection 判断)
-- ✅ render_log 层字体替换规则 (匹配 LO 输出)
-- ✅ 空段落高度校准
-
-### 待修复的核心问题
-1. **stb_truetype → HarfBuzz** — 字体度量库替换（最大影响，~86 帧）
-2. **字体替换上下文** — 双栏布局中 LO 的上下文相关字体替换
-3. **页面分割** — 高度匹配后页面数应自动修正 (6→7)
-4. **Y 坐标累积** — 上游修复后连锁解决
 
 ---
 
@@ -179,13 +163,16 @@ cmake --build build --config Debug
 |------|------|
 | `test/test_end_to_end.cpp` | 端到端集成测试 |
 | `tools/render_diff.cpp` | 渲染指令比对工具 |
-| `tools/dump_lo.py` | 导出 LO 帧数据 |
-| `tools/run_comparison_tests.ps1` | 自动化比对脚本 |
+| `test/gen_aproj.py` | 运行 e2e 测试并收集产物 |
+| `test/gen_lo.py` | 生成 LO 参考输出 |
+| `test/diff_frame.bat` | Frame 层差异比对 |
+| `test/diff_vcl.bat` | VCL 层差异比对 |
 
 ### 参考数据
 | 文件 | 职责 |
 |------|------|
-| `tests/lo_frame.txt` | LO 参考帧数据 |
-| `tests/aproj_frame.txt` | aproj 输出帧数据 |
-| `tests/lo_vcl.txt` | LO VCL 层参考数据 |
+| `test/lo_frame.txt` | LO 参考 Frame 层数据 |
+| `test/aproj_frame.txt` | aproj 输出 Frame 层数据 |
+| `test/lo_vcl.txt` | LO VCL 层参考数据 |
+| `test/aproj_vcl.txt` | aproj VCL 层输出数据 |
 | `samples/*.docx` | 测试用 DOCX 文件 |

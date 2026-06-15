@@ -22,10 +22,11 @@ samples/*.docx
 
 **核心原则**：
 - 两边的生成逻辑和数据结构必须一致，确保 `render_diff` 对比的是逻辑差异而非格式差异
+- Frame 层和 VCL 层**独立输出**，不合并
 - 数据格式统一为 TSV（Tab-Separated Values），每条指令一行，字段通过 `\t` 分隔
 - 指令格式定义在共享头文件 `sw/source/core/inc/render_instruction.h` 中
 
-## 3. Step 1: Frame 树差异对比（已完成）
+## 3. Step 1: Frame 树差异对比
 
 ### 3.1 Frame 层的数据结构
 
@@ -69,52 +70,52 @@ samples/*.docx
 |------|------|
 | `aproj_frame.txt` | Frame 层语义指令 |
 | `aproj_vcl.txt` | VCL 层绘制指令 |
-| `aproj_all.log` | 全量指令日志 |
 
 ### 3.3 LibreOffice 生成方式
 
-LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/source/core/inc/`），通过环境变量 `SW_RENDER_LOG` 触发记录。
+LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/source/core/inc/`），通过环境变量控制输出：
+
+| 环境变量 | 输出内容 |
+|----------|----------|
+| `SW_RENDER_LOG` | Frame 层指令 |
+| `SW_VCL_RENDER_LOG` | VCL 层绘制指令 |
 
 **数据流**：
 ```
 样本文档
-  → soffice --headless                (无头模式打开文档)
+  → soffice --headless --convert-to pdf  (强制完全排版)
   → SwDoc → 排版 → SwRootFrame
-  → PaintSwFrame() → GDIMetaFile     (绘制 → 元文件记录)
-  → SwPaintEventListener             (将绘制调用转为 RenderInstruction)
-  → 写入 SW_RENDER_LOG 指定的文件
+  → PaintSwFrame() → GDIMetaFile         (绘制 → 元文件记录)
+  → SwPaintEventListener                 (将绘制调用转为 RenderInstruction)
+  → 分别写入 SW_RENDER_LOG 和 SW_VCL_RENDER_LOG 指定的文件
 ```
-
-**生成命令**（Linux/WSL 环境）：
-```bash
-SW_RENDER_LOG=lo_frame.txt instdir/program/soffice --headless path/to/sample.docx
-```
-
-**注意**：LO 的 `SW_RENDER_LOG` 输出包含 frame 层和 vcl 层全部指令。与 aproj 侧一样，可通过 `IsFrameLayerInstruction()` / `IsVclLayerInstruction()` 筛选分层。
 
 ### 3.4 Python 脚本约定
 
-Python 脚本统一放在 `test/` 目录，职责是调用两侧的编译产物生成对应的产物文件：
+所有生成脚本统一放在 `test/` 目录：
 
 | 脚本 | 职责 | 输入 | 输出 |
 |------|------|------|------|
-| `test/gen_aproj_frame.py` | 调用 aproj e2e test 生成 frame 记录 | `samples/*.docx` | `test/aproj_frame.txt` |
-| `test/gen_lo_frame.py` | 启动 soffice 生成 LO frame 记录 | `samples/*.docx` | `test/lo_frame.txt` |
+| `test/gen_aproj.py` | 编译并运行 aproj e2e test，收集产物 | `samples/*.docx` | `test/aproj_frame.txt`, `test/aproj_vcl.txt` |
+| `test/gen_lo.py` | 启动 soffice 生成 LO 参考输出 | `samples/sample0.docx` | `test/lo_frame.txt`, `test/lo_vcl.txt` |
 
 ### 3.5 对比方式
 
-```bash
-# 对比 frame 层
-render_diff test/lo_frame.txt test/aproj_frame.txt
+```powershell
+# 对比 Frame 层
+.\test\diff_frame.bat
 
 # 对比 VCL 层
-render_diff test/lo_vcl.txt test/aproj_vcl.txt
+.\test\diff_vcl.bat
 ```
 
-对比工具 `tools/render_diff.cpp` 支持：
-- `--tolerance N`：位置/尺寸容差（默认 10 twips）
-- `--known-diffs F`：已知差异文件，标记为 [KNOWN] 不视为失败
-- `--verbose`：同时输出匹配的行
+或直接使用 `render_diff`：
+```powershell
+.\build\Debug\render_diff.exe frame     # 对比 Frame 层
+.\build\Debug\render_diff.exe vcl       # 对比 VCL 层
+```
+
+对比工具 `tools/render_diff.cpp` 进行严格逐字段比对，不允许容差（tolerance）。支持 `--known-diffs` 跳过已知差异，`--verbose` 显示匹配行。
 
 ## 4. Step 2: VCL 渲染指令差异对比（VCL 接入待完成）
 
@@ -158,22 +159,6 @@ aproj/docx 当前在 `src/render/render_output_device.cpp` 中实现了一个最
 | font | `vcl/source/font/` | 字体管理、替换 |
 | text | `vcl/source/text/` | 文字布局（HarBuzz 集成） |
 
-**VCL 的记录回放机制**：
-- LO 的 VCL 原生支持通过 `GDIMetaFile` 记录所有绘制调用
-- `SwPaintEventListener` 遍历 `GDIMetaFile` 中的 action 序列，转为 `RenderInstruction`
-- aproj/docx 接入 VCL 后，`PaintSwFrame()` 将产生真实的 `GDIMetaFile`，再由共享的 `SwPaintEventListener` 转为指令
-
-**CMake 接入要点**：
-- `CMakeLists.txt` 需要新增 vcl 相关源文件和 include 路径
-- 需要处理 vcl 依赖的平台后端（Windows: GDI/sal, Linux: X11/Cairo）
-
-### 4.4 Python 脚本约定
-
-| 脚本 | 职责 | 输入 | 输出 |
-|------|------|------|------|
-| `test/gen_aproj_vcl.py` | 调用 aproj e2e test 生成 vcl 记录 | `samples/*.docx` | `test/aproj_vcl.txt` |
-| `test/gen_lo_vcl.py` | 启动 soffice 生成 LO vcl 记录 | `samples/*.docx` | `test/lo_vcl.txt` |
-
 ## 5. 差异对比与修复工作流
 
 ### 5.1 执行顺序
@@ -214,15 +199,15 @@ Frame 树差异基本消除后再进入 VCL 层对比，因为 VCL 层差异可�
 ### 5.4 标准修复步骤
 
 ```
-1. 查看差异: render_diff lo_frame.txt aproj_frame.txt
+1. 查看差异: .\test\diff_frame.bat
      ↓
 2. 定位 LO 源码: 在 libo-core/sw/ 中搜索差异相关的排版/渲染逻辑
      ↓
 3. 迁移适配: 将 LO 实现移植到 aproj/docx/src/ 对应模块
      ↓
-4. 编译验证: cmake --build build && ./build/Debug/docx_e2e_test.exe
+4. 编译验证: cmake --build build --config Debug
      ↓
-5. 差异复检: render_diff lo_frame.txt aproj_frame.txt
+5. 差异复检: .\test\diff_frame.bat
      ↓
 6. 循环: 如差异未消除，回到步骤 2
 ```
@@ -235,20 +220,17 @@ Frame 树差异基本消除后再进入 VCL 层对比，因为 VCL 层差异可�
 aproj/docx/
   ├── test/
   │   ├── test_end_to_end.cpp        # 端到端测试（C++）
-  │   ├── gen_aproj_frame.py         # 生成 aproj_frame.txt
-  │   ├── gen_aproj_vcl.py           # 生成 aproj_vcl.txt
-  │   ├── gen_lo_frame.py            # 生成 lo_frame.txt
-  │   ├── gen_lo_vcl.py              # 生成 lo_vcl.txt
+  │   ├── gen_aproj.py               # 运行 e2e 测试并收集产物
+  │   ├── gen_lo.py                  # 生成 LO 参考输出
+  │   ├── diff_frame.bat             # Frame 层差异比对脚本
+  │   ├── diff_vcl.bat               # VCL 层差异比对脚本
   │   ├── aproj_frame.txt            # aproj Frame 层产物
   │   ├── aproj_vcl.txt              # aproj VCL 层产物
   │   ├── lo_frame.txt               # LO Frame 层产物
   │   ├── lo_vcl.txt                 # LO VCL 层产物
-  │   ├── known_diffs.txt            # 已知差异清单
-  │   ├── nodes_dump.xml             # 节点转储（调试用）
-  │   └── frmtree_dump.xml           # Frame 树转储（调试用）
+  │   └── known_diffs.txt            # 已知差异清单
   ├── tools/
-  │   ├── render_diff.cpp            # 差异对比工具
-  │   └── run_comparison_tests.ps1   # 自动化对比测试脚本
+  │   └── render_diff.cpp            # 差异对比工具
   └── samples/
       └── *.docx                     # 测试样本文档
 ```
@@ -258,19 +240,20 @@ aproj/docx/
 - **产物文件**：`{prefix}_{type}.txt`
   - `prefix`：`aproj` 或 `lo`
   - `type`：`frame` 或 `vcl`
-- **Python 脚本**：`gen_{prefix}_{type}.py`，与产物命名对应
+- **Python 脚本**：`gen_{prefix}.py`
 
-### 6.3 产物生成的一体化命令（建议）
+### 6.3 一体化测试流程
 
-```bash
-# 一键生成所有产物并对比
-python test/gen_lo_frame.py samples/sample0.docx
-python test/gen_aproj_frame.py
-render_diff test/lo_frame.txt test/aproj_frame.txt
+```powershell
+# 1. 生成 LO 参考输出
+python test/gen_lo.py
 
-python test/gen_lo_vcl.py samples/sample0.docx
-python test/gen_aproj_vcl.py
-render_diff test/lo_vcl.txt test/aproj_vcl.txt
+# 2. 运行 aproj e2e 测试
+python test/gen_aproj.py
+
+# 3. 比对差异
+.\test\diff_frame.bat
+.\test\diff_vcl.bat
 ```
 
 ## 7. 当前进度
@@ -280,26 +263,27 @@ render_diff test/lo_vcl.txt test/aproj_vcl.txt
 | Step 1 | Frame 树记录（aproj 侧） | 已完成 — `RenderLogger::LogFrameTree()` + `WriteFrameLayerToFile()` |
 | Step 1 | Frame 树记录（LO 侧） | 已完成 — `SW_RENDER_LOG` 环境变量触发 |
 | Step 1 | render_diff 对比工具 | 已完成 — `tools/render_diff.cpp` |
-| Step 1 | Python 生成脚本 | 待实现 — `test/gen_aproj_frame.py`、`test/gen_lo_frame.py` |
+| Step 1 | Python 生成脚本 | 已完成 — `test/gen_aproj.py`、`test/gen_lo.py` |
+| Step 1 | bat 差异比对脚本 | 已完成 — `test/diff_frame.bat`、`test/diff_vcl.bat` |
 | Step 2 | VCL 模块接入 aproj/docx | **待完成** — 当前为简化 `RenderOutputDevice` |
 | Step 2 | VCL 记录（aproj 侧） | 待 VCL 接入后完成 |
-| Step 2 | VCL 记录（LO 侧） | 已完成 — LO 内置支持 |
-| Step 2 | Python 生成脚本 | 待 VCL 接入后实现 — `test/gen_aproj_vcl.py`、`test/gen_lo_vcl.py` |
-| 迭代修复 | 差异驱动修复工作流 | 进行中 — 已有 `render_diff` + `run_comparison_tests.ps1` |
+| Step 2 | VCL 记录（LO 侧） | 已完成 — `SW_VCL_RENDER_LOG` 环境变量触发 |
+| 迭代修复 | 差异驱动修复工作流 | 进行中 |
 
 ## 8. 相关文件索引
 
 | 文件 | 说明 |
 |------|------|
-| `test/test_end_to_end.cpp` | 端到端测试入口，自动扫描 samples/*.docx |
+| `test/test_end_to_end.cpp` | 端到端测试入口 |
 | `src/render/render_log.cpp` | Frame 树遍历 + TSV 指令记录 |
 | `src/render/render_output_device.cpp` | 简化的 OutputDevice，Draw → RenderInstruction |
 | `src/render/render_log.h` | RenderLogger 接口 |
 | `src/render/output_device.h` | OutputDevice 抽象接口 |
 | `tools/render_diff.cpp` | 渲染指令逐行比对工具 |
-| `tools/run_comparison_tests.ps1` | 自动化对比测试脚本 |
-| `tools/dump_lo.py` | LO 节点/布局导出（UNO 方式） |
-| `tools/dump_lo_nodes.py` | LO 文档节点导出（UNO 方式） |
+| `test/gen_aproj.py` | 运行 e2e 测试并收集产物 |
+| `test/gen_lo.py` | 生成 LO 参考输出 |
+| `test/diff_frame.bat` | Frame 层差异比对 |
+| `test/diff_vcl.bat` | VCL 层差异比对 |
 | `CMakeLists.txt` | 构建配置 |
 | `libo-core/sw/source/core/inc/instruction_builder.h` | 共享指令构建器 |
 | `libo-core/sw/source/core/inc/render_instruction.h` | 共享指令数据结构 |

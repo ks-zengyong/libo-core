@@ -12,7 +12,8 @@ cd aproj/docx
 cmake -B build -G "Visual Studio 17 2022" -A x64
 ```
 
-## 编译 (使用 build.bat)
+## 编译
+### 使用 build.bat
 ```bash
 # Debug 模式 (默认)
 build.bat
@@ -21,23 +22,24 @@ build.bat
 build.bat Release
 ```
 
-## 手动编译
+### 手动编译
 ```bash
 cmake --build build --config Debug
 # 或
 cmake --build build --config Release
 ```
 
-## 运行测试
+## 运行测试（使用Debug产物进行测试）
 ```bash
-./output/docx_e2e_test.exe
+.\build\Debug\docx_e2e_test.exe
 ```
 
 ## 构建产物
-| 目标 | 类型 | 说明 |
+| 目标 | 类型 | 路径 |
 |------|------|------|
-| `docx_core` | 静态库 | 核心 DOCX 解析/布局/渲染管线 |
-| `docx_e2e_test` | 可执行 | 端到端测试 |
-| `render_diff` | 可执行 | 渲染结果对比工具 |
-
-> `build.bat` 编译完成后会将产物自动复制到 `output/` 目录下。
+| `docx_core` | 静态库 | `build/Debug/docx_core.lib` |
+| `docx_e2e_test` | 可执行 | `build/Debug/docx_e2e_test.exe` |
+| `render_diff` | 可执行 | `build/Debug/render_diff.exe` |
+| `miniz` | 静态库 | `build/Debug/miniz.lib` |
+| `pugixml` | 静态库 | `build/Debug/pugixml.lib` |
+| `harfbuzz` | 静态库 | `build/Debug/harfbuzz.lib` |
