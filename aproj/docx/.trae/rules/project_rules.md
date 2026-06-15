@@ -16,7 +16,7 @@
 ## 实用工具标准
 - **在整个过程中使用的探查、调试等工具脚本均放在`aproj/docx/tools/debug`下面**
 - **搜索`python`、`cmake`等等在工作机器的安装位置以及其他和工作机器相关的配置信息，在查询成功后均缓存在`aproj/cache`下面，以便后续直接服用，而不是每次都重新搜索查询**
-- **如果需要将 `sample.docx`（`aproj/docx/sample.docx`）解压为xml以便用python脚本进行ooxml内容洞察，则将其解压至`aproj/docx/sample_extracted`下面缓存起来，以便后续复用，而不是每次需要时多次解压创建很多副本**
+- **如果需要将 `*.docx`（`aproj/docx/samples/*.docx`）解压为xml以便用python脚本进行ooxml内容洞察，则将其解压至`aproj/docx/samples/*_extracted_xml`下面缓存起来，以便后续复用，而不是每次需要时多次解压创建很多副本**
 - **
 
 # 集成测试技术方案框架
@@ -25,6 +25,6 @@
 - **测试差异迭代改进策略** 不一定完全按照差异总数递减或者页面总数不同来验证方案可行性，还可以按照差异项的顺序，按顺序逐个解决，每次在前面已解决的顺序序列上，能解决按顺序的下一个或多个也是一种解决方案。
 
 ## 测试标准
-- **使用现有 `sample.docx`**（`aproj/docx/sample.docx`），**不要自己生成 docx 测试文件**
+- **使用现有 `*.docx`**（`aproj/docx/samples/*.docx`），**不要自己生成 docx 测试文件**
 - 测试差异即为frame和vcl指令记录的差异项
 - 测试目标是两个指标差异数为 **0**

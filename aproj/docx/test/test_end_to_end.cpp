@@ -15,6 +15,8 @@
 #include <string>
 #include <cstdio>
 #include <fstream>
+#include <vector>
+#include <algorithm>
 
 // ── Simple Assert Macros ───────────────────────────────────────
 static int g_tests = 0;
@@ -46,24 +48,79 @@ static int g_failed = 0;
 #define TEST_ASSERT_TRUE(cond, msg) TEST_ASSERT((cond), msg)
 #define TEST_ASSERT_FALSE(cond, msg) TEST_ASSERT(!(cond), msg)
 
-// ── Find test file ─────────────────────────────────────────────
-static std::string findTestFile()
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <dirent.h>
+#include <sys/stat.h>
+#endif
+
+// ── Find samples directory ──────────────────────────────────────
+static std::string findSamplesDir()
 {
-    const char* paths[] = {
-        "tests/sample.docx",      "sample.docx",          "../sample.docx",
-        "../../sample.docx",      "../../../sample.docx", "../../../../aproj/docx/sample.docx",
-        "aproj/docx/sample.docx",
+    const char* dirs[] = {
+        "samples",
+        "../samples",
+        "../../samples",
+        "../../../samples",
+        "../../../../aproj/docx/samples",
+        "aproj/docx/samples",
     };
-    for (auto p : paths)
+    for (auto d : dirs)
     {
-        FILE* f = fopen(p, "rb");
-        if (f)
+#ifdef _WIN32
+        DWORD attr = GetFileAttributesA(d);
+        if (attr != INVALID_FILE_ATTRIBUTES && (attr & FILE_ATTRIBUTE_DIRECTORY))
+            return d;
+#else
+        DIR* dir = opendir(d);
+        if (dir)
         {
-            fclose(f);
-            return p;
+            closedir(dir);
+            return d;
         }
+#endif
     }
     return "";
+}
+
+// ── Scan DOCX files in directory ───────────────────────────────
+static std::vector<std::string> scanDocxFiles(const std::string& dirPath)
+{
+    std::vector<std::string> files;
+#ifdef _WIN32
+    WIN32_FIND_DATAA findData;
+    std::string searchPattern = dirPath + "/*.docx";
+    HANDLE hFind = FindFirstFileA(searchPattern.c_str(), &findData);
+    if (hFind != INVALID_HANDLE_VALUE)
+    {
+        do
+        {
+            if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY))
+            {
+                files.push_back(dirPath + "/" + findData.cFileName);
+            }
+        } while (FindNextFileA(hFind, &findData));
+        FindClose(hFind);
+    }
+#else
+    DIR* dir = opendir(dirPath.c_str());
+    if (dir)
+    {
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr)
+        {
+            std::string name = entry->d_name;
+            if (name.size() > 5 && name.substr(name.size() - 5) == ".docx")
+            {
+                files.push_back(dirPath + "/" + name);
+            }
+        }
+        closedir(dir);
+    }
+#endif
+    std::sort(files.begin(), files.end());
+    return files;
 }
 
 // ── Test 1: DocxParser → SwDoc ─────────────────────────────────
@@ -254,23 +311,48 @@ int main(int argc, char* argv[])
     std::cout << "  SwDoc End-to-End Pipeline — Test Suite" << std::endl;
     std::cout << "========================================" << std::endl;
 
-    std::string testFile = findTestFile();
-    if (testFile.empty() && argc >= 2)
-        testFile = argv[1];
+    std::vector<std::string> testFiles;
 
-    if (testFile.empty())
+    if (argc >= 2)
     {
-        std::cerr << "ERROR: sample.docx not found." << std::endl;
-        std::cerr << "  Pass the path as argument: docx_e2e_test <path.docx>" << std::endl;
-        return 1;
+        testFiles.push_back(argv[1]);
+    }
+    else
+    {
+        std::string samplesDir = findSamplesDir();
+        if (samplesDir.empty())
+        {
+            std::cerr << "ERROR: samples directory not found." << std::endl;
+            std::cerr << "  Pass the path as argument: docx_e2e_test <path.docx>" << std::endl;
+            return 1;
+        }
+
+        testFiles = scanDocxFiles(samplesDir);
+        if (testFiles.empty())
+        {
+            std::cerr << "ERROR: No DOCX files found in samples directory." << std::endl;
+            std::cerr << "  Pass the path as argument: docx_e2e_test <path.docx>" << std::endl;
+            return 1;
+        }
+
+        std::cout << "Found " << testFiles.size()
+                  << " DOCX file(s) in samples directory:" << std::endl;
+        for (const auto& f : testFiles)
+            std::cout << "  - " << f << std::endl;
+        std::cout << std::endl;
     }
 
-    std::cout << "Test file: " << testFile << std::endl << std::endl;
+    for (size_t i = 0; i < testFiles.size(); ++i)
+    {
+        const std::string& testFile = testFiles[i];
+        std::cout << "[" << (i + 1) << "/" << testFiles.size() << "] Test file: " << testFile
+                  << std::endl;
 
-    test_swdoc_parse(testFile);
-    std::cout << std::endl;
-    test_swdoc_layout_and_render(testFile);
-    std::cout << std::endl;
+        test_swdoc_parse(testFile);
+        std::cout << std::endl;
+        test_swdoc_layout_and_render(testFile);
+        std::cout << std::endl;
+    }
 
     std::cout << "========================================" << std::endl;
     std::cout << "  Results: " << g_passed << "/" << g_tests << " passed";

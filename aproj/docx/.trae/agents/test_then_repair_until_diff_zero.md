@@ -188,4 +188,4 @@ cmake --build build --config Debug
 | `tests/lo_frame.txt` | LO 参考帧数据 |
 | `tests/aproj_frame.txt` | aproj 输出帧数据 |
 | `tests/lo_vcl.txt` | LO VCL 层参考数据 |
-| `sample.docx` | 测试用 DOCX 文件 |
+| `samples/*.docx` | 测试用 DOCX 文件 |
