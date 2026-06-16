@@ -1,26 +1,23 @@
 @echo off
-REM diff_node.bat - Compare Nodes structure differences
-REM Usage: diff_node.bat
-REM 使用 output 下的 render_diff_debug.exe 进行差异对比
+REM diff_node.bat - 对比 Nodes 结构差异 (LibreOffice vs aproj/docx)
+REM 使用 output 下的 node_diff_debug.exe 进行差异对比（独立工具，不与 render_diff 耦合）
 
 set "SCRIPT_DIR=%~dp0"
-set "RENDER_DIFF=%SCRIPT_DIR%..\output\render_diff_debug.exe"
+set "NODE_DIFF=%SCRIPT_DIR%..\output\node_diff_debug.exe"
 set "REF=%SCRIPT_DIR%lo_nodes.txt"
 set "TEST=%SCRIPT_DIR%aproj_nodes.txt"
 
-if not exist "%RENDER_DIFF%" (
-    echo [ERROR] render_diff_debug.exe not found: %RENDER_DIFF%
+if not exist "%NODE_DIFF%" (
+    echo [ERROR] node_diff_debug.exe not found: %NODE_DIFF%
     echo         Please build first: build.bat
     exit /b 1
 )
 if not exist "%REF%" (
     echo [ERROR] Reference file not found: %REF%
-    echo         Please run: python test\gen_lo.py
     exit /b 1
 )
 if not exist "%TEST%" (
     echo [ERROR] Test file not found: %TEST%
-    echo         Please run: python test\gen_aproj.py
     exit /b 1
 )
 
@@ -31,6 +28,6 @@ echo Reference: %REF%
 echo Test:      %TEST%
 echo.
 
-"%RENDER_DIFF%" "%REF%" "%TEST%"
+"%NODE_DIFF%" "%REF%" "%TEST%"
 
 exit /b %ERRORLEVEL%

@@ -39,13 +39,17 @@ if not exist output mkdir output
 if /I "%BUILD_CONFIG%"=="Debug" (
     copy /Y build\%BUILD_CONFIG%\docx_e2e_test_debug.exe output\ >nul
     copy /Y build\%BUILD_CONFIG%\render_diff_debug.exe   output\ >nul
+    copy /Y build\%BUILD_CONFIG%\node_diff_debug.exe     output\ >nul
     echo   docx_e2e_test_debug.exe
     echo   render_diff_debug.exe
+    echo   node_diff_debug.exe
 ) else (
     copy /Y build\%BUILD_CONFIG%\docx_e2e_test.exe output\ >nul
     copy /Y build\%BUILD_CONFIG%\render_diff.exe   output\ >nul
+    copy /Y build\%BUILD_CONFIG%\node_diff.exe     output\ >nul
     echo   docx_e2e_test.exe
     echo   render_diff.exe
+    echo   node_diff.exe
 )
 
 echo.

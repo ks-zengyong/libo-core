@@ -88,11 +88,16 @@ add_executable(render_diff tools/render_diff.cpp)
 target_include_directories(render_diff PRIVATE ${RENDER_COMMON_DIR})
 target_compile_definitions(render_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 
+# Nodes 专用独立对比工具 (与 render_diff 无耦合关系，仅使用 C++17 标准库)
+add_executable(node_diff tools/node_diff.cpp)
+target_compile_definitions(node_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
+
 # Debug 编译产物加 _debug 后缀
-set_target_properties(docx_e2e_test render_diff PROPERTIES DEBUG_POSTFIX "_debug")
+set_target_properties(docx_e2e_test render_diff node_diff PROPERTIES DEBUG_POSTFIX "_debug")
 
 # MSVC specific
 if(MSVC)
     target_compile_options(docx_e2e_test PRIVATE /W3 /utf-8)
     target_compile_options(render_diff PRIVATE /W3 /utf-8)
+    target_compile_options(node_diff PRIVATE /W3 /utf-8)
 endif()
