@@ -7,18 +7,27 @@
  *   容器型节点 (StartNode/TableNode/SectionNode) 输出一对 START/END，
  *   中间递归处理其子节点。
  *
+ *   锚点引用展示（两阶段遍历：
+ *   阶段 1：收集所有 Fly 节区的 anchor 映射 (anchorNodeIndex -> [flyStartNodeIndex, ...])
+ *   阶段 2：正常遍历，在锚点节点处缩进展示引用的 Fly 节区内容
+ *
  * 公共模块: render_common/ — sw 和 aproj/docx 共用
  */
 
 #include "node_walker.h"
 #include "node_builder.h"
 
+#include <map>
+#include <vector>
+
 namespace
 {
+
 // 递归遍历容器内的子节点
 // 从 startIndex 开始，到 endIndex 结束 (不含 endIndex)
 void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
-                   NodeInstructionSink& rSink, int nestLevel)
+                   NodeInstructionSink& rSink, int nestLevel,
+                   const std::map<int, std::vector<int>>* pAnchorMap = nullptr)
 {
     for (int i = startIndex; i < endIndex; ++i)
     {
@@ -38,7 +47,7 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
 
             if (endIdx > i + 1)
             {
-                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1);
+                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1, pAnchorMap);
             }
 
             BuildTableEndInstruction(rSink, endIdx, nestLevel);
@@ -52,7 +61,7 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
 
             if (endIdx > i + 1)
             {
-                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1);
+                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1, pAnchorMap);
             }
 
             BuildSectionEndInstruction(rSink, endIdx, nestLevel);
@@ -69,7 +78,7 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
             // 递归子节点
             if (endIdx > i + 1)
             {
-                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1);
+                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1, pAnchorMap);
             }
 
             // 输出 EndNode
@@ -101,6 +110,37 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
             BuildEndNodeInstruction(rSink, pNode->GetIndex(), nestLevel);
         }
         // 其他未知类型: 忽略
+
+        // ── 锚点引用展开：在当前节点输出后，检查是否有 Fly anchor 指向它
+        if (pAnchorMap)
+        {
+            auto it = pAnchorMap->find(pNode->GetIndex());
+            if (it != pAnchorMap->end())
+            {
+                // 此节点是 Fly 锚点，缩进展示所有引用的 Fly 节区内容
+                for (int flyStartIdx : it->second)
+                {
+                    INode* pFlyNode = pNodes->GetNode(flyStartIdx);
+                    if (!pFlyNode || !pFlyNode->IsStartNode())
+                        continue;
+
+                    int flyEndIdx = pFlyNode->GetEndNodeIndex();
+                    if (flyEndIdx <= flyStartIdx)
+                        continue;
+
+                    // 输出锚点引用标记和 Fly 节区内容
+                    BuildAnchorRefStartInstruction(rSink, pFlyNode->GetIndex(), nestLevel, flyStartIdx);
+                    if (flyEndIdx > flyStartIdx + 1)
+                    {
+                        WalkNodeRange(pNodes, flyStartIdx + 1, flyEndIdx, rSink,
+                                      nestLevel + 2, nullptr);
+                    }
+                    BuildAnchorRefEndInstruction(rSink, flyEndIdx, nestLevel);
+                }
+            }
+        }
+
+        delete pNode;
     }
 }
 
@@ -111,11 +151,36 @@ void WalkNodesAndLog(const INodesArray* pNodes, NodeInstructionSink& rSink)
     if (!pNodes)
         return;
 
-    // 从 Body 区域开始遍历 (跳过 PostIts/Inserts/Autotext/Redlines 等)
     int bodyStart = pNodes->GetBodyStartIndex();
     int bodyEnd = pNodes->GetBodyEndIndex();
 
-    WalkNodeRange(pNodes, bodyStart, bodyEnd, rSink, /*nestLevel=*/0);
+    // ── 阶段 1：收集 Fly anchor 映射
+    // anchorNodeIndex -> [flyStartNodeIndex, ...]
+    std::map<int, std::vector<int>> anchorMap;
+
+    for (int i = bodyStart; i < bodyEnd; ++i)
+    {
+        INode* pNode = pNodes->GetNode(i);
+        if (!pNode)
+            continue;
+
+        // 只处理 Fly 类型的 StartNode（GetStartNodeType() == 2）
+        if (pNode->IsStartNode() && !pNode->IsTableNode() && !pNode->IsSectionNode())
+        {
+            if (pNode->GetStartNodeType() == 2) // Fly
+            {
+                int anchorIdx = pNode->GetAnchorNodeIndex();
+                if (anchorIdx >= 0)
+                {
+                    anchorMap[anchorIdx].push_back(pNode->GetIndex());
+                }
+            }
+        }
+        delete pNode;
+    }
+
+    // ── 阶段 2：正常遍历，在锚点节点处缩进展示引用的 Fly 节区内容
+    WalkNodeRange(pNodes, bodyStart, bodyEnd, rSink, /*nestLevel=*/0, &anchorMap);
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

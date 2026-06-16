@@ -110,6 +110,16 @@ void WriteNodeInstructionToStream(std::ostream& out, const NodeInstruction& inst
             out << "\t" << inst.nodeIndex;
             break;
 
+        case NodeCmdType::ANCHOR_REF_START:
+            // ANCHOR_REF_START <nodeIndex> (flyNodeIndex=X)
+            out << "\t" << inst.nodeIndex << "\t(flyNodeIndex=" << inst.flyNodeIndex << ")";
+            break;
+
+        case NodeCmdType::ANCHOR_REF_END:
+            // ANCHOR_REF_END <nodeIndex>
+            out << "\t" << inst.nodeIndex;
+            break;
+
         default:
             out << "\t" << inst.nodeIndex;
             break;

@@ -101,6 +101,23 @@ inline void BuildSectionEndInstruction(NodeInstructionSink& rSink, int nodeIndex
     rSink.OnInstruction(inst);
 }
 
+// ── AnchorRef (Fly 锚点引用) ──
+inline void BuildAnchorRefStartInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
+                                            int flyNodeIndex)
+{
+    NodeInstruction inst;
+    FillNodeInst(inst, NodeCmdType::ANCHOR_REF_START, nodeIndex, nestLevel);
+    inst.flyNodeIndex = flyNodeIndex;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildAnchorRefEndInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
+{
+    NodeInstruction inst;
+    FillNodeInst(inst, NodeCmdType::ANCHOR_REF_END, nodeIndex, nestLevel);
+    rSink.OnInstruction(inst);
+}
+
 #endif // INCLUDED_RENDER_COMMON_NODE_BUILDER_H
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */
