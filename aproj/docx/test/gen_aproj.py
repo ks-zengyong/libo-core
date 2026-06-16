@@ -1,9 +1,10 @@
 """
-生成 aproj/docx 侧的 Frame 树记录和 VCL 渲染指令记录。
+生成 aproj/docx 侧的 Frame 树记录、VCL 渲染指令记录和 Nodes 结构记录。
 
 通过调用 docx_e2e_test.exe 编译产物，生成:
   - test/aproj_frame.txt  (Frame 层语义指令)
   - test/aproj_vcl.txt    (VCL 层绘制指令)
+  - test/aproj_nodes.txt  (Nodes 结构记录)
 
 用法:
   cd aproj/docx
@@ -99,6 +100,7 @@ def main():
     expected_files = {
         "aproj_frame.txt": test_dir / "aproj_frame.txt",
         "aproj_vcl.txt":   test_dir / "aproj_vcl.txt",
+        "aproj_nodes.txt": test_dir / "aproj_nodes.txt",
     }
 
     found = 0

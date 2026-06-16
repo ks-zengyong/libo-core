@@ -31,7 +31,7 @@ PUSH	1
 SET_LINE_COLOR	1	0
 POP	1
 SET_FONT	1	Segoe UI Emoji	24	144	0
-SET_FONT	1	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	2	144	0
+SET_FONT	1	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
@@ -45,21 +45,21 @@ SET_TEXT_COLOR	1	2500134
 SET_FONT	1	Poppins	24	144	0
 SET_FONT	1	Segoe UI Semibold	72	144	0
 SET_TEXT_COLOR	1	2500134
-TEXT_RUN	1	969	2264	0	0	"Welcome to WPS Office - Writer"	Segoe UI Semibold	72	2500134	144	0	0	0	
+TEXT_RUN	1	969	2392	0	0	"Welcome to WPS Office - Writer"	Segoe UI Semibold	72	2500134	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1109	2883	0	0	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As"	Segoe UI Emoji	24	0	144	0	0	0	
-TEXT_RUN	1	11063	2883	0	0	" "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	1109	3011	0	0	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As"	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	11063	3011	0	0	" "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1574	3140	0	0	"a handy and professional office software, WPS Office allows you to edit files in Writer,"	Segoe UI Emoji	24	0	144	0	0	0	
-TEXT_RUN	1	10599	3140	0	0	" "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	1574	3268	0	0	"a handy and professional office software, WPS Office allows you to edit files in Writer,"	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10599	3268	0	0	" "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	2479	3397	0	0	"Presentation, Spreadsheet, and PDF to improve your work efficiency."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	2479	3525	0	0	"Presentation, Spreadsheet, and PDF to improve your work efficiency."	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	宋体	36	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
@@ -67,71 +67,71 @@ SET_FONT	1	宋体	36	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1346	4163	0	0	"Switch tabs to find different commands to process your document."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	1346	4291	0	0	"Switch tabs to find different commands to process your document."	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10606	4421	0	0	"Share your "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10606	4549	0	0	"Share your "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10606	4678	0	0	"documents "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10606	4806	0	0	"documents "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10606	4935	0	0	"with others."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10606	5063	0	0	"with others."	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	5705	0	0	"Find all "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	5833	0	0	"Find all "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	5924	0	0	"of "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	6052	0	0	"of "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	6143	0	0	"Writer's "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	6271	0	0	"Writer's "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	6362	0	0	"comman"	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	6490	0	0	"comman"	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	10498	6581	0	0	"ds."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	10498	6709	0	0	"ds."	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	7145	0	0	"Search the Help center for "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	7273	0	0	"Search the Help center for "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	7364	0	0	"answers when you get stuck."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	7492	0	0	"answers when you get stuck."	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	7928	0	0	"Quickly switch views and "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	8056	0	0	"Quickly switch views and "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	8147	0	0	"adjust the scale of the "	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	8275	0	0	"adjust the scale of the "	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	8886	8366	0	0	"page display."	Segoe UI Emoji	24	0	144	0	0	0	
+TEXT_RUN	1	8886	8494	0	0	"page display."	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	宋体	36	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1346	9605	0	0	"Count the number of words and pages in your document in real time."	Segoe UI Emoji	24	0	144	0	0	0	
-SET_FONT	1	宋体	36	144	0
-SET_FONT	1	Segoe UI Semibold	48	144	0
-SET_TEXT_COLOR	1	2500134
+TEXT_RUN	1	1346	9733	0	0	"Count the number of words and pages in your document in real time."	Segoe UI Emoji	24	0	144	0	0	0	
 SET_FONT	1	宋体	36	144	0
 SET_FONT	1	Segoe UI Semibold	48	144	0
 SET_TEXT_COLOR	1	2500134
-TEXT_RUN	1	4587	10681	0	0	"WPS AI+Writer"	Segoe UI Semibold	48	2500134	144	0	0	0	
+SET_FONT	1	宋体	36	144	0
+SET_FONT	1	Segoe UI Semibold	48	144	0
+SET_TEXT_COLOR	1	2500134
+TEXT_RUN	1	4587	10809	0	0	"WPS AI+Writer"	Segoe UI Semibold	48	2500134	144	0	0	0	
 SET_FONT	1	Poppins	7	188	0
 SET_FONT	1	Segoe UI Semibold	48	144	0
 SET_TEXT_COLOR	1	2500134
@@ -141,12 +141,12 @@ SET_FONT	1	Poppins	7	188	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	1207	11269	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can"	Segoe UI Emoji	28	0	144	0	0	0	
-TEXT_RUN	1	11244	11269	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	1	1207	11397	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can"	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	1	11244	11397	0	0	" "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	2250	11569	0	0	"use WPS AI to help you write and understand your Word document."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	1	2250	11697	0	0	"use WPS AI to help you write and understand your Word document."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	1	宋体	28	144	0
 SET_FONT	1	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	1	0
@@ -161,16 +161,16 @@ SET_FONT	1	宋体	20	144	0
 PUSH	1
 PUSH	1
 SET_CLIP_REGION	1
-BITMAP	1	1784	13119	99	112
+BITMAP	1	1784	13247	99	112
 PUSH	1
 SET_FILL_COLOR	1	6761162
 SET_LINE_COLOR	1	0
 POP	1
-BITMAP	1	2717	13066	162	50
-BITMAP	1	3938	13074	73	48
-BITMAP	1	2745	13694	58	50
-BITMAP	1	3292	13778	41	37
-BITMAP	1	3587	13694	218	63
+BITMAP	1	2717	13194	162	50
+BITMAP	1	3938	13202	73	48
+BITMAP	1	2745	13822	58	50
+BITMAP	1	3292	13906	41	37
+BITMAP	1	3587	13822	218	63
 PUSH	1
 SET_CLIP_REGION	1
 PUSH	1
@@ -182,20 +182,20 @@ SET_FONT	1	宋体	15	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	13067	0	0	"WPS AI, fully embedded with ChatGPT "	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	13195	0	0	"WPS AI, fully embedded with ChatGPT "	Segoe UI Emoji	24	16777215	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	13375	0	0	"capabilities, is coming soon. WPS Pro members "	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	13503	0	0	"capabilities, is coming soon. WPS Pro members "	Segoe UI Emoji	24	16777215	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	13683	0	0	"have the opportunity to secure seats for internal"	Segoe UI Emoji	24	16777215	144	0	0	0	
-TEXT_RUN	1	10682	13683	0	0	" "	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	13811	0	0	"have the opportunity to secure seats for internal"	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	10682	13811	0	0	" "	Segoe UI Emoji	24	16777215	144	0	0	0	
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	5589	13991	0	0	"testing and enjoy a special discount."	Segoe UI Emoji	24	16777215	144	0	0	0	
+TEXT_RUN	1	5589	14119	0	0	"testing and enjoy a special discount."	Segoe UI Emoji	24	16777215	144	0	0	0	
 POP	1
 POP	1
 POP	1
@@ -226,7 +226,7 @@ PUSH	2
 SET_LINE_COLOR	2	0
 POP	2
 SET_FONT	2	Segoe UI Semibold	36	144	0
-SET_FONT	2	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	2	144	0
+SET_FONT	2	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
 SET_FONT	2	Segoe UI Semibold	36	144	0
 SET_FONT	2	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	2	0
@@ -326,7 +326,7 @@ SET_LINE_COLOR	3	0
 POP	3
 SET_FONT	3	Segoe UI Semibold	48	144	0
 SET_TEXT_COLOR	3	2500134
-SET_FONT	3	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	2	144	0
+SET_FONT	3	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
 SET_FONT	3	Segoe UI Semibold	48	144	0
 SET_TEXT_COLOR	3	2500134
 TEXT_RUN	3	2237	35766	0	0	"For all your document process needs"	Segoe UI Semibold	48	2500134	144	0	0	0	
@@ -483,7 +483,7 @@ PUSH	4
 SET_LINE_COLOR	4	0
 POP	4
 SET_FONT	4	宋体	36	144	0
-SET_FONT	4	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	2	144	0
+SET_FONT	4	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
 SET_FONT	4	宋体	36	144	0
 SET_FONT	4	Segoe UI Semibold	48	144	0
 SET_TEXT_COLOR	4	2500134
@@ -625,7 +625,7 @@ PUSH	5
 SET_LINE_COLOR	5	0
 POP	5
 SET_FONT	5	Segoe UI Emoji	28	144	0
-SET_FONT	5	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	2	144	0
+SET_FONT	5	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_FONT	5	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	5	0
@@ -732,7 +732,7 @@ SET_LINE_COLOR	6	0
 POP	6
 SET_FONT	6	Segoe UI Semibold	48	144	0
 SET_TEXT_COLOR	6	2500134
-SET_FONT	6	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	2	144	0
+SET_FONT	6	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
 SET_FONT	6	Segoe UI Semibold	48	144	0
 SET_TEXT_COLOR	6	2500134
 TEXT_RUN	6	3799	87132	0	0	"More Popular features"	Segoe UI Semibold	48	2500134	144	0	0	0	
@@ -960,7 +960,7 @@ SET_LINE_COLOR	7	0
 POP	7
 SET_FONT	7	宋体	40	144	0
 SET_TEXT_COLOR	7	2500134
-SET_FONT	7	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	2	144	0
+SET_FONT	7	Segoe UI;Tahoma;Arial Unicode MS;Lucida Sans Unicode;DejaVu Sans;Albany AMT;Albany;Arial;Nimbus Sans L;Interface User;Geneva;Dialog;Lucida;Helvetica;Helmet;Interface System;Sans Serif	1	144	0
 SET_FONT	7	宋体	40	144	0
 SET_TEXT_COLOR	7	2500134
 PUSH	7
