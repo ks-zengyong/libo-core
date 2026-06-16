@@ -2,31 +2,96 @@
 
 ## 1. 概述
 
-aproj/docx 的目标是产出与 LibreOffice **0 差异**的排版结果。为了实现这个目标，我们采用**两级差异对比**的方式量化 aproj/docx 与 LibreOffice 的输出差距，然后按差异项逐一定位 LO 源码中未迁移的逻辑，迭代修复。
+aproj/docx 的目标是产出与 LibreOffice **0 差异**的排版结果。为了实现这个目标，我们采用**三级差异对比**的方式量化 aproj/docx 与 LibreOffice 的输出差距，然后按差异项逐一定位 LO 源码中未迁移的逻辑，迭代修复。
 
-两级对比分别为：
-- **Step 1 — Frame 树对比**：对比解析排版后的 Frame 布局树结构
-- **Step 2 — VCL 渲染指令对比**：对比最终渲染层的绘制指令
+三级对比分别为：
+- **Step 1 — Nodes 结构对比**：对比解析后的文档节点树结构
+- **Step 2 — Frame 树对比**：对比解析排版后的 Frame 布局树结构
+- **Step 3 — VCL 渲染指令对比**：对比最终渲染层的绘制指令
 
 ## 2. 总体架构
 
 ```
 samples/*.docx
   │
-  ├── aproj/docx  ──┬──→ aproj_frame.txt ──┐
+  ├── aproj/docx  ──┬──→ aproj_nodes.txt ──┐
+  │                 ├──→ aproj_frame.txt ──┤
   │                 └──→ aproj_vcl.txt  ───┤
   │                                        ├──→ render_diff → 差异列表 → 定位 LO 源码 → 迁移修复
-  └── LibreOffice ──┬──→ lo_frame.txt ─────┤
+  └── LibreOffice ──┬──→ lo_nodes.txt ────┤
+                    ├──→ lo_frame.txt ─────┤
                     └──→ lo_vcl.txt ───────┘
 ```
 
 **核心原则**：
 - 两边的生成逻辑和数据结构必须一致，确保 `render_diff` 对比的是逻辑差异而非格式差异
-- Frame 层和 VCL 层**独立输出**，不合并
+- Nodes 层、Frame 层和 VCL 层**独立输出**，不合并
 - 数据格式统一为 TSV（Tab-Separated Values），每条指令一行，字段通过 `\t` 分隔
 - 指令格式定义在共享头文件 `sw/source/core/inc/render_instruction.h` 中
 
-## 3. Step 1: Frame 树差异对比
+## 3. Step 1: Nodes 结构差异对比
+
+### 3.1 Nodes 层的数据结构
+
+Nodes 层记录的是**文档解析后的节点树结构**，即 SwNodes 中所有节点的层级关系和属性信息。当前支持的节点类型：
+
+| 指令类型 | 字段 | 说明 |
+|---------|------|------|
+| `START_NODE` | nodeId, nodeType | 节点开始，附带节点类型（如 Normal, TableBox 等） |
+| `END_NODE` | nodeId | 节点结束 |
+| `TEXT_NODE` | nodeId, text, styleName | 文本节点，附带文本内容和样式名 |
+
+格式一致性由 `NodesLogger` 类保证——aproj/docx 和 LO 两侧使用相同的输出格式。
+
+### 3.2 aproj/docx 生成方式
+
+**入口**：`docx_e2e_test` 可执行文件（编译自 `test/test_end_to_end.cpp`）
+
+**数据流**：
+```
+samples/*.docx
+  → DocxParser::Read()             (解析 OOXML)
+  → SwDoc                          (构建文档模型)
+  → NodesLogger::LogNodes()        (遍历 SwNodes，生成节点记录)
+  → WriteToFile()                  (写入 aproj_nodes.txt)
+```
+
+**关键实现文件**：
+- `test/test_end_to_end.cpp` — 端到端测试中调用 NodesLogger
+- `src/render/nodes_log.cpp` — `NodesLogger` 实现节点树遍历和输出
+
+### 3.3 LibreOffice 生成方式
+
+LibreOffice 侧通过环境变量 `SW_NODES_LOG` 控制输出：
+
+| 环境变量 | 输出内容 |
+|----------|----------|
+| `SW_NODES_LOG` | Nodes 结构记录 |
+
+**数据流**：
+```
+样本文档
+  → soffice --headless --convert-to pdf  (强制完全排版)
+  → SwDoc → SwNodes
+  → NodesLogger                          (遍历节点树，生成记录)
+  → 写入 SW_NODES_LOG 指定的文件
+```
+
+### 3.4 对比方式
+
+```powershell
+# 对比 Nodes 层
+.\test\diff_node.bat
+```
+
+或直接使用 `render_diff`：
+```powershell
+.\output\render_diff_debug.exe node      # 对比 Nodes 层（Debug 产物）
+```
+
+对比工具 `tools/render_diff.cpp` 进行严格逐字段比对，不允许容差（tolerance）。
+
+## 4. Step 2: Frame 树差异对比
 
 ### 3.1 Frame 层的数据结构
 
