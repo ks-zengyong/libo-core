@@ -13,15 +13,23 @@ for /f "tokens=1-4 delims=:." %%a in ("%START_TIME%") do (
 
 set "SCRIPT_DIR=%~dp0"
 for %%i in ("%SCRIPT_DIR%..\..") do set "LIBO_ROOT=%%~fi"
-set "GIT_BASH=C:\MyProgram\Git\bin\bash.exe"
-
-set "BUILD_LOG=%LIBO_ROOT%\aproj\docx\build_%date:~0,4%_%date:~5,2%_%date:~8,2%.log"
-set "TARGET_EXE=%LIBO_ROOT%\instdir\program\soffice.exe"
-
-if not exist "%GIT_BASH%" (
-    echo [ERROR] git bash not found: %GIT_BASH%
+REM Find bash.exe from git installation directory (via where git)
+set "GIT_BASH="
+for /f "delims=" %%g in ('where git.exe 2^>nul') do (
+    if not defined GIT_BASH (
+        for %%r in ("%%~dpg..") do set "GIT_ROOT=%%~fr"
+        if exist "!GIT_ROOT!\bin\bash.exe" set "GIT_BASH=!GIT_ROOT!\bin\bash.exe"
+    )
+)
+if not defined GIT_BASH (
+    echo [ERROR] bash.exe not found under git installation directory
     exit /b 1
 )
+echo [INFO] Using bash: %GIT_BASH%
+
+if not exist "%LIBO_ROOT%\aproj\build" mkdir "%LIBO_ROOT%\aproj\build"
+set "BUILD_LOG=%LIBO_ROOT%\aproj\build\build_%date:~0,4%_%date:~5,2%_%date:~8,2%.log"
+set "TARGET_EXE=%LIBO_ROOT%\instdir\program\soffice.exe"
 
 if exist "%TARGET_EXE%" (
     for %%f in ("%TARGET_EXE%") do set "OLD_TIMESTAMP=%%~tf"
@@ -49,7 +57,11 @@ echo [INFO] Command: %MAKE_CMD%
 echo [INFO] Build start time: %START_TIME%
 echo [INFO] Log file: %BUILD_LOG%
 
-"%GIT_BASH%" --cd="%LIBO_ROOT%" -l -c "%MAKE_CMD% 2>&1 | tee %BUILD_LOG%"
+REM Convert Windows paths to Unix format for bash (e.g., E:\path -> E:/path)
+set "LIBO_ROOT_UNIX=%LIBO_ROOT:\=/%"
+set "BUILD_LOG_UNIX=%BUILD_LOG:\=/%"
+
+"%GIT_BASH%" -c "cd '%LIBO_ROOT_UNIX%' && %MAKE_CMD% 2>&1 | tee '%BUILD_LOG_UNIX%'"
 
 set "EXIT_CODE=%errorlevel%"
 echo [INFO] Make exit code: %EXIT_CODE%
