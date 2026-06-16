@@ -47,6 +47,8 @@ set(RENDER_COMMON_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../render_common)
 add_library(render_common STATIC
     ${RENDER_COMMON_DIR}/render_format.cxx
     ${RENDER_COMMON_DIR}/frame_tree_walker.cxx
+    ${RENDER_COMMON_DIR}/node_walker.cxx
+    ${RENDER_COMMON_DIR}/node_format.cxx
 )
 target_include_directories(render_common PUBLIC ${RENDER_COMMON_DIR})
 target_compile_definitions(render_common PRIVATE _CRT_SECURE_NO_WARNINGS=1)
@@ -68,6 +70,7 @@ add_library(docx_core STATIC
     src/layout/layact.cpp
     src/render/render_log.cpp
     src/render/render_output_device.cpp
+    src/render/nodes_log.cpp
 )
 target_include_directories(docx_core PUBLIC src/render src/core src/frame src/filter src/font src/layout ${THIRD_PARTY_DIR}
     ${RENDER_COMMON_DIR})

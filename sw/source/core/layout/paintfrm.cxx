@@ -65,6 +65,7 @@
 #include <noteurl.hxx>
 #include "virtoutp.hxx"
 #include "paint_listener.hxx"
+#include "../docnode/nodes_logger.hxx"
 #include <lineinfo.hxx>
 #include <dbg_lay.hxx>
 #include <docsh.hxx>
@@ -3304,6 +3305,11 @@ void SwRootFrame::PaintSwFrame(vcl::RenderContext& rRenderContext, SwRect const&
     // 使用 render_common 共享的 WalkFrameTreeAndLog 实现
     if (SwPaintEventListener::Get().IsLogging())
         SwPaintEventListener::Get().LogFrameTree(const_cast<SwRootFrame*>(this));
+
+    // --- 节点结构记录 ---
+    // 在 Frame 层记录后，记录 Nodes 结构
+    if (SwNodesLogger::Get().IsLogging())
+        SwNodesLogger::Get().LogNodes(GetFormat()->GetDoc().GetNodes());
 
     aRect.Intersection( pSh->VisArea() );
 

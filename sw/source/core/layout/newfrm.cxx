@@ -43,6 +43,7 @@
 #include <DocumentRedlineManager.hxx>
 #include <ndindex.hxx>
 #include "paint_listener.hxx"
+#include "../docnode/nodes_logger.hxx"
 
 SwLayVout     *SwRootFrame::s_pVout = nullptr;
 bool           SwRootFrame::s_isInPaint = false;
@@ -439,6 +440,8 @@ SwRootFrame::SwRootFrame( SwFrameFormat *pFormat, SwViewShell * pSh ) :
 
     // 检查环境变量 SW_RENDER_LOG，如有则启动渲染指令记录
     SwPaintEventListener::Get().CheckEnvAndStart();
+    // 检查环境变量 SW_NODES_LOG，如有则启动节点结构记录
+    SwNodesLogger::Get().CheckEnvAndStart();
 }
 
 void SwRootFrame::Init( SwFrameFormat* pFormat )

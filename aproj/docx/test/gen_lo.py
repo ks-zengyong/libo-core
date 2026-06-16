@@ -1,9 +1,10 @@
 """
-生成 LibreOffice 侧的 Frame 树记录和 VCL 渲染指令记录。
+生成 LibreOffice 侧的 Frame 树记录、VCL 渲染指令记录和 Nodes 结构记录。
 
 通过启动 soffice --headless --convert-to pdf 触发完全排版，生成:
   - lo_frame.txt  (Frame 层语义指令，由 SW_RENDER_LOG 环境变量控制)
   - lo_vcl.txt    (VCL 层绘制指令，由 SW_VCL_RENDER_LOG 环境变量控制)
+  - lo_nodes.txt  (Nodes 结构记录，由 SW_NODES_LOG 环境变量控制)
 
 用法:
   cd aproj/docx
@@ -13,7 +14,7 @@
 
 依赖:
   - LibreOffice 已编译 (libo-core/instdir/program/soffice.exe)
-  - SW_RENDER_LOG / SW_VCL_RENDER_LOG 支持 (libo-core/sw/ 中已实现 SwPaintEventListener)
+  - SW_RENDER_LOG / SW_VCL_RENDER_LOG / SW_NODES_LOG 支持 (libo-core/sw/ 中已实现)
 """
 
 import os
@@ -107,10 +108,12 @@ def main():
     # 产物路径
     lo_frame = str(test_dir / "lo_frame.txt")
     lo_vcl = str(test_dir / "lo_vcl.txt")
+    lo_nodes = str(test_dir / "lo_nodes.txt")
 
     env = os.environ.copy()
     env["SW_RENDER_LOG"] = lo_frame     # Frame 层 → lo_frame.txt
     env["SW_VCL_RENDER_LOG"] = lo_vcl   # VCL 层  → lo_vcl.txt
+    env["SW_NODES_LOG"] = lo_nodes      # Nodes 结构 → lo_nodes.txt
 
     # 使用 --convert-to pdf 触发完全排版
     # PDF 转换会强制 LibreOffice 渲染所有页面，确保 SwPaintEventListener 捕获完整指令
@@ -127,6 +130,7 @@ def main():
         print(f"[INFO] 执行: {' '.join(cmd)}")
         print(f"[INFO] SW_RENDER_LOG={lo_frame}")
         print(f"[INFO] SW_VCL_RENDER_LOG={lo_vcl}")
+        print(f"[INFO] SW_NODES_LOG={lo_nodes}")
         print("[INFO] 等待 soffice 完全排版并输出 (最长 120s)...")
 
         try:
@@ -152,6 +156,7 @@ def main():
     # 检查产物
     frame_ok = os.path.exists(lo_frame)
     vcl_ok = os.path.exists(lo_vcl)
+    nodes_ok = os.path.exists(lo_nodes)
 
     if frame_ok:
         print(f"[OK]   lo_frame.txt: {os.path.getsize(lo_frame)} bytes")
@@ -163,8 +168,13 @@ def main():
     else:
         print("[MISS] lo_vcl.txt")
 
-    if not frame_ok and not vcl_ok:
-        print("[ERROR] 未生成任何产物，请确认 libo-core 已包含 SwPaintEventListener 支持")
+    if nodes_ok:
+        print(f"[OK]   lo_nodes.txt: {os.path.getsize(lo_nodes)} bytes")
+    else:
+        print("[MISS] lo_nodes.txt")
+
+    if not frame_ok and not vcl_ok and not nodes_ok:
+        print("[ERROR] 未生成任何产物，请确认 libo-core 已包含 SwPaintEventListener 和 SwNodesLogger 支持")
         sys.exit(1)
 
     print(f"\n[INFO] 产物目录: {test_dir}")

@@ -127,15 +127,15 @@ void MetaToInstructionConverter::ConvertAction(const MetaAction* pAction,
             break;
         }
         case MetaActionType::PUSH:
-            BuildPushInstruction(rSink, pageNum);
+            BuildPushInstruction(rSink, pageNum, 0);
             break;
         case MetaActionType::POP:
-            BuildPopInstruction(rSink, pageNum);
+            BuildPopInstruction(rSink, pageNum, 0);
             break;
         case MetaActionType::CLIPREGION:
         case MetaActionType::ISECTRECTCLIPREGION:
         case MetaActionType::ISECTREGIONCLIPREGION:
-            BuildSetClipRegionInstruction(rSink, pageNum);
+            BuildSetClipRegionInstruction(rSink, pageNum, 0);
             break;
         default:
             // 其他动作（MAPMODE, RASTEROP, WALLPAPER 等）暂不转换
@@ -170,7 +170,7 @@ void MetaToInstructionConverter::EmitText(const Point& rPt, const OUString& rTex
     s_textBuf = utf8Text.getStr();
     s_fontBuf = fontName.getStr();
 
-    BuildTextRunInstruction(rSink, pageNum, rPt.X(), rPt.Y(), s_textBuf.c_str(),
+    BuildTextRunInstruction(rSink, pageNum, 0, rPt.X(), rPt.Y(), s_textBuf.c_str(),
                             static_cast<int>(s_textBuf.size()), s_fontBuf.c_str(), fontSize,
                             fontColor, fontWeight, fontItalic);
 }
@@ -178,27 +178,27 @@ void MetaToInstructionConverter::EmitText(const Point& rPt, const OUString& rTex
 void MetaToInstructionConverter::EmitRect(const tools::Rectangle& rRect,
                                           RenderInstructionSink& rSink, int pageNum)
 {
-    BuildRectInstruction(rSink, pageNum, rRect.Left(), rRect.Top(), rRect.GetWidth(),
+    BuildRectInstruction(rSink, pageNum, 0, rRect.Left(), rRect.Top(), rRect.GetWidth(),
                          rRect.GetHeight());
 }
 
 void MetaToInstructionConverter::EmitLine(const Point& rStart, const Point& rEnd,
                                           RenderInstructionSink& rSink, int pageNum)
 {
-    BuildLineInstruction(rSink, pageNum, rStart.X(), rStart.Y(), rEnd.X(), rEnd.Y());
+    BuildLineInstruction(rSink, pageNum, 0, rStart.X(), rStart.Y(), rEnd.X(), rEnd.Y());
 }
 
 void MetaToInstructionConverter::EmitBitmap(const Point& rPt, const Bitmap& rBmp,
                                             RenderInstructionSink& rSink, int pageNum)
 {
-    BuildBitmapInstruction(rSink, pageNum, rPt.X(), rPt.Y(), rBmp.GetSizePixel().Width(),
+    BuildBitmapInstruction(rSink, pageNum, 0, rPt.X(), rPt.Y(), rBmp.GetSizePixel().Width(),
                            rBmp.GetSizePixel().Height());
 }
 
 void MetaToInstructionConverter::EmitEllipse(const tools::Rectangle& rRect,
                                              RenderInstructionSink& rSink, int pageNum)
 {
-    BuildEllipseInstruction(rSink, pageNum, rRect.Left(), rRect.Top(), rRect.GetWidth(),
+    BuildEllipseInstruction(rSink, pageNum, 0, rRect.Left(), rRect.Top(), rRect.GetWidth(),
                             rRect.GetHeight());
 }
 
@@ -219,7 +219,7 @@ void MetaToInstructionConverter::EmitSetFont(RenderInstructionSink& rSink, int p
     static thread_local std::string s_fontBuf;
     s_fontBuf = fontName.getStr();
 
-    BuildSetFontInstruction(rSink, pageNum, s_fontBuf.c_str(), fontSize, fontWeight, fontItalic);
+    BuildSetFontInstruction(rSink, pageNum, 0, s_fontBuf.c_str(), fontSize, fontWeight, fontItalic);
 }
 
 void MetaToInstructionConverter::EmitSetTextColor(RenderInstructionSink& rSink, int pageNum)
@@ -228,7 +228,7 @@ void MetaToInstructionConverter::EmitSetTextColor(RenderInstructionSink& rSink, 
                          | (static_cast<uint32_t>(m_aTextColor.GetGreen()) << 8)
                          | static_cast<uint32_t>(m_aTextColor.GetBlue());
 
-    BuildSetTextColorInstruction(rSink, pageNum, fontColor);
+    BuildSetTextColorInstruction(rSink, pageNum, 0, fontColor);
 }
 
 void MetaToInstructionConverter::EmitSetFillColor(RenderInstructionSink& rSink, int pageNum)
@@ -241,7 +241,7 @@ void MetaToInstructionConverter::EmitSetFillColor(RenderInstructionSink& rSink, 
                     | static_cast<uint32_t>(m_aFillColor.GetBlue());
     }
 
-    BuildSetFillColorInstruction(rSink, pageNum, fillColor);
+    BuildSetFillColorInstruction(rSink, pageNum, 0, fillColor);
 }
 
 void MetaToInstructionConverter::EmitSetLineColor(RenderInstructionSink& rSink, int pageNum)
@@ -254,7 +254,7 @@ void MetaToInstructionConverter::EmitSetLineColor(RenderInstructionSink& rSink, 
                     | static_cast<uint32_t>(m_aLineColor.GetBlue());
     }
 
-    BuildSetLineColorInstruction(rSink, pageNum, lineColor);
+    BuildSetLineColorInstruction(rSink, pageNum, 0, lineColor);
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

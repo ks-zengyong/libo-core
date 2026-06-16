@@ -10,6 +10,7 @@
 #include "frame.h"
 #include "layact.h"
 #include "render_log.h"
+#include "nodes_log.h"
 
 #include <iostream>
 #include <string>
@@ -99,7 +100,22 @@ static std::string resolvePath(const std::string& path)
     if (path[0] == '/')
         return path;
 #endif
-    return getExeDir() + path;
+    std::string resolved = getExeDir() + path;
+    // Normalize path separators for Windows
+#ifdef _WIN32
+    for (auto& c : resolved)
+        if (c == '/') c = '\\';
+    // Resolve .. components
+    std::string::size_type pos;
+    while ((pos = resolved.find("\\..\\")) != std::string::npos) {
+        auto prev = resolved.rfind('\\', pos - 1);
+        if (prev != std::string::npos)
+            resolved.erase(prev, pos + 3 - prev);
+        else
+            break;
+    }
+#endif
+    return resolved;
 }
 
 // ── Find samples directory ──────────────────────────────────────
@@ -319,6 +335,13 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     std::cerr << "[TEST] WriteVclLayerToFile..." << std::endl;
     logger.WriteVclLayerToFile(resolvePath("../test/aproj_vcl.txt"));
     std::cerr << "[TEST] WriteVclLayerToFile done" << std::endl;
+
+    // 6.5 节点结构输出
+    std::cerr << "[TEST] NodesLogger..." << std::endl;
+    NodesLogger nodesLogger;
+    nodesLogger.LogNodes(rNodes);
+    nodesLogger.WriteToFile(resolvePath("../../test/aproj_nodes.txt"));
+    std::cerr << "[TEST] NodesLogger done" << std::endl;
 
     // 7. 验证 frame 层
     std::string framePath = resolvePath("../test/aproj_frame.txt");

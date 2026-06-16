@@ -281,6 +281,9 @@ $(eval $(call gb_Library_add_exception_objects,sw,\
     sw/source/core/docnode/swthreadmanager \
     sw/source/core/docnode/threadlistener \
     sw/source/core/docnode/threadmanager \
+    sw/source/core/docnode/nodes_logger \
+    render_common/node_walker \
+    render_common/node_format \
     sw/source/core/draw/dcontact \
     sw/source/core/draw/dflyobj \
     sw/source/core/draw/dobjfac \
