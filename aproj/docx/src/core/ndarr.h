@@ -106,7 +106,9 @@ public:
 
     // Fly 节区创建（用于浮动框架/文本框）
     // 在 AutoText 区域创建 Fly 节区，返回 StartNode
-    SwStartNode* InsertFlySection(SwStartNodeType eType = SwFlyStartNode);
+    // nAnchorNodeIndex: 锚点节点索引，-1 表示无锚点
+    SwStartNode* InsertFlySection(SwStartNodeType eType = SwFlyStartNode,
+                                  int nAnchorNodeIndex = -1);
 
     // 图片节点创建
     SwGrfNode* InsertGrfNode(const SwNode& rWhere);

@@ -44,40 +44,19 @@ public:
         return bIsStart;
     }
 
-    bool IsEndNode() const override
-    {
-        return m_pNode && m_pNode->IsEndNode();
-    }
+    bool IsEndNode() const override { return m_pNode && m_pNode->IsEndNode(); }
 
-    bool IsTextNode() const override
-    {
-        return m_pNode && m_pNode->IsTextNode();
-    }
+    bool IsTextNode() const override { return m_pNode && m_pNode->IsTextNode(); }
 
-    bool IsGrfNode() const override
-    {
-        return m_pNode && m_pNode->IsGrfNode();
-    }
+    bool IsGrfNode() const override { return m_pNode && m_pNode->IsGrfNode(); }
 
-    bool IsOLENode() const override
-    {
-        return m_pNode && m_pNode->IsOLENode();
-    }
+    bool IsOLENode() const override { return m_pNode && m_pNode->IsOLENode(); }
 
-    bool IsTableNode() const override
-    {
-        return m_pNode && m_pNode->IsTableNode();
-    }
+    bool IsTableNode() const override { return m_pNode && m_pNode->IsTableNode(); }
 
-    bool IsSectionNode() const override
-    {
-        return m_pNode && m_pNode->IsSectionNode();
-    }
+    bool IsSectionNode() const override { return m_pNode && m_pNode->IsSectionNode(); }
 
-    int GetIndex() const override
-    {
-        return m_pNode ? static_cast<int>(m_pNode->GetIndex()) : -1;
-    }
+    int GetIndex() const override { return m_pNode ? static_cast<int>(m_pNode->GetIndex()) : -1; }
 
     int GetStartNodeType() const override
     {
@@ -87,15 +66,9 @@ public:
         return static_cast<int>(pStartNode->GetStartNodeType());
     }
 
-    const char* GetText() const override
-    {
-        return m_textBuf.empty() ? nullptr : m_textBuf.c_str();
-    }
+    const char* GetText() const override { return m_textBuf.empty() ? nullptr : m_textBuf.c_str(); }
 
-    int GetTextLen() const override
-    {
-        return static_cast<int>(m_textBuf.size());
-    }
+    int GetTextLen() const override { return static_cast<int>(m_textBuf.size()); }
 
     const char* GetStyleName() const override
     {
@@ -150,6 +123,17 @@ public:
         return -1;
     }
 
+    int GetAnchorNodeIndex() const override
+    {
+        // 仅对 Fly 节区有效 (startNodeType == 2)
+        if (!m_pNode || !m_pNode->IsStartNode())
+            return -1;
+        SwStartNode* pStartNode = static_cast<SwStartNode*>(m_pNode);
+        if (pStartNode->GetStartNodeType() != SwFlyStartNode)
+            return -1;
+        return pStartNode->GetAnchorNodeIndex();
+    }
+
 private:
     void ExtractTextInfo()
     {
@@ -176,10 +160,7 @@ public:
     {
     }
 
-    int Count() const override
-    {
-        return static_cast<int>(m_rNodes.Count());
-    }
+    int Count() const override { return static_cast<int>(m_rNodes.Count()); }
 
     INode* GetNode(int index) const override
     {
@@ -255,7 +236,7 @@ void NodesLogger::LogNodes(SwNodes& rNodes)
     std::cerr << "[NodesLogger] Total nodes: " << nodesArray.Count() << std::endl;
     std::cerr << "[NodesLogger] BodyStart: " << nodesArray.GetBodyStartIndex() << std::endl;
     std::cerr << "[NodesLogger] BodyEnd: " << nodesArray.GetBodyEndIndex() << std::endl;
-    
+
     // 检查是否有 TableNode
     for (int i = 0; i < nodesArray.Count(); ++i)
     {
@@ -264,9 +245,9 @@ void NodesLogger::LogNodes(SwNodes& rNodes)
             continue;
         if (pNode->IsTableNode())
         {
-            std::cerr << "[NodesLogger] Found TableNode at index " << i 
-                      << " rows=" << pNode->GetTableRows() 
-                      << " cols=" << pNode->GetTableCols() << std::endl;
+            std::cerr << "[NodesLogger] Found TableNode at index " << i
+                      << " rows=" << pNode->GetTableRows() << " cols=" << pNode->GetTableCols()
+                      << std::endl;
         }
         delete pNode;
     }
@@ -279,9 +260,10 @@ void NodesLogger::WriteToFile(const std::string& filePath)
 {
     std::cerr << "[NodesLogger] Writing to: " << filePath << std::endl;
     std::cerr << "[NodesLogger] Instructions count: " << m_aInstructions.size() << std::endl;
-    
+
     std::ofstream file(filePath);
-    if (!file.is_open()) {
+    if (!file.is_open())
+    {
         std::cerr << "[NodesLogger] ERROR: Failed to open file: " << filePath << std::endl;
         return;
     }

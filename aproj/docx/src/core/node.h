@@ -126,7 +126,10 @@ public:
     SwStartNode* FindStartNodeByType(SwStartNodeType eTyp);
     const SwStartNode* FindStartNodeByType(SwStartNodeType eTyp) const;
     const SwStartNode* FindFlyStartNode() const { return FindStartNodeByType(SwFlyStartNode); }
-    const SwStartNode* FindTableBoxStartNode() const { return FindStartNodeByType(SwTableBoxStartNode); }
+    const SwStartNode* FindTableBoxStartNode() const
+    {
+        return FindStartNodeByType(SwTableBoxStartNode);
+    }
 
     // 节点索引
     SwNodeOffset GetIndex() const { return SwNodeOffset(GetPos()); }
@@ -175,6 +178,10 @@ public:
     SwEndNode* GetEndOfSection() { return m_pEndOfSection; }
     const SwEndNode* GetEndOfSection() const { return m_pEndOfSection; }
 
+    // Fly 节区锚点节点索引（仅对 SwFlyStartNode 有效）
+    int GetAnchorNodeIndex() const { return m_nAnchorNodeIndex; }
+    void SetAnchorNodeIndex(int nIndex) { m_nAnchorNodeIndex = nIndex; }
+
 protected:
     SwStartNode(SwNodes& rNodes, SwNodeOffset nPos, SwStartNodeType eType = SwNormalStartNode);
     SwStartNode(const SwNode& rWhere, SwStartNodeType eType = SwNormalStartNode);
@@ -182,6 +189,7 @@ protected:
 private:
     SwEndNode* m_pEndOfSection;
     SwStartNodeType m_eStartNodeType;
+    int m_nAnchorNodeIndex = -1; // Fly 节区的锚点节点索引，-1 表示无锚点
 };
 
 // SwEndNode: 节区结束标记
@@ -276,7 +284,11 @@ public:
     // 图片尺寸（twips）
     sal_Int32 GetWidth() const { return m_nWidth; }
     sal_Int32 GetHeight() const { return m_nHeight; }
-    void SetSize(sal_Int32 nW, sal_Int32 nH) { m_nWidth = nW; m_nHeight = nH; }
+    void SetSize(sal_Int32 nW, sal_Int32 nH)
+    {
+        m_nWidth = nW;
+        m_nHeight = nH;
+    }
 
     sal_Int32 Len() const override { return 0; }
 

@@ -252,7 +252,7 @@ SwTableNode* SwNodes::InsertTable(const SwNode& rNd, sal_uInt16 nBoxes,
     return pTable;
 }
 
-SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType)
+SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType, int nAnchorNodeIndex)
 {
     // 在 AutoText 区域创建 Fly 节区
     // Fly 节区位于 EndOfAutotext 和 EndOfRedlines 之间
@@ -262,6 +262,8 @@ SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType)
 
     // 创建 Fly StartNode
     auto* pFlyStt = new SwStartNode(*this, nPos, eType);
+    // 设置锚点节点索引
+    pFlyStt->SetAnchorNodeIndex(nAnchorNodeIndex);
     InsertNode(pFlyStt, nPos);
 
     // 创建 Fly EndNode
