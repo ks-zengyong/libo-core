@@ -93,7 +93,7 @@ LibreOffice 侧通过环境变量 `SW_NODES_LOG` 控制输出：
 
 ## 4. Step 2: Frame 树差异对比
 
-### 3.1 Frame 层的数据结构
+### 4.1 Frame 层的数据结构
 
 Frame 层记录的是**语义级布局信息**，即 Frame 树的拓扑结构和几何属性。当前支持的指令类型：
 
@@ -111,7 +111,7 @@ Frame 层记录的是**语义级布局信息**，即 Frame 树的拓扑结构和
 
 格式一致性由 `sw/source/core/inc/instruction_builder.h` 中的 `Build*Instruction()` 函数族保证——aproj/docx 和 LO 两侧共享同一个头文件。
 
-### 3.2 aproj/docx 生成方式
+### 4.2 aproj/docx 生成方式
 
 **入口**：`docx_e2e_test` 可执行文件（编译自 `test/test_end_to_end.cpp`）
 
@@ -135,8 +135,9 @@ samples/*.docx
 |------|------|
 | `aproj_frame.txt` | Frame 层语义指令 |
 | `aproj_vcl.txt` | VCL 层绘制指令 |
+| `aproj_nodes.txt` | Nodes 结构记录 |
 
-### 3.3 LibreOffice 生成方式
+### 4.3 LibreOffice 生成方式
 
 LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/source/core/inc/`），通过环境变量控制输出：
 
@@ -144,6 +145,7 @@ LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/s
 |----------|----------|
 | `SW_RENDER_LOG` | Frame 层指令 |
 | `SW_VCL_RENDER_LOG` | VCL 层绘制指令 |
+| `SW_NODES_LOG` | Nodes 结构记录 |
 
 **数据流**：
 ```
@@ -155,18 +157,21 @@ LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/s
   → 分别写入 SW_RENDER_LOG 和 SW_VCL_RENDER_LOG 指定的文件
 ```
 
-### 3.4 Python 脚本约定
+### 4.4 Python 脚本约定
 
 所有生成脚本统一放在 `test/` 目录：
 
 | 脚本 | 职责 | 输入 | 输出 |
 |------|------|------|------|
-| `test/gen_aproj.py` | 编译并运行 aproj e2e test，收集产物 | `samples/*.docx` | `test/aproj_frame.txt`, `test/aproj_vcl.txt` |
-| `test/gen_lo.py` | 启动 soffice 生成 LO 参考输出 | `samples/sample0.docx` | `test/lo_frame.txt`, `test/lo_vcl.txt` |
+| `test/gen_aproj.py` | 编译并运行 aproj e2e test，收集产物 | `samples/*.docx` | `test/aproj_frame.txt`, `test/aproj_vcl.txt`, `test/aproj_nodes.txt` |
+| `test/gen_lo.py` | 启动 soffice 生成 LO 参考输出 | `samples/sample0.docx` | `test/lo_frame.txt`, `test/lo_vcl.txt`, `test/lo_nodes.txt` |
 
-### 3.5 对比方式
+### 4.5 对比方式
 
 ```powershell
+# 对比 Nodes 层
+.\test\diff_node.bat
+
 # 对比 Frame 层
 .\test\diff_frame.bat
 
@@ -176,6 +181,7 @@ LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/s
 
 或直接使用 `render_diff`：
 ```powershell
+.\output\render_diff_debug.exe node      # 对比 Nodes 层（Debug 产物）
 .\output\render_diff_debug.exe frame     # 对比 Frame 层（Debug 产物）
 .\output\render_diff_debug.exe vcl       # 对比 VCL 层（Debug 产物）
 ```
@@ -184,9 +190,9 @@ LibreOffice 侧在 `sw` 模块中内置了 `SwPaintEventListener`（位于 `sw/s
 
 > **注意**：`render_diff_debug.exe` 的默认 `--test-dir` 为 `../test`（相对于 exe 所在目录 `output/`），即自动定位到 `aproj/docx/test/`。使用快捷模式 `frame`/`vcl` 时无需额外指定路径。
 
-## 4. Step 2: VCL 渲染指令差异对比（VCL 接入待完成）
+## 5. Step 3: VCL 渲染指令差异对比（VCL 接入待完成）
 
-### 4.1 VCL 层的数据结构
+### 5.1 VCL 层的数据结构
 
 VCL 层记录的是**绘制级指令**——即最终渲染时对 `OutputDevice` 的实际调用。当前支持的指令类型：
 
@@ -208,7 +214,7 @@ VCL 层记录的是**绘制级指令**——即最终渲染时对 `OutputDevice`
 | `BITMAP` | pageNum, x, y, w, h | 位图绘制 |
 | `PUSH` / `POP` | pageNum | 状态保存/恢复 |
 
-### 4.2 当前状态：简化 OutputDevice
+### 5.2 当前状态：简化 OutputDevice
 
 aproj/docx 当前在 `src/render/render_output_device.cpp` 中实现了一个最小 `RenderInstructionOutputDevice`——它提供了 `DrawText()`、`DrawRect()`、`SetFont()` 等基础方法，并在每个方法中直接调用 `Build*Instruction()`。
 
@@ -216,7 +222,7 @@ aproj/docx 当前在 `src/render/render_output_device.cpp` 中实现了一个最
 - 不经过 LO 的 VCL 渲染管线（字体替代、颜色管理、坐标变换等）
 - VCL 自身对输出的影响（如 `ImplFontSubstitute`、`Push/Pop` 状态管理、裁剪区域等）无法体现
 
-### 4.3 目标状态：接入 libo-core VCL 模块
+### 5.3 目标状态：接入 libo-core VCL 模块
 
 **目标**：aproj/docx 直接链接 `libo-core/vcl/` 模块，在 Frame 树上的 `PaintSwFrame()` 调用使用真实的 `OutputDevice`（而非简化的 `RenderInstructionOutputDevice`）。
 
@@ -228,25 +234,29 @@ aproj/docx 当前在 `src/render/render_output_device.cpp` 中实现了一个最
 | font | `vcl/source/font/` | 字体管理、替换 |
 | text | `vcl/source/text/` | 文字布局（HarBuzz 集成） |
 
-## 5. 差异对比与修复工作流
+## 6. 差异对比与修复工作流
 
-### 5.1 执行顺序
+### 6.1 执行顺序
 
 ```
-              ┌─ Step 1: Frame 树对比 ──→ Frame 差异为 0？ ──No──→ 修复 Frame 层差异
-              │                              │
-samples/*.docx┤                         Yes │
-              │                              ▼
-              └─ Step 2: VCL 指令对比 ──→ VCL 差异为 0？ ───No──→ 修复 VCL 层差异
+              ┌─ Step 1: Nodes 结构对比 ──→ Nodes 差异为 0？ ──No──→ 修复 Nodes 层差异
+              │                                    │
+              │                                   Yes │
+              │                                    ▼
+samples/*.docx┤                         Step 2: Frame 树对比 ──→ Frame 差异为 0？ ──No──→ 修复 Frame 层差异
+              │                                              │
+              │                                             Yes │
+              │                                              ▼
+              └─ Step 3: VCL 指令对比 ──→ VCL 差异为 0？ ───No──→ 修复 VCL 层差异
                                               │
                                          Yes  │
                                               ▼
                                          目标达成：0 差异
 ```
 
-Frame 树差异基本消除后再进入 VCL 层对比，因为 VCL 层差异可能源自 Frame 树的布局差异。
+Nodes 结构差异最先对比，因为解析阶段的节点树差异会影响后续排版；Frame 树差异基本消除后再进入 VCL 层对比，因为 VCL 层差异可能源自 Frame 树的布局差异。
 
-### 5.2 差异定位策略
+### 6.2 差异定位策略
 
 每一条差异记录包含：
 - `refLine` / `testLine`：LO 侧和 aproj 侧的行号
@@ -258,32 +268,36 @@ Frame 树差异基本消除后再进入 VCL 层对比，因为 VCL 层差异可�
 3. 将缺失或有差异的逻辑迁移到 `aproj/docx/src/layout/` 或相关模块
 4. 重新运行测试验证
 
-### 5.3 迭代策略
+### 6.3 迭代策略
 
 - **不追求差异总数递减**：差异总数可能受指令数量变化影响，不必强约束
 - **按序逐个解决**：按差异出现顺序（行号顺序），逐个分析、定位、修复
 - **每次修复后验证**：修复后重新运行 `render_diff`，确认目标差异消除且未引入新差异
 - **已知差异管理**：暂时无法解决的差异写入 `test/known_diffs.txt`，标记为 `[KNOWN]`
 
-### 5.4 标准修复步骤
+### 6.4 标准修复步骤
 
 ```
-1. 查看差异: .\test\diff_frame.bat
+1. 查看差异: .\test\diff_node.bat (Nodes 层)
+              .\test\diff_frame.bat (Frame 层)
+              .\test\diff_vcl.bat (VCL 层)
      ↓
-2. 定位 LO 源码: 在 libo-core/sw/ 中搜索差异相关的排版/渲染逻辑
+2. 定位 LO 源码: 在 libo-core/sw/ 中搜索差异相关的解析/排版/渲染逻辑
      ↓
 3. 迁移适配: 将 LO 实现移植到 aproj/docx/src/ 对应模块
      ↓
 4. 编译验证: cmake --build build --config Debug && build.bat
      ↓
-5. 差异复检: .\test\diff_frame.bat
+5. 差异复检: .\test\diff_node.bat
+              .\test\diff_frame.bat
+              .\test\diff_vcl.bat
      ↓
 6. 循环: 如差异未消除，回到步骤 2
 ```
 
-## 6. 脚本与产物约定
+## 7. 脚本与产物约定
 
-### 6.1 目录结构
+### 7.1 目录结构
 
 ```
 aproj/docx/
@@ -309,14 +323,14 @@ aproj/docx/
       └── *.docx                     # 测试样本文档
 ```
 
-### 6.2 命名约定
+### 7.2 命名约定
 
 - **产物文件**：`{prefix}_{type}.txt`
   - `prefix`：`aproj` 或 `lo`
-  - `type`：`frame` 或 `vcl`
+  - `type`：`frame`、`vcl` 或 `nodes`
 - **Python 脚本**：`gen_{prefix}.py`
 
-### 6.3 一体化测试流程
+### 7.3 一体化测试流程
 
 ```powershell
 # 1. 编译项目（Debug 配置，自动拷贝到 output/）
@@ -329,36 +343,41 @@ python test\gen_lo.py
 python test\gen_aproj.py
 
 # 4. 比对差异（使用 output/ 下的 debug 产物）
+.\test\diff_node.bat
 .\test\diff_frame.bat
 .\test\diff_vcl.bat
 ```
 
-## 7. 当前进度
+## 8. 当前进度
 
 | 步骤 | 组件 | 状态 |
 |------|------|------|
-| Step 1 | Frame 树记录（aproj 侧） | 已完成 — `RenderLogger::LogFrameTree()` + `WriteFrameLayerToFile()` |
-| Step 1 | Frame 树记录（LO 侧） | 已完成 — `SW_RENDER_LOG` 环境变量触发 |
-| Step 1 | render_diff 对比工具 | 已完成 — `tools/render_diff.cpp` |
-| Step 1 | Python 生成脚本 | 已完成 — `test/gen_aproj.py`、`test/gen_lo.py` |
-| Step 1 | bat 差异比对脚本 | 已完成 — `test/diff_frame.bat`、`test/diff_vcl.bat` |
-| Step 2 | VCL 模块接入 aproj/docx | **待完成** — 当前为简化 `RenderOutputDevice` |
-| Step 2 | VCL 记录（aproj 侧） | 待 VCL 接入后完成 |
-| Step 2 | VCL 记录（LO 侧） | 已完成 — `SW_VCL_RENDER_LOG` 环境变量触发 |
+| Step 1 | Nodes 结构记录（aproj 侧） | 已完成 — `NodesLogger::LogNodes()` + `WriteToFile()` |
+| Step 1 | Nodes 结构记录（LO 侧） | 已完成 — `SW_NODES_LOG` 环境变量触发 |
+| Step 1 | bat 差异比对脚本 | 已完成 — `test/diff_node.bat`、`test/diff_frame.bat`、`test/diff_vcl.bat` |
+| Step 2 | Frame 树记录（aproj 侧） | 已完成 — `RenderLogger::LogFrameTree()` + `WriteFrameLayerToFile()` |
+| Step 2 | Frame 树记录（LO 侧） | 已完成 — `SW_RENDER_LOG` 环境变量触发 |
+| Step 3 | VCL 模块接入 aproj/docx | **待完成** — 当前为简化 `RenderOutputDevice` |
+| Step 3 | VCL 记录（aproj 侧） | 待 VCL 接入后完成 |
+| Step 3 | VCL 记录（LO 侧） | 已完成 — `SW_VCL_RENDER_LOG` 环境变量触发 |
+| - | render_diff 对比工具 | 已完成 — `tools/render_diff.cpp` |
+| - | Python 生成脚本 | 已完成 — `test/gen_aproj.py`、`test/gen_lo.py` |
 | 迭代修复 | 差异驱动修复工作流 | 进行中 |
 
-## 8. 相关文件索引
+## 9. 相关文件索引
 
 | 文件 | 说明 |
 |------|------|
 | `test/test_end_to_end.cpp` | 端到端测试入口 |
 | `src/render/render_log.cpp` | Frame 树遍历 + TSV 指令记录 |
+| `src/render/nodes_log.cpp` | Nodes 结构遍历 + 记录 |
 | `src/render/render_output_device.cpp` | 简化的 OutputDevice，Draw → RenderInstruction |
 | `src/render/render_log.h` | RenderLogger 接口 |
 | `src/render/output_device.h` | OutputDevice 抽象接口 |
 | `tools/render_diff.cpp` | 渲染指令逐行比对工具 |
 | `test/gen_aproj.py` | 运行 e2e 测试并收集产物 |
 | `test/gen_lo.py` | 生成 LO 参考输出 |
+| `test/diff_node.bat` | Nodes 层差异比对 |
 | `test/diff_frame.bat` | Frame 层差异比对 |
 | `test/diff_vcl.bat` | VCL 层差异比对 |
 | `CMakeLists.txt` | 构建配置 |

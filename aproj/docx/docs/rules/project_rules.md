@@ -56,10 +56,10 @@ libo-core/                    # LibreOffice 源代码根目录（即 aproj 的�
     │   ├── test/             # 测试用例与差异对比脚本
     │   ├── samples/          # 测试用 .docx 样本文件
     │   ├── third_party/      # 三方库（如 harfbuzz）
-    │   └── .trae/            # Trae IDE 配置（规则、技能、代理）
+    │   └── docs/            # Trae IDE 配置（规则、技能、代理）
     │
     ├── cache/                # 缓存目录（机器配置信息等）
-    └── .trae/                # 项目级 Trae IDE 配置
+    └── docs/                # 项目级 Trae IDE 配置
         └── rules/            # 项目规则文件
 ```
 

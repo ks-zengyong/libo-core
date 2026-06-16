@@ -4,7 +4,7 @@
 - 当前已追踪的所有文件
 - `docx/src`目录下所有文件
 - `docx/test`目录新增代码文件.cpp|.h
-- `docx/.trae`下所有文件.cpp|.h
+- `docx/docs`下所有文件.cpp|.h
 - `tools`下新增代码文件
 - `sw/`下所有代码文件
 
