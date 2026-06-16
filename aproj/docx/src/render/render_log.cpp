@@ -86,10 +86,7 @@ public:
         h = r.Height();
     }
 
-    const char* GetText() const override
-    {
-        return m_textBuf.empty() ? nullptr : m_textBuf.c_str();
-    }
+    const char* GetText() const override { return m_textBuf.empty() ? nullptr : m_textBuf.c_str(); }
     int GetTextLen() const override { return static_cast<int>(m_textBuf.size()); }
     const char* GetFontName() const override
     {
@@ -117,6 +114,30 @@ public:
         if (!m_pFrame)
             return nullptr;
         SwFrame* pNext = m_pFrame->GetNext();
+        return pNext ? new AprojFrameNode(pNext, m_pageNum) : nullptr;
+    }
+
+    // 浮动对象链: 与主链分离，由 SwFrame 的专用方法返回第一个浮动对象
+    // (如果 aproj 还没实现浮动对象的 frame，会返回 nullptr —— 由
+    // WalkFrameTreeAndLog 的循环安全处理)
+    IFrameNode* GetFirstFly() const override
+    {
+        if (!m_pFrame || !m_pFrame->IsLayoutFrame())
+            return nullptr;
+        SwFlyFrame* pFly = static_cast<SwLayoutFrame*>(m_pFrame)->GetFirstFly();
+        return pFly ? new AprojFrameNode(pFly, m_pageNum) : nullptr;
+    }
+
+    IFrameNode* GetNextSiblingFly() const override
+    {
+        if (!m_pFrame)
+            return nullptr;
+        // m_pFrame 本身必须是 SwFlyFrame* 才能参与“浮动对象链”步进。
+        // 非 Fly 的 frame（例如 SwPageFrame / SwBodyFrame 等）从 GetFirstFly 进入链，
+        // 之后链上的下一个节点都是 SwFlyFrame。
+        if (m_pFrame->GetType() != SwFrameType::Fly)
+            return nullptr;
+        SwFlyFrame* pNext = static_cast<SwFlyFrame*>(m_pFrame)->GetNextFly();
         return pNext ? new AprojFrameNode(pNext, m_pageNum) : nullptr;
     }
 
@@ -279,17 +300,26 @@ static bool IsFrameLayerInstruction(RenderCmdType type)
         case RenderCmdType::PAGE_END:
         case RenderCmdType::TEXT_FRAME:
         case RenderCmdType::TEXT_LINE:
-        case RenderCmdType::TABLE_FRAME:
-        case RenderCmdType::TABLE_ROW:
-        case RenderCmdType::TABLE_CELL:
+        case RenderCmdType::TABLE_START:
+        case RenderCmdType::TABLE_END:
+        case RenderCmdType::TABLEROW_START:
+        case RenderCmdType::TABLEROW_END:
+        case RenderCmdType::TABLECELL_START:
+        case RenderCmdType::TABLECELL_END:
         case RenderCmdType::IMAGE_FRAME:
-        case RenderCmdType::SECTION_FRAME:
-        case RenderCmdType::COLUMN_FRAME:
-        case RenderCmdType::HEADER_FRAME:
-        case RenderCmdType::FOOTER_FRAME:
-        case RenderCmdType::FOOTNOTE_CONT_FRAME:
+        case RenderCmdType::SECTION_START:
+        case RenderCmdType::SECTION_END:
+        case RenderCmdType::COLUMN_START:
+        case RenderCmdType::COLUMN_END:
+        case RenderCmdType::HEADER_START:
+        case RenderCmdType::HEADER_END:
+        case RenderCmdType::FOOTER_START:
+        case RenderCmdType::FOOTER_END:
+        case RenderCmdType::FOOTNOTE_CONT_START:
+        case RenderCmdType::FOOTNOTE_CONT_END:
         case RenderCmdType::FOOTNOTE_FRAME:
-        case RenderCmdType::FLY_FRAME:
+        case RenderCmdType::FLY_START:
+        case RenderCmdType::FLY_END:
             return true;
         default:
             return false;

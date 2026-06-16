@@ -17,6 +17,8 @@ class SwFlowFrame;
 class SwHeaderFrame;
 class SwFooterFrame;
 class SwFootnoteContFrame;
+class SwFootnoteFrame;
+class SwFlyFrame;
 class SwNode;
 class SwContentNode;
 class SwFrameFormat;
@@ -209,10 +211,15 @@ public:
     SwLayoutFrame(SwFrameType nType, SwLayoutFrame* pParent = nullptr);
     virtual ~SwLayoutFrame();
 
-    // 子 Frame 链表
+    // 子 Frame 链表 (主链)
     SwFrame* GetLower() const { return m_pLower; }
     SwFrame* Lower() const { return m_pLower; }
     void SetLower(SwFrame* p) { m_pLower = p; }
+
+    // 浮动对象链 (与主链独立，对应 LO 的 SwSortedObjs)
+    SwFlyFrame* GetFirstFly() const { return m_pFirstFly; }
+    void SetFirstFly(SwFlyFrame* p) { m_pFirstFly = p; }
+    void AppendFly(SwFlyFrame* pFly);
 
     // 内容查找
     const SwContentFrame* ContainsContent() const;
@@ -233,7 +240,8 @@ public:
     virtual void Paste(SwLayoutFrame* pParent, SwFrame* pSibling) override;
 
 protected:
-    SwFrame* m_pLower; // 第一个子 Frame
+    SwFrame* m_pLower = nullptr; // 第一个子 Frame (主链)
+    SwFlyFrame* m_pFirstFly = nullptr; // 第一个浮动对象 (子链)
 };
 
 // SwRootFrame: 根 Frame，对应 LibreOffice 的 SwRootFrame
@@ -253,8 +261,8 @@ public:
     void FormatAll();
 
 private:
-    SwPageFrame* mpLastPage;
-    sal_uInt16 mnPhyPageNums;
+    SwPageFrame* mpLastPage = nullptr;
+    sal_uInt16 mnPhyPageNums = 0;
 };
 
 // SwPageFrame: 页面 Frame，对应 LibreOffice 的 SwPageFrame
@@ -289,9 +297,26 @@ public:
     SwPageFrame* GetPrevPage() const;
 
 private:
-    sal_uInt16 m_nPhyPageNum;
-    SwFrameFormat* m_pDesc;
+    sal_uInt16 m_nPhyPageNum = 0;
+    SwFrameFormat* m_pDesc = nullptr;
     SwFootnoteContFrame* m_pFootnoteCont = nullptr;
+};
+
+// SwFlyFrame: 浮动框 Frame，对应 LibreOffice 的 SwFlyFrame
+class SwFlyFrame : public SwLayoutFrame
+{
+public:
+    SwFlyFrame(SwLayoutFrame* pParent);
+    ~SwFlyFrame() override;
+
+    // 浮动对象链 (由 SwLayoutFrame::AppendFly 维护)
+    SwFlyFrame* GetNextFly() const { return m_pNextFly; }
+    void SetNextFly(SwFlyFrame* p) { m_pNextFly = p; }
+
+    void Format() override;
+
+private:
+    SwFlyFrame* m_pNextFly = nullptr; // 浮动链的下一个
 };
 
 // SwBodyFrame: 正文容器，对应 LibreOffice 的 SwBodyFrame
@@ -484,15 +509,6 @@ class SwFootnoteFrame : public SwLayoutFrame
 public:
     SwFootnoteFrame(SwLayoutFrame* pParent);
     ~SwFootnoteFrame() override;
-    void Format() override;
-};
-
-// SwFlyFrame: 浮动框 Frame，对应 LibreOffice 的 SwFlyFrame
-class SwFlyFrame : public SwLayoutFrame
-{
-public:
-    SwFlyFrame(SwLayoutFrame* pParent);
-    ~SwFlyFrame() override;
     void Format() override;
 };
 

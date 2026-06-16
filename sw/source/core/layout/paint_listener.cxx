@@ -40,15 +40,42 @@
 #include <deque>
 
 // ── IFrameNode 包装器：将 LO 的 SwFrame 适配为共享遍历接口 ──
+//
+// 主要变化:
+//   - 新增对 SwSortedObjs (浮动对象) 的遍历能力：LoFrameNode 在它的
+//     GetFirstFly() / GetNextSiblingFly() 中访问 SwPageFrame::GetSortedObjs
+//     (或 SwLayoutFrame::GetDrawObjs) 作为"浮动对象链"，
+//     每一项对应 SwFlyFrame 也会以 Fly 容器的形式递归进入其中的 SwNoTextFrame /
+//     SwTextFrame，从而在 frame 树输出中还原图片等浮动内容。
+//   - 浮动对象链使用专用子 LoFlySiblingNode 包装——因为它的兄弟关系不是
+//     GetNext()，而是 SwSortedObjs::operator[] (i+1)，所以我们单独用一个
+//     "index-in-sorted-objs 的节点来表示。
 
 namespace
 {
+// 将 SwFrame* 包装成统一的 IFrameNode 实现（主链遍历）
 class LoFrameNode : public IFrameNode
 {
 public:
+    // 主链节点 (page body section column text tab flycell ...)
     LoFrameNode(const SwFrame* pFrame, int pageNum)
         : m_pFrame(pFrame)
         , m_pageNum(pageNum)
+        , m_bIsFlySibling(false)
+        , m_pFlyContainer(nullptr)
+        , m_flyIndex(0)
+    {
+        if (pFrame && pFrame->IsTextFrame())
+            ExtractTextInfo();
+    }
+
+    // 浮动对象链节点: 挂在某个 SwLayoutFrame 的 SwSortedObjs 上的第 n 个
+    LoFrameNode(const SwFrame* pFrame, int pageNum, const SwSortedObjs* pContainer, size_t index)
+        : m_pFrame(pFrame)
+        , m_pageNum(pageNum)
+        , m_bIsFlySibling(true)
+        , m_pFlyContainer(pContainer)
+        , m_flyIndex(index)
     {
         if (pFrame && pFrame->IsTextFrame())
             ExtractTextInfo();
@@ -70,6 +97,8 @@ public:
             return FrameNodeType::Section;
         if (m_pFrame->IsColumnFrame())
             return FrameNodeType::Column;
+        if (m_pFrame->IsFlyFrame())
+            return FrameNodeType::Fly;
         if (m_pFrame->IsTextFrame())
             return FrameNodeType::Text;
         if (m_pFrame->IsTabFrame())
@@ -82,8 +111,6 @@ public:
             return FrameNodeType::FootnoteCont;
         if (m_pFrame->IsFootnoteFrame())
             return FrameNodeType::Footnote;
-        if (m_pFrame->IsFlyFrame())
-            return FrameNodeType::Fly;
         if (m_pFrame->IsNoTextFrame())
             return FrameNodeType::NoText;
         return FrameNodeType::Unknown;
@@ -131,6 +158,45 @@ public:
             return nullptr;
         const SwFrame* pNext = m_pFrame->GetNext();
         return pNext ? new LoFrameNode(pNext, m_pageNum) : nullptr;
+    }
+
+    // 浮动对象链:
+    //   - 对 Page 用 SwPageFrame::GetSortedObjs();
+    //   - 对其他 SwLayoutFrame 用 SwFrame::GetDrawObjs()。
+    //   只识别 SwFlyFrame (图片/文本框等)。
+    IFrameNode* GetFirstFly() const override
+    {
+        const SwSortedObjs* pObjs = nullptr;
+        if (m_pFrame && m_pFrame->IsPageFrame())
+        {
+            pObjs = static_cast<const SwPageFrame*>(m_pFrame)->GetSortedObjs();
+        }
+        else if (m_pFrame && m_pFrame->IsLayoutFrame())
+        {
+            pObjs = m_pFrame->GetDrawObjs();
+        }
+        if (!pObjs || pObjs->size() == 0)
+            return nullptr;
+        SwAnchoredObject* pA = (*pObjs)[0];
+        SwFlyFrame* pFly = pA ? pA->DynCastFlyFrame() : nullptr;
+        if (!pFly)
+            return nullptr;
+        return new LoFrameNode(pFly, m_pageNum, pObjs, 0);
+    }
+
+    // 对"已经在 SwSortedObjs 上的"节点返回下一个浮动兄弟
+    IFrameNode* GetNextSiblingFly() const override
+    {
+        if (!m_bIsFlySibling || !m_pFlyContainer)
+            return nullptr;
+        const size_t nextIndex = m_flyIndex + 1;
+        if (nextIndex >= m_pFlyContainer->size())
+            return nullptr;
+        SwAnchoredObject* pA = (*m_pFlyContainer)[nextIndex];
+        SwFlyFrame* pFly = pA ? pA->DynCastFlyFrame() : nullptr;
+        if (!pFly)
+            return nullptr;
+        return new LoFrameNode(pFly, m_pageNum, m_pFlyContainer, nextIndex);
     }
 
 private:
@@ -183,6 +249,12 @@ private:
     uint32_t m_fontColor = 0;
     uint8_t m_fontWeight = 0;
     uint8_t m_fontItalic = 0;
+
+    // 浮动对象链状态: 该节点是否来自 SwSortedObjs 的第 m_flyIndex 个
+    // (用于 GetNextSiblingFly 的步进)。主链节点该字段为 false/空。
+    bool m_bIsFlySibling;
+    const SwSortedObjs* m_pFlyContainer;
+    size_t m_flyIndex;
 };
 
 } // namespace
@@ -301,8 +373,8 @@ void SwPaintEventListener::LogFrameTree(SwRootFrame* pRoot)
     if (newContent != m_aPrevFrameContent || m_aPrevFrameContent.empty())
     {
         std::cerr << "[FrameTree] output changed"
-                  << " (prev=" << m_aPrevFrameContent.size()
-                  << " now=" << newContent.size() << ")" << std::endl;
+                  << " (prev=" << m_aPrevFrameContent.size() << " now=" << newContent.size() << ")"
+                  << std::endl;
 
         // 重写文件（覆盖而非追加）
         m_File.close();
@@ -360,14 +432,12 @@ void SwPaintEventListener::StopPageRecordAndConvert(int pageNum)
     // 追加到累积的 VCL 内容中
     m_aPrevVclContent += pageContent;
 
-    std::cerr << "[VCL] page " << pageNum << " recorded ("
-              << pageContent.size() << " bytes, total "
+    std::cerr << "[VCL] page " << pageNum << " recorded (" << pageContent.size() << " bytes, total "
               << m_aPrevVclContent.size() << " bytes)" << std::endl;
 
     // 重写 VCL 文件（覆盖模式）
     m_vclFile.close();
-    m_vclFile.open(m_sVclLogPath.getStr(),
-                   std::ios::out | std::ios::trunc | std::ios::binary);
+    m_vclFile.open(m_sVclLogPath.getStr(), std::ios::out | std::ios::trunc | std::ios::binary);
     if (m_vclFile.is_open())
     {
         m_vclFile << m_aPrevVclContent;

@@ -670,10 +670,7 @@ void SwColumnFrame::Format()
     SwLayoutFrame::Format();
 }
 
-void SwColumnFrame::MakeAll()
-{
-    Format();
-}
+void SwColumnFrame::MakeAll() { Format(); }
 
 SwHeaderFrame::SwHeaderFrame(SwLayoutFrame* pParent)
     : SwLayoutFrame(SwFrameType::Header, pParent)
@@ -778,6 +775,22 @@ void SwFlyFrame::Format()
         pLower->setFramePrintArea(aChildArea);
     }
     SwLayoutFrame::Format();
+}
+
+// 在浮动对象链末尾挂接一个新的 FlyFrame
+void SwLayoutFrame::AppendFly(SwFlyFrame* pFly)
+{
+    if (!pFly)
+        return;
+    if (!m_pFirstFly)
+    {
+        m_pFirstFly = pFly;
+        return;
+    }
+    SwFlyFrame* pCurr = m_pFirstFly;
+    while (pCurr->GetNextFly())
+        pCurr = pCurr->GetNextFly();
+    pCurr->SetNextFly(pFly);
 }
 
 SwNoTextFrame::SwNoTextFrame(SwContentNode* pNode, SwLayoutFrame* pParent)

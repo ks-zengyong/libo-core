@@ -5,8 +5,13 @@
  * LibreOffice (meta_to_instruction.cxx) 和 aproj (render_output_device.cpp)
  * 共用此模块，确保指令构建逻辑绝对一致。
  *
- * 所有参数使用原始类型（int, const char*, uint32_t），
+ * 所有参数使用原始类型 (int, const char*, uint32_t)，
  * 不依赖任何 VCL 或 aproj 类型，两端可直接调用。
+ *
+ * 容器型节点 (Page / Section / Column / Table / TabRow / TabCell /
+ * Header / Footer / FootnoteCont / Fly) 都有各自的 *_START / *_END
+ * 构建函数，WalkFrameTreeAndLog 会在递归前后分别调用。
+ * nestLevel 由遍历器维护，对应 TSV 行首的缩进。
  *
  * 公共模块: render_common/ — sw 和 aproj/docx 都引用此文件
  */
@@ -16,66 +21,59 @@
 
 #include "render_instruction.h"
 
-// ── 绘制指令构建 ──
-
-inline void BuildRectInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
-                                 int h)
+// ── 辅助: 设置一条指令的公共字段 (pageNum / nestLevel / 矩形) ──
+inline void FillRectInst(RenderInstruction& inst, RenderCmdType type, int pageNum, int nestLevel,
+                         int x, int y, int w, int h)
 {
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::RECT;
+    inst.type = type;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     inst.x = x;
     inst.y = y;
     inst.width = w;
     inst.height = h;
-    rSink.OnInstruction(inst);
 }
 
-inline void BuildLineInstruction(RenderInstructionSink& rSink, int pageNum, int x1, int y1, int x2,
-                                 int y2)
+// ── VCL 绘制层指令构建 ──
+
+inline void BuildRectInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel, int x,
+                                 int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::LINE;
-    inst.pageNum = pageNum;
-    inst.x = x1;
-    inst.y = y1;
-    inst.width = x2;
-    inst.height = y2;
+    FillRectInst(inst, RenderCmdType::RECT, pageNum, nestLevel, x, y, w, h);
     rSink.OnInstruction(inst);
 }
 
-inline void BuildEllipseInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
-                                    int h)
+inline void BuildLineInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel, int x1,
+                                 int y1, int x2, int y2)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::ELLIPSE;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::LINE, pageNum, nestLevel, x1, y1, x2, y2);
     rSink.OnInstruction(inst);
 }
 
-inline void BuildBitmapInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
-                                   int h)
+inline void BuildEllipseInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel, int x,
+                                    int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::BITMAP;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::ELLIPSE, pageNum, nestLevel, x, y, w, h);
     rSink.OnInstruction(inst);
 }
 
-inline void BuildTextRunInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                    const char* text, int textLen, const char* fontName,
+inline void BuildBitmapInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel, int x,
+                                   int y, int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    FillRectInst(inst, RenderCmdType::BITMAP, pageNum, nestLevel, x, y, w, h);
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildTextRunInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel, int x,
+                                    int y, const char* text, int textLen, const char* fontName,
                                     int fontSize, uint32_t fontColor, uint8_t fontWeight,
                                     uint8_t fontItalic)
 {
@@ -83,6 +81,7 @@ inline void BuildTextRunInstruction(RenderInstructionSink& rSink, int pageNum, i
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::TEXT_RUN;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     inst.x = x;
     inst.y = y;
     inst.text = text;
@@ -95,31 +94,10 @@ inline void BuildTextRunInstruction(RenderInstructionSink& rSink, int pageNum, i
     rSink.OnInstruction(inst);
 }
 
-// ── Frame 层语义指令构建 ──
+// ── Frame 层语义指令构建 (非容器) ──
 
-inline void BuildPageStartInstruction(RenderInstructionSink& rSink, int pageNum, int width,
-                                      int height)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::PAGE_START;
-    inst.pageNum = pageNum;
-    inst.width = width;
-    inst.height = height;
-    rSink.OnInstruction(inst);
-}
-
-inline void BuildPageEndInstruction(RenderInstructionSink& rSink, int pageNum)
-{
-    RenderInstruction inst;
-    RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::PAGE_END;
-    inst.pageNum = pageNum;
-    rSink.OnInstruction(inst);
-}
-
-inline void BuildTextFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                      int w, int h, const char* text, int textLen,
+inline void BuildTextFrameInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                      int x, int y, int w, int h, const char* text, int textLen,
                                       const char* fontName, int fontSize, uint32_t fontColor,
                                       uint8_t fontWeight, uint8_t fontItalic, const char* styleName)
 {
@@ -127,6 +105,7 @@ inline void BuildTextFrameInstruction(RenderInstructionSink& rSink, int pageNum,
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::TEXT_FRAME;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     inst.x = x;
     inst.y = y;
     inst.width = w;
@@ -142,15 +121,16 @@ inline void BuildTextFrameInstruction(RenderInstructionSink& rSink, int pageNum,
     rSink.OnInstruction(inst);
 }
 
-inline void BuildTextLineInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
-                                     int h, const char* text, int textLen, const char* fontName,
-                                     int fontSize, uint32_t fontColor, uint8_t fontWeight,
-                                     uint8_t fontItalic, const char* styleName)
+inline void BuildTextLineInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                     int x, int y, int w, int h, const char* text, int textLen,
+                                     const char* fontName, int fontSize, uint32_t fontColor,
+                                     uint8_t fontWeight, uint8_t fontItalic, const char* styleName)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::TEXT_LINE;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     inst.x = x;
     inst.y = y;
     inst.width = w;
@@ -166,169 +146,226 @@ inline void BuildTextLineInstruction(RenderInstructionSink& rSink, int pageNum, 
     rSink.OnInstruction(inst);
 }
 
-inline void BuildTableFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                       int w, int h)
+inline void BuildImageFrameInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                       int x, int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TABLE_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::IMAGE_FRAME, pageNum, nestLevel, x, y, w, h);
     rSink.OnInstruction(inst);
 }
 
-inline void BuildTableRowInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
-                                     int h)
+inline void BuildFootnoteFrameInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                          int x, int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TABLE_ROW;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::FOOTNOTE_FRAME, pageNum, nestLevel, x, y, w, h);
     rSink.OnInstruction(inst);
 }
 
-inline void BuildTableCellInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y, int w,
-                                      int h)
+// ── Frame 层语义指令构建 (容器 START / END) ──
+// 容器: Page / Section / Column / Table / TabRow / TabCell / Header / Footer /
+//       FootnoteCont / Fly
+
+// page 容器: 页面宽高
+inline void BuildPageStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                      int width, int height)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::TABLE_CELL;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::PAGE_START, pageNum, nestLevel, 0, 0, width, height);
     rSink.OnInstruction(inst);
 }
-
-inline void BuildImageFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                       int w, int h)
+inline void BuildPageEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::IMAGE_FRAME;
+    inst.type = RenderCmdType::PAGE_END;
     inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildSectionFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                         int w, int h)
+// section / column 容器: 节/列的矩形
+inline void BuildSectionStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                         int x, int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::SECTION_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::SECTION_START, pageNum, nestLevel, x, y, w, h);
     rSink.OnInstruction(inst);
 }
-
-inline void BuildColumnFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                        int w, int h)
+inline void BuildSectionEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::COLUMN_FRAME;
+    inst.type = RenderCmdType::SECTION_END;
     inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildHeaderFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                        int w, int h)
+inline void BuildColumnStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                        int x, int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::HEADER_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::COLUMN_START, pageNum, nestLevel, x, y, w, h);
     rSink.OnInstruction(inst);
 }
-
-inline void BuildFooterFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                        int w, int h)
+inline void BuildColumnEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FOOTER_FRAME;
+    inst.type = RenderCmdType::COLUMN_END;
     inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildFootnoteContFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                              int w, int h)
+// header / footer
+inline void BuildHeaderStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                        int x, int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FOOTNOTE_CONT_FRAME;
-    inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    FillRectInst(inst, RenderCmdType::HEADER_START, pageNum, nestLevel, x, y, w, h);
     rSink.OnInstruction(inst);
 }
-
-inline void BuildFootnoteFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                           int w, int h)
+inline void BuildHeaderEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FOOTNOTE_FRAME;
+    inst.type = RenderCmdType::HEADER_END;
     inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildFlyFrameInstruction(RenderInstructionSink& rSink, int pageNum, int x, int y,
-                                      int w, int h)
+inline void BuildFooterStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                        int x, int y, int w, int h)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
-    inst.type = RenderCmdType::FLY_FRAME;
+    FillRectInst(inst, RenderCmdType::FOOTER_START, pageNum, nestLevel, x, y, w, h);
+    rSink.OnInstruction(inst);
+}
+inline void BuildFooterEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::FOOTER_END;
     inst.pageNum = pageNum;
-    inst.x = x;
-    inst.y = y;
-    inst.width = w;
-    inst.height = h;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
-// ── 状态指令构建 ──
+// footnote 容器
+inline void BuildFootnoteContStartInstruction(RenderInstructionSink& rSink, int pageNum,
+                                              int nestLevel, int x, int y, int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    FillRectInst(inst, RenderCmdType::FOOTNOTE_CONT_START, pageNum, nestLevel, x, y, w, h);
+    rSink.OnInstruction(inst);
+}
+inline void BuildFootnoteContEndInstruction(RenderInstructionSink& rSink, int pageNum,
+                                            int nestLevel)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::FOOTNOTE_CONT_END;
+    inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
+    rSink.OnInstruction(inst);
+}
 
-inline void BuildSetFontInstruction(RenderInstructionSink& rSink, int pageNum, const char* fontName,
-                                    int fontSize, uint8_t fontWeight, uint8_t fontItalic)
+// table / row / cell
+inline void BuildTableStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                       int x, int y, int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    FillRectInst(inst, RenderCmdType::TABLE_START, pageNum, nestLevel, x, y, w, h);
+    rSink.OnInstruction(inst);
+}
+inline void BuildTableEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TABLE_END;
+    inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildTableRowStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                          int x, int y, int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    FillRectInst(inst, RenderCmdType::TABLEROW_START, pageNum, nestLevel, x, y, w, h);
+    rSink.OnInstruction(inst);
+}
+inline void BuildTableRowEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TABLEROW_END;
+    inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
+    rSink.OnInstruction(inst);
+}
+
+inline void BuildTableCellStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                           int x, int y, int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    FillRectInst(inst, RenderCmdType::TABLECELL_START, pageNum, nestLevel, x, y, w, h);
+    rSink.OnInstruction(inst);
+}
+inline void BuildTableCellEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::TABLECELL_END;
+    inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
+    rSink.OnInstruction(inst);
+}
+
+// floating object (Fly): 最关键的新增容器
+inline void BuildFlyStartInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                     int x, int y, int w, int h)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    FillRectInst(inst, RenderCmdType::FLY_START, pageNum, nestLevel, x, y, w, h);
+    rSink.OnInstruction(inst);
+}
+inline void BuildFlyEndInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
+{
+    RenderInstruction inst;
+    RenderInstruction_clear(&inst);
+    inst.type = RenderCmdType::FLY_END;
+    inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
+    rSink.OnInstruction(inst);
+}
+
+// ── 状态变更指令构建 ──
+
+inline void BuildSetFontInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                    const char* fontName, int fontSize, uint8_t fontWeight,
+                                    uint8_t fontItalic)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::SET_FONT;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     inst.fontName = fontName;
     inst.fontSize = fontSize;
     inst.fontWeight = fontWeight;
@@ -336,60 +373,69 @@ inline void BuildSetFontInstruction(RenderInstructionSink& rSink, int pageNum, c
     rSink.OnInstruction(inst);
 }
 
-inline void BuildSetTextColorInstruction(RenderInstructionSink& rSink, int pageNum, uint32_t color)
+inline void BuildSetTextColorInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                         uint32_t color)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::SET_TEXT_COLOR;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     inst.fontColor = color;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildSetFillColorInstruction(RenderInstructionSink& rSink, int pageNum, uint32_t color)
+inline void BuildSetFillColorInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                         uint32_t color)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::SET_FILL_COLOR;
     inst.pageNum = pageNum;
-    inst.fontColor = color; // 复用 fontColor 字段存储颜色值
+    inst.nestLevel = nestLevel;
+    inst.fontColor = color;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildSetLineColorInstruction(RenderInstructionSink& rSink, int pageNum, uint32_t color)
+inline void BuildSetLineColorInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel,
+                                         uint32_t color)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::SET_LINE_COLOR;
     inst.pageNum = pageNum;
-    inst.fontColor = color; // 复用 fontColor 字段存储颜色值
+    inst.nestLevel = nestLevel;
+    inst.fontColor = color;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildSetClipRegionInstruction(RenderInstructionSink& rSink, int pageNum)
+inline void BuildSetClipRegionInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::SET_CLIP_REGION;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildPushInstruction(RenderInstructionSink& rSink, int pageNum)
+inline void BuildPushInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::PUSH;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildPopInstruction(RenderInstructionSink& rSink, int pageNum)
+inline void BuildPopInstruction(RenderInstructionSink& rSink, int pageNum, int nestLevel)
 {
     RenderInstruction inst;
     RenderInstruction_clear(&inst);
     inst.type = RenderCmdType::POP;
     inst.pageNum = pageNum;
+    inst.nestLevel = nestLevel;
     rSink.OnInstruction(inst);
 }
 
