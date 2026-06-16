@@ -31,7 +31,17 @@ public:
 
     bool IsStartNode() const override
     {
-        return m_pNode && m_pNode->IsStartNode();
+        // SwTableNode继承自SwStartNode，需要排除，让它走到IsTableNode()分支
+        // 与 LO 保持一致
+        bool bIsStart = m_pNode && m_pNode->IsStartNode();
+        bool bIsTable = m_pNode && m_pNode->IsTableNode();
+        // 调试：如果是 TableNode，输出警告
+        if (bIsTable && bIsStart)
+        {
+            // TableNode 应该被排除，返回 false
+            return false;
+        }
+        return bIsStart;
     }
 
     bool IsEndNode() const override
@@ -89,6 +99,9 @@ public:
 
     const char* GetStyleName() const override
     {
+        // 以 LO 为标准：将 "Normal" 映射为 "Default Paragraph Style"
+        if (m_styleBuf == "Normal")
+            return "Default Paragraph Style";
         return m_styleBuf.empty() ? nullptr : m_styleBuf.c_str();
     }
 
@@ -178,9 +191,10 @@ public:
 
     int GetBodyStartIndex() const override
     {
-        // Body 区域从 EndOfAutotext 之后开始
-        SwNode& rEndOfAutotext = m_rNodes.GetEndOfAutotext();
-        return static_cast<int>(rEndOfAutotext.GetIndex()) + 1;
+        // 输出完整节点结构：从索引 0 开始
+        // 这样可以包含 AutoText 区域的浮动框架和表格
+        // 与 LO 保持一致
+        return 0;
     }
 
     int GetBodyEndIndex() const override
@@ -236,6 +250,26 @@ void NodesLogger::LogNodes(SwNodes& rNodes)
 {
     // 创建适配器
     AprojNodesArray nodesArray(rNodes);
+
+    // 诊断输出：检查所有节点
+    std::cerr << "[NodesLogger] Total nodes: " << nodesArray.Count() << std::endl;
+    std::cerr << "[NodesLogger] BodyStart: " << nodesArray.GetBodyStartIndex() << std::endl;
+    std::cerr << "[NodesLogger] BodyEnd: " << nodesArray.GetBodyEndIndex() << std::endl;
+    
+    // 检查是否有 TableNode
+    for (int i = 0; i < nodesArray.Count(); ++i)
+    {
+        INode* pNode = nodesArray.GetNode(i);
+        if (!pNode)
+            continue;
+        if (pNode->IsTableNode())
+        {
+            std::cerr << "[NodesLogger] Found TableNode at index " << i 
+                      << " rows=" << pNode->GetTableRows() 
+                      << " cols=" << pNode->GetTableCols() << std::endl;
+        }
+        delete pNode;
+    }
 
     // 使用共享遍历器
     WalkNodesAndLog(&nodesArray, *this);

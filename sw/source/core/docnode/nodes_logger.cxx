@@ -44,7 +44,8 @@ public:
 
     bool IsStartNode() const override
     {
-        return m_pNode && m_pNode->IsStartNode();
+        // SwTableNode继承自SwStartNode，需要排除，让它走到IsTableNode()分支
+        return m_pNode && m_pNode->IsStartNode() && !m_pNode->IsTableNode();
     }
 
     bool IsEndNode() const override
@@ -201,14 +202,14 @@ public:
 
     int GetBodyStartIndex() const override
     {
-        // Body 区域从 EndOfAutotext 之后开始
-        const SwNode& rEndOfAutotext = m_rNodes.GetEndOfAutotext();
-        return static_cast<int>(rEndOfAutotext.GetIndex().get()) + 1;
+        // 输出完整节点结构：从索引 0 开始
+        // 这样可以包含 AutoText 区域的浮动框架和表格
+        return 0;
     }
 
     int GetBodyEndIndex() const override
     {
-        // Body 区域到 EndOfContent 结束
+        // 输出到 EndOfContent 结束
         const SwNode& rEndOfContent = m_rNodes.GetEndOfContent();
         return static_cast<int>(rEndOfContent.GetIndex().get());
     }
@@ -284,7 +285,7 @@ void SwNodesLogger::CheckEnvAndStart()
 
 void SwNodesLogger::LogNodes(const SwNodes& rNodes)
 {
-    if (!m_bLogging || m_bLogged) // 检查是否已记录
+    if (!m_bLogging)
         return;
 
     // 创建适配器
@@ -292,16 +293,60 @@ void SwNodesLogger::LogNodes(const SwNodes& rNodes)
 
     // 遍历并序列化
     std::string content;
+
+    // 输出节点数组概览
+    content += "# SwNodes Structure Overview\n";
+    content += "# Total nodes: " + std::to_string(nodesArray.Count()) + "\n";
+    content += "# BodyStart: " + std::to_string(nodesArray.GetBodyStartIndex()) + "\n";
+    content += "# BodyEnd: " + std::to_string(nodesArray.GetBodyEndIndex()) + "\n";
+    content += "\n";
+
+    // 输出所有区域的节点（用于诊断）
+    content += "# All Nodes (including non-Content areas):\n";
+    for (int i = 0; i < nodesArray.Count(); ++i)
+    {
+        INode* pNode = nodesArray.GetNode(i);
+        if (!pNode)
+            continue;
+
+        std::ostringstream oss;
+        oss << "# [" << i << "] ";
+
+        if (pNode->IsTableNode())
+            oss << "TABLE_NODE rows=" << pNode->GetTableRows() << " cols=" << pNode->GetTableCols();
+        else if (pNode->IsStartNode())
+            oss << "START_NODE type=" << pNode->GetStartNodeType();
+        else if (pNode->IsEndNode())
+            oss << "END_NODE";
+        else if (pNode->IsTextNode())
+            oss << "TEXT_NODE";
+        else if (pNode->IsGrfNode())
+            oss << "GRF_NODE";
+        else if (pNode->IsOLENode())
+            oss << "OLE_NODE";
+        else if (pNode->IsSectionNode())
+            oss << "SECTION_NODE";
+        else
+            oss << "UNKNOWN";
+
+        oss << "\n";
+        content += oss.str();
+        delete pNode;
+    }
+    content += "\n";
+
+    // 输出 Body 区域的节点结构
+    content += "# Body Area Nodes (structured):\n";
     SerializingNodeSink sink(content);
     WalkNodesAndLog(&nodesArray, sink);
 
-    // 写入文件
+    // 写入文件（每次覆盖，确保记录最终状态）
     if (m_File.is_open())
     {
+        m_File.seekp(0);
         m_File << content;
         m_File.flush();
     }
-    m_bLogged = true; // 标记为已记录
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

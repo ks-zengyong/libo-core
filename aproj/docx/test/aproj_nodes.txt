@@ -1,21 +1,27 @@
+START_NODE	0	Normal
+END_NODE	1
+START_NODE	2	Normal
+END_NODE	3
+START_NODE	4	Normal
+END_NODE	5
 START_NODE	6	Normal
 END_NODE	7
 START_NODE	8	Normal
-  TEXT_NODE	9	""	Normal
+  TEXT_NODE	9	""	Default Paragraph Style
   TEXT_NODE	10	"WPS Office®"	Body Text
   TEXT_NODE	11	""	Body Text
-  TEXT_NODE	12	"Welcome to WPS Office - Writer"	Normal
-  TEXT_NODE	13	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Normal
-  TEXT_NODE	14	""	Normal
+  TEXT_NODE	12	"Welcome to WPS Office - Writer"	Default Paragraph Style
+  TEXT_NODE	13	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Default Paragraph Style
+  TEXT_NODE	14	""	Default Paragraph Style
   TEXT_NODE	15	"Switch tabs to find different commands to process your document."	Body Text
   TEXT_NODE	16	"Share your documents with others."	Body Text
   TEXT_NODE	17	"\nFind all of Writer's commands."	Body Text
   TEXT_NODE	18	"\nSearch the Help center for answers when you get stuck."	Body Text
   TEXT_NODE	19	"\nQuickly switch views and adjust the scale of the page display."	Body Text
-  TEXT_NODE	20	"\n"	Normal
+  TEXT_NODE	20	"\n"	Default Paragraph Style
   TEXT_NODE	21	"Count the number of words and pages in your document in real time."	Body Text
-  TEXT_NODE	22	""	Normal
-  TEXT_NODE	23	"WPS AI+Writer"	Normal
+  TEXT_NODE	22	""	Default Paragraph Style
+  TEXT_NODE	23	"WPS AI+Writer"	Default Paragraph Style
   TEXT_NODE	24	""	Body Text
   TEXT_NODE	25	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Body Text
   TEXT_NODE	26	""	Body Text
@@ -23,136 +29,124 @@ START_NODE	8	Normal
   TEXT_NODE	28	""	Body Text
   TEXT_NODE	29	""	Body Text
   TEXT_NODE	30	""	Body Text
-  TEXT_NODE	31	""	Normal
-  TEXT_NODE	32	"\tto help you \t\twrite and understand your Word document"	Normal
-  TEXT_NODE	33	""	Normal
-  TEXT_NODE	34	""	Normal
-  TEXT_NODE	35	"WPS AI-generated content"	Normal
-  TEXT_NODE	36	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Normal
-  TEXT_NODE	37	""	Normal
-  TEXT_NODE	38	""	Normal
-  TEXT_NODE	39	"\nWPS AI-based content rewriting"	Normal
-  TEXT_NODE	40	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Normal
-  TEXT_NODE	41	""	Normal
-  TEXT_NODE	42	""	Normal
-  TEXT_NODE	43	""	Normal
-  TEXT_NODE	44	"For all your document process needs"	Normal
-  TEXT_NODE	45	""	Normal
-  TEXT_NODE	46	""	Normal
-  TEXT_NODE	47	"\nRestrict Editing"	Normal
-  TEXT_NODE	48	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Normal
-  TEXT_NODE	49	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Normal
-  TEXT_NODE	50	""	Normal
-  TEXT_NODE	51	""	Normal
-  TEXT_NODE	52	""	Normal
-  TEXT_NODE	53	""	Normal
-  TEXT_NODE	54	""	Normal
-  TEXT_NODE	55	""	Normal
-  TEXT_NODE	56	""	Normal
-  TEXT_NODE	57	""	Normal
-  TEXT_NODE	58	""	Normal
-  TEXT_NODE	59	""	Normal
-  TEXT_NODE	60	""	Normal
-  TEXT_NODE	61	"\n"	Normal
-  TEXT_NODE	62	"Co-Edit with Others"	Normal
-  TEXT_NODE	63	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Normal
-  TEXT_NODE	64	""	Normal
-  TEXT_NODE	65	" "	Normal
-  TEXT_NODE	66	""	Normal
-  TEXT_NODE	67	""	Normal
-  TEXT_NODE	68	""	Normal
-  TEXT_NODE	69	""	Normal
-  TEXT_NODE	70	""	Normal
-  TEXT_NODE	71	""	Normal
-  TEXT_NODE	72	""	Normal
-  TEXT_NODE	73	""	Normal
-  TEXT_NODE	74	""	Normal
-  TEXT_NODE	75	""	Normal
-  TEXT_NODE	76	"\nFormat Conversion"	Normal
-  TEXT_NODE	77	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Normal
-  TEXT_NODE	78	"Effortlessly batch convert multiple files."	Normal
-  TEXT_NODE	79	" "	Normal
-  TEXT_NODE	80	"Editing and typesetting"	Normal
-  TEXT_NODE	81	"\nFind and Replace"	Normal
-  TEXT_NODE	82	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Normal
-  TEXT_NODE	83	""	Normal
-  TEXT_NODE	84	""	Normal
-  TEXT_NODE	85	"\nEfficient Word Typesetting"	Normal
-  TEXT_NODE	86	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Normal
-  TEXT_NODE	87	""	Normal
-  TEXT_NODE	88	""	Normal
-  TEXT_NODE	89	"\nSpell Check"	Normal
-  TEXT_NODE	90	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Normal
-  TEXT_NODE	91	""	Normal
-  TEXT_NODE	92	""	Normal
-  TEXT_NODE	93	"\nTrack Changes"	Normal
-  TEXT_NODE	94	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Normal
-  TEXT_NODE	95	""	Normal
-  TEXT_NODE	96	""	Normal
-  TEXT_NODE	97	" "	Normal
-  TEXT_NODE	98	"More Popular features"	Normal
-  START_NODE	99	TableBox
-    TEXT_NODE	100	"Eye Protection Mode\nBy adjusting the screen's color temperature and brightness, you can reduce blue light radiation, minimize eye fatigue, and ensure optimal vision during work and study.\n"	
-    TEXT_NODE	101	"\n"	
-    TEXT_NODE	102	"Merge & Split\nWPS Writer supports splitting or merging files, and you can customize the number of file splits. It provides an easier way to manage your documents.\n"	
-    TEXT_NODE	103	"\n"	
-    TEXT_NODE	104	"File Collection\nWith WPS File Collection, you can efficiently manage file sharing among team members. Collected files are automatically aggregated into a shared folder, allowing you to view, edit, and delete them at any time.\n"	
-    TEXT_NODE	105	"\n"	
-    TEXT_NODE	106	"Table Tools\nYou can create tables directly in Writer without the need to create a new document. We provide a comprehensive table toolbox for beautification, formulas, sorting, and more.\n"	
-    TEXT_NODE	107	"\n"	
-    TEXT_NODE	108	"Mail Merge\nIt enables you to batch generate and edit multiple documents, such as emails, invitations, greeting cards, pay slips, and more. Say goodbye to repetitive document editing.\n"	
-    TEXT_NODE	109	"\n"	
-    TEXT_NODE	110	"Table of Contents\nThe Table of Contents can automatically identify the article chapters and title levels, generating the table of contents in just one second.\n"	
-    TEXT_NODE	111	"\n"	
-    START_NODE	112	TableBox
-      START_NODE	113	TableBox
-        TEXT_NODE	114	"\n"	
-      END_NODE	115
-      START_NODE	116	TableBox
-        TEXT_NODE	117	"Table of Contents\nThe Table of Contents can automatically identify the article chapters and title levels, generating the table of contents in just one second.\n"	
-      END_NODE	118
-    END_NODE	119
-    START_NODE	120	TableBox
-      START_NODE	121	TableBox
-        TEXT_NODE	122	"\n"	
-      END_NODE	123
-      START_NODE	124	TableBox
-        TEXT_NODE	125	"Mail Merge\nIt enables you to batch generate and edit multiple documents, such as emails, invitations, greeting cards, pay slips, and more. Say goodbye to repetitive document editing.\n"	
-      END_NODE	126
-    END_NODE	127
-    START_NODE	128	TableBox
-      START_NODE	129	TableBox
-        TEXT_NODE	130	"\n"	
-      END_NODE	131
-      START_NODE	132	TableBox
-        TEXT_NODE	133	"Table Tools\nYou can create tables directly in Writer without the need to create a new document. We provide a comprehensive table toolbox for beautification, formulas, sorting, and more.\n"	
-      END_NODE	134
-    END_NODE	135
-    START_NODE	136	TableBox
-      START_NODE	137	TableBox
-        TEXT_NODE	138	"\n"	
-      END_NODE	139
-      START_NODE	140	TableBox
-        TEXT_NODE	141	"File Collection\nWith WPS File Collection, you can efficiently manage file sharing among team members. Collected files are automatically aggregated into a shared folder, allowing you to view, edit, and delete them at any time.\n"	
-      END_NODE	142
-    END_NODE	143
-    START_NODE	144	TableBox
-      START_NODE	145	TableBox
-        TEXT_NODE	146	"\n"	
-      END_NODE	147
-      START_NODE	148	TableBox
-        TEXT_NODE	149	"Merge & Split\nWPS Writer supports splitting or merging files, and you can customize the number of file splits. It provides an easier way to manage your documents.\n"	
-      END_NODE	150
-    END_NODE	151
-    START_NODE	152	TableBox
-      START_NODE	153	TableBox
-        TEXT_NODE	154	"\n"	
-      END_NODE	155
-      START_NODE	156	TableBox
-        TEXT_NODE	157	"Eye Protection Mode\nBy adjusting the screen's color temperature and brightness, you can reduce blue light radiation, minimize eye fatigue, and ensure optimal vision during work and study.\n"	
-      END_NODE	158
-    END_NODE	159
-  END_NODE	160
-  TEXT_NODE	161	""	Normal
-  TEXT_NODE	162	""	Normal
-END_NODE	163
+  TEXT_NODE	31	""	Default Paragraph Style
+  TEXT_NODE	32	"\tto help you \t\twrite and understand your Word document"	Default Paragraph Style
+  TEXT_NODE	33	""	Default Paragraph Style
+  TEXT_NODE	34	""	Default Paragraph Style
+  TEXT_NODE	35	"WPS AI-generated content"	Default Paragraph Style
+  TEXT_NODE	36	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Default Paragraph Style
+  TEXT_NODE	37	""	Default Paragraph Style
+  TEXT_NODE	38	""	Default Paragraph Style
+  TEXT_NODE	39	"\nWPS AI-based content rewriting"	Default Paragraph Style
+  TEXT_NODE	40	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Default Paragraph Style
+  TEXT_NODE	41	""	Default Paragraph Style
+  TEXT_NODE	42	""	Default Paragraph Style
+  TEXT_NODE	43	""	Default Paragraph Style
+  TEXT_NODE	44	"For all your document process needs"	Default Paragraph Style
+  TEXT_NODE	45	""	Default Paragraph Style
+  TEXT_NODE	46	""	Default Paragraph Style
+  TEXT_NODE	47	"\nRestrict Editing"	Default Paragraph Style
+  TEXT_NODE	48	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Default Paragraph Style
+  TEXT_NODE	49	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Default Paragraph Style
+  TEXT_NODE	50	""	Default Paragraph Style
+  TEXT_NODE	51	""	Default Paragraph Style
+  TEXT_NODE	52	""	Default Paragraph Style
+  TEXT_NODE	53	""	Default Paragraph Style
+  TEXT_NODE	54	""	Default Paragraph Style
+  TEXT_NODE	55	""	Default Paragraph Style
+  TEXT_NODE	56	""	Default Paragraph Style
+  TEXT_NODE	57	""	Default Paragraph Style
+  TEXT_NODE	58	""	Default Paragraph Style
+  TEXT_NODE	59	""	Default Paragraph Style
+  TEXT_NODE	60	""	Default Paragraph Style
+  TEXT_NODE	61	"\n"	Default Paragraph Style
+  TEXT_NODE	62	"Co-Edit with Others"	Default Paragraph Style
+  TEXT_NODE	63	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Default Paragraph Style
+  TEXT_NODE	64	""	Default Paragraph Style
+  TEXT_NODE	65	" "	Default Paragraph Style
+  TEXT_NODE	66	""	Default Paragraph Style
+  TEXT_NODE	67	""	Default Paragraph Style
+  TEXT_NODE	68	""	Default Paragraph Style
+  TEXT_NODE	69	""	Default Paragraph Style
+  TEXT_NODE	70	""	Default Paragraph Style
+  TEXT_NODE	71	""	Default Paragraph Style
+  TEXT_NODE	72	""	Default Paragraph Style
+  TEXT_NODE	73	""	Default Paragraph Style
+  TEXT_NODE	74	""	Default Paragraph Style
+  TEXT_NODE	75	""	Default Paragraph Style
+  TEXT_NODE	76	"\nFormat Conversion"	Default Paragraph Style
+  TEXT_NODE	77	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Default Paragraph Style
+  TEXT_NODE	78	"Effortlessly batch convert multiple files."	Default Paragraph Style
+  TEXT_NODE	79	" "	Default Paragraph Style
+  TEXT_NODE	80	"Editing and typesetting"	Default Paragraph Style
+  TEXT_NODE	81	"\nFind and Replace"	Default Paragraph Style
+  TEXT_NODE	82	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Default Paragraph Style
+  TEXT_NODE	83	""	Default Paragraph Style
+  TEXT_NODE	84	""	Default Paragraph Style
+  TEXT_NODE	85	"\nEfficient Word Typesetting"	Default Paragraph Style
+  TEXT_NODE	86	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Default Paragraph Style
+  TEXT_NODE	87	""	Default Paragraph Style
+  TEXT_NODE	88	""	Default Paragraph Style
+  TEXT_NODE	89	"\nSpell Check"	Default Paragraph Style
+  TEXT_NODE	90	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Default Paragraph Style
+  TEXT_NODE	91	""	Default Paragraph Style
+  TEXT_NODE	92	""	Default Paragraph Style
+  TEXT_NODE	93	"\nTrack Changes"	Default Paragraph Style
+  TEXT_NODE	94	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Default Paragraph Style
+  TEXT_NODE	95	""	Default Paragraph Style
+  TEXT_NODE	96	""	Default Paragraph Style
+  TEXT_NODE	97	" "	Default Paragraph Style
+  TEXT_NODE	98	"More Popular features"	Default Paragraph Style
+  TABLE_START	99	6	2
+    START_NODE	100	TableBox
+      START_NODE	101	TableBox
+        TEXT_NODE	102	""	
+      END_NODE	103
+      START_NODE	104	TableBox
+        TEXT_NODE	105	""	
+      END_NODE	106
+    END_NODE	107
+    START_NODE	108	TableBox
+      START_NODE	109	TableBox
+        TEXT_NODE	110	""	
+      END_NODE	111
+      START_NODE	112	TableBox
+        TEXT_NODE	113	""	
+      END_NODE	114
+    END_NODE	115
+    START_NODE	116	TableBox
+      START_NODE	117	TableBox
+        TEXT_NODE	118	""	
+      END_NODE	119
+      START_NODE	120	TableBox
+        TEXT_NODE	121	""	
+      END_NODE	122
+    END_NODE	123
+    START_NODE	124	TableBox
+      START_NODE	125	TableBox
+        TEXT_NODE	126	""	
+      END_NODE	127
+      START_NODE	128	TableBox
+        TEXT_NODE	129	""	
+      END_NODE	130
+    END_NODE	131
+    START_NODE	132	TableBox
+      START_NODE	133	TableBox
+        TEXT_NODE	134	""	
+      END_NODE	135
+      START_NODE	136	TableBox
+        TEXT_NODE	137	""	
+      END_NODE	138
+    END_NODE	139
+    START_NODE	140	TableBox
+      START_NODE	141	TableBox
+        TEXT_NODE	142	""	
+      END_NODE	143
+      START_NODE	144	TableBox
+        TEXT_NODE	145	""	
+      END_NODE	146
+    END_NODE	147
+  TABLE_END	148
+  TEXT_NODE	149	""	Default Paragraph Style
+  TEXT_NODE	150	""	Default Paragraph Style
+END_NODE	151

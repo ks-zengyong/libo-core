@@ -97,61 +97,45 @@ PAGE_START	4	11906	16838
     TEXT_FRAME	4	1004	60864	10466	495	""	Poppins SemiBold	40	16777215	144	0	0	0	Default Paragraph Style
     TEXT_FRAME	4	1004	61359	10466	495	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
     TEXT_FRAME	4	1004	61854	10466	645	"More Popular features"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TABLE_START	4	0	62499	10466	3120
-      TABLEROW_START	4	0	0	10466	720
-        TABLECELL_START	4	0	0	1848	720
-          TEXT_FRAME	4	1004	62499	1632	720	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TABLE_START	4	0	62499	10466	1656
+      TABLEROW_START	4	0	0	10466	276
+        TABLECELL_START	4	0	0	5233	276
         TABLECELL_END	4
-        TABLECELL_START	4	1848	0	8834	720
-          TEXT_FRAME	4	2852	62499	8618	720	"Table of Contents\nThe Table of Contents can automatically identify the article chapters and title levels, generating the table of contents in just one second.\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+        TABLECELL_START	4	5233	0	5233	276
         TABLECELL_END	4
       TABLEROW_END	4
-      TABLEROW_START	4	0	720	10466	1200
-        TABLECELL_START	4	0	0	1848	1200
-          TEXT_FRAME	4	1004	63219	1632	1200	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TABLEROW_START	4	0	276	10466	276
+        TABLECELL_START	4	0	0	5233	276
         TABLECELL_END	4
-        TABLECELL_START	4	1848	0	8834	1200
-          TEXT_FRAME	4	2852	63219	8618	1200	"Mail Merge\nIt enables you to batch generate and edit multiple documents, such as emails, invitations, greeting cards, pay slips, and more. Say goodbye to repetitive document editing.\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+        TABLECELL_START	4	5233	0	5233	276
         TABLECELL_END	4
       TABLEROW_END	4
-      TABLEROW_START	4	0	1920	10466	1200
-        TABLECELL_START	4	0	0	1848	1200
-          TEXT_FRAME	4	1004	64419	1632	1200	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TABLEROW_START	4	0	552	10466	276
+        TABLECELL_START	4	0	0	5233	276
         TABLECELL_END	4
-        TABLECELL_START	4	1848	0	8834	1200
-          TEXT_FRAME	4	2852	64419	8618	1200	"Table Tools\nYou can create tables directly in Writer without the need to create a new document. We provide a comprehensive table toolbox for beautification, formulas, sorting, and more.\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+        TABLECELL_START	4	5233	0	5233	276
+        TABLECELL_END	4
+      TABLEROW_END	4
+      TABLEROW_START	4	0	828	10466	276
+        TABLECELL_START	4	0	0	5233	276
+        TABLECELL_END	4
+        TABLECELL_START	4	5233	0	5233	276
+        TABLECELL_END	4
+      TABLEROW_END	4
+      TABLEROW_START	4	0	1104	10466	276
+        TABLECELL_START	4	0	0	5233	276
+        TABLECELL_END	4
+        TABLECELL_START	4	5233	0	5233	276
+        TABLECELL_END	4
+      TABLEROW_END	4
+      TABLEROW_START	4	0	1380	10466	276
+        TABLECELL_START	4	0	0	5233	276
+        TABLECELL_END	4
+        TABLECELL_START	4	5233	0	5233	276
         TABLECELL_END	4
       TABLEROW_END	4
     TABLE_END	4
 PAGE_END	4
 PAGE_START	5	11906	16838
-    TABLE_START	5	0	62499	10466	9173
-      TABLEROW_START	5	0	0	10466	1200
-        TABLECELL_START	5	0	0	1848	1200
-          TEXT_FRAME	5	1004	68072	1632	1200	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-        TABLECELL_END	5
-        TABLECELL_START	5	1848	0	8834	1200
-          TEXT_FRAME	5	2852	68072	8618	1200	"File Collection\nWith WPS File Collection, you can efficiently manage file sharing among team members. Collected files are automatically aggregated into a shared folder, allowing you to view, edit, and delete them at any time.\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-        TABLECELL_END	5
-      TABLEROW_END	5
-      TABLEROW_START	5	0	1200	10466	1200
-        TABLECELL_START	5	0	0	1848	1200
-          TEXT_FRAME	5	1004	69272	1632	1200	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-        TABLECELL_END	5
-        TABLECELL_START	5	1848	0	8834	1200
-          TEXT_FRAME	5	2852	69272	8618	1200	"Merge & Split\nWPS Writer supports splitting or merging files, and you can customize the number of file splits. It provides an easier way to manage your documents.\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-        TABLECELL_END	5
-      TABLEROW_END	5
-      TABLEROW_START	5	0	2400	10466	1200
-        TABLECELL_START	5	0	0	1848	1200
-          TEXT_FRAME	5	1004	70472	1632	1200	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-        TABLECELL_END	5
-        TABLECELL_START	5	1848	0	8834	1200
-          TEXT_FRAME	5	2852	70472	8618	1200	"Eye Protection Mode\nBy adjusting the screen's color temperature and brightness, you can reduce blue light radiation, minimize eye fatigue, and ensure optimal vision during work and study.\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-        TABLECELL_END	5
-      TABLEROW_END	5
-    TABLE_END	5
+    TEXT_FRAME	5	2084	68792	8306	495	""	Poppins SemiBold	40	16777215	144	0	0	0	Default Paragraph Style
 PAGE_END	5
-PAGE_START	6	11906	16838
-    TEXT_FRAME	6	2084	85630	8306	495	""	Poppins SemiBold	40	16777215	144	0	0	0	Default Paragraph Style
-PAGE_END	6

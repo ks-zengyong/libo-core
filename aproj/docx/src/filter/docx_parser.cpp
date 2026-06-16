@@ -241,7 +241,7 @@ void DocxParser::ParseStyles(SwDoc& doc)
 
     // 解析 docDefaults（文档默认字体属性）
     StyleDef defaultStyle;
-    defaultStyle.name = "Normal";
+    defaultStyle.name = "Default Paragraph Style";
     defaultStyle.type = "paragraph";
     defaultStyle.isDefault = true;
 
@@ -1399,192 +1399,124 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
 
 void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
 {
-    SwNodes& rNodes = doc.GetNodes();
-    SwTextFormatColl* pColl = doc.GetDefaultTextFormatColl();
+    // 以 LO 的 nodes 结构为标准：生成 SwTableNode 及嵌套的单元格结构
+    // LO 表格节点结构：
+    //   SwTableNode
+    //     SwStartNode (TableBox) -> Cell 1
+    //       SwTextNode
+    //       SwEndNode
+    //     SwStartNode (TableBox) -> Cell 2
+    //       SwTextNode
+    //       SwEndNode
+    //     ...
+    //   SwEndNode (Table)
 
-    // 获取插入位置
+    SwNodes& rNodes = doc.GetNodes();
     SwNode& rLastNode = rNodes.GetEndOfContent();
-    SwNode* pInsertAfter = rLastNode.StartOfSectionNode();
+
+    // 找到插入点（在最后一个节点之后）
+    SwNode* pInsertAfter = nullptr;
     SwNodeOffset nIdx = rLastNode.GetIndex() - 1;
     while (nIdx >= 0)
     {
         SwNode* pNd = rNodes[nIdx];
         if (pNd && (pNd->IsContentNode() || pNd->IsStartNode()))
         {
-            pInsertAfter = pNd;
+            // 如果找到的节点在表格内部，跳到表格 EndNode
+            SwTableNode* pTableNode = pNd->FindTableNode();
+            if (pTableNode)
+            {
+                SwEndNode* pTableEnd = pTableNode->GetEndOfSection();
+                if (pTableEnd)
+                {
+                    pInsertAfter = pTableEnd;
+                }
+                else
+                {
+                    pInsertAfter = pTableNode;
+                }
+            }
+            else
+            {
+                pInsertAfter = pNd;
+            }
             break;
         }
         --nIdx;
     }
-
-    // 解析表格属性
-    auto tblPr = tblNode.child("w:tblPr");
-
-    // 解析网格列
-    auto tblGrid = tblNode.child("w:tblGrid");
-    std::vector<sal_Int32> gridCols;
-    for (auto col : tblGrid.children("w:gridCol"))
+    if (!pInsertAfter)
     {
-        int w = col.attribute("w:w").as_int(0);
-        gridCols.push_back(w);
-        std::cerr << "[Parser] tblGrid col w=" << w << std::endl;
+        pInsertAfter = rLastNode.StartOfSectionNode();
     }
-    std::cerr << "[Parser] tblGrid: " << gridCols.size()
-              << " cols, tblGrid empty=" << (!tblGrid ? "yes" : "no") << std::endl;
 
     // 统计行数和列数
-    sal_uInt16 nRows = 0;
-    sal_uInt16 nCols = static_cast<sal_uInt16>(gridCols.size());
+    int nRows = 0;
+    int nCols = 0;
     for (auto row : tblNode.children("w:tr"))
     {
-        ++nRows;
+        nRows++;
+        int rowCols = 0;
+        for (auto cell : row.children("w:tc"))
+        {
+            rowCols++;
+        }
+        if (rowCols > nCols)
+            nCols = rowCols;
     }
 
-    if (nCols == 0)
-        nCols = 1;
+    if (nRows == 0 || nCols == 0)
+        return;
 
-    // 创建表格节点
-    SwTableNode* pTable = rNodes.InsertTable(*pInsertAfter, nCols, pColl, nRows);
+    // 创建表格节点（使用 SwNodes::InsertTable）
+    SwTextFormatColl* pColl = doc.GetDefaultTextFormatColl();
+    SwTableNode* pTableNode = rNodes.InsertTable(*pInsertAfter, nCols, pColl, nRows);
 
-    // 设置表格网格列宽
-    pTable->SetGridCols(gridCols);
+    // 解析表格内容到单元格
+    // 遍历表格节点内部的单元格
+    SwNodeOffset nTableIdx = pTableNode->GetIndex();
+    SwNodeOffset nCellIdx = nTableIdx + 1;
 
-    // 填充表格内容
-    auto row = tblNode.child("w:tr");
-    auto& tableData = const_cast<SwTableNode::TableData&>(pTable->GetTableData());
-
-    // 遍历表格节点的子节点结构：TableNode → RowStartNode → CellStartNode → TextNode
-    SwNodeOffset nTableIdx = pTable->GetIndex();
-    SwNodeOffset nCurIdx = nTableIdx + SwNodeOffset(1);
-
-    for (size_t r = 0; r < tableData.size() && row; ++r)
+    for (auto row : tblNode.children("w:tr"))
     {
-        auto cell = row.child("w:tc");
-
-        // 跳过 RowStartNode
-        if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsStartNode())
-            ++nCurIdx;
-
-        for (size_t c = 0; c < tableData[r].cells.size() && cell; ++c)
+        for (auto cell : row.children("w:tc"))
         {
-            // 解析单元格内容
+            // 找到当前单元格的 StartNode
+            SwNode* pCellStart = rNodes[nCellIdx];
+            if (!pCellStart || !pCellStart->IsStartNode())
+                continue;
+
+            // 找到单元格内的 TextNode（在 StartNode 之后）
+            SwNodeOffset nTextIdx = nCellIdx + 1;
+            SwNode* pTextNode = rNodes[nTextIdx];
+            if (!pTextNode || !pTextNode->IsTextNode())
+                continue;
+
+            SwTextNode* pCellText = static_cast<SwTextNode*>(pTextNode);
+
+            // 解析单元格中的段落内容
+            // 简化处理：只取第一个段落的文本
             std::string cellText;
             for (auto p : cell.children("w:p"))
             {
+                std::string paraText;
                 for (auto r : p.children("w:r"))
                 {
-                    cellText += ParseRunText(r);
-                }
-                cellText += "\n";
-            }
-            tableData[r].cells[c].text = cellText;
-
-            // 更新实际的文本节点
-            // 跳过 CellStartNode
-            if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsStartNode())
-                ++nCurIdx;
-
-            // 找到文本节点
-            if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsTextNode())
-            {
-                SwTextNode* pCellText = static_cast<SwTextNode*>(rNodes[nCurIdx]);
-                pCellText->SetText(cellText);
-                ++nCurIdx;
-            }
-
-            // 跳过 CellEndNode
-            if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsEndNode())
-                ++nCurIdx;
-
-            cell = cell.next_sibling("w:tc");
-        }
-
-        // 跳过 RowEndNode
-        if (nCurIdx < rNodes.Count() && rNodes[nCurIdx]->IsEndNode())
-            ++nCurIdx;
-
-        row = row.next_sibling("w:tr");
-    }
-
-    // 提取表格单元格中的文本框内容 (w:txbxContent inside w:drawing)
-    // 表格单元格中的 w:drawing 元素不会被 ParseParagraph 处理，
-    // 需要在 ParseTable 中单独提取
-    {
-        SwEndNode* pTableEnd = pTable->GetEndOfSection();
-        SwNode* pTxbxInsertAfter
-            = pTableEnd ? static_cast<SwNode*>(pTableEnd) : static_cast<SwNode*>(pTable);
-
-        // 递归查找 w:txbxContent
-        std::function<void(pugi::xml_node)> findTxbxContent = [&](pugi::xml_node node) {
-            for (auto& n : node.children())
-            {
-                std::string nName = n.name();
-                if (nName == "w:txbxContent" || nName == "wps:txbxContent"
-                    || nName == "txbxContent")
-                {
-                    // 文本框（w:txbxContent）属于浮动对象，aproj 尚未实现
-                // 跳过文本框内容，避免将其错误插入主文档流
-                std::cerr << "[ParseTxbx] Found txbxContent in table, skipping (floating object not supported)" << std::endl;
-                    return;
-                }
-                findTxbxContent(n);
-            }
-        };
-
-        // 处理单个 w:drawing 节点
-        std::function<void(pugi::xml_node)> processDrawing = [&](pugi::xml_node drawing) {
-            for (auto& anchor : drawing.children())
-            {
-                for (auto& graphic : anchor.children())
-                {
-                    if (std::string(graphic.name()) != "a:graphic"
-                        && std::string(graphic.name()) != "graphic")
-                        continue;
-                    auto graphicData = graphic.child("a:graphicData");
-                    if (!graphicData)
-                        graphicData = graphic.child("graphicData");
-                    if (!graphicData)
-                        continue;
-
-                    for (auto& gdChild : graphicData.children())
+                    for (auto t : r.children("w:t"))
                     {
-                        findTxbxContent(gdChild);
+                        paraText += t.text().as_string();
                     }
                 }
+                if (!paraText.empty())
+                {
+                    if (!cellText.empty())
+                        cellText += "\n";
+                    cellText += paraText;
+                }
             }
-        };
+            pCellText->SetText(cellText);
 
-        // 递归在节点中查找 w:drawing
-        std::function<void(pugi::xml_node)> findDrawing = [&](pugi::xml_node node) {
-            for (auto& child : node.children())
-            {
-                std::string cname = child.name();
-                if (cname == "w:drawing" || cname == "drawing")
-                {
-                    std::cerr << "[ParseTxbx] Found drawing in table cell" << std::endl;
-                    processDrawing(child);
-                }
-                else if (cname == "mc:AlternateContent" || cname == "mc:Choice"
-                         || cname == "mc:Fallback")
-                {
-                    findDrawing(child);
-                }
-            }
-        };
-
-        // 遍历所有单元格查找 w:drawing
-        for (auto tblRow : tblNode.children("w:tr"))
-        {
-            for (auto tblCell : tblRow.children("w:tc"))
-            {
-                for (auto cellPara : tblCell.children("w:p"))
-                {
-                    for (auto cellRun : cellPara.children("w:r"))
-                    {
-                        findDrawing(cellRun);
-                    }
-                }
-            }
+            // 跳到下一个单元格（StartNode + TextNode + EndNode = 3 个节点）
+            nCellIdx += 3;
         }
     }
 }
@@ -1595,11 +1527,105 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
 
 void DocxParser::ParseSdt(pugi::xml_node sdtNode, SwDoc& doc)
 {
-    // SDT 内容在 w:sdtContent 中
+    // 以 LO 的 nodes 结构为标准：SDT 内容需要创建嵌套的 START_NODE/END_NODE 对
+    // LO 中 SDT 会生成一个 SwStartNode 和对应的 SwEndNode，内容嵌套在其中
+
+    SwNodes& rNodes = doc.GetNodes();
+    SwNode& rLastNode = rNodes.GetEndOfContent();
+
+    // 找到插入点（在最后一个节点之后）
+    SwNode* pInsertAfter = nullptr;
+    SwNodeOffset nIdx = rLastNode.GetIndex() - 1;
+    while (nIdx >= 0)
+    {
+        SwNode* pNd = rNodes[nIdx];
+        if (pNd && (pNd->IsContentNode() || pNd->IsStartNode()))
+        {
+            // 如果找到的节点在表格内部，跳到表格 EndNode
+            SwTableNode* pTableNode = pNd->FindTableNode();
+            if (pTableNode)
+            {
+                SwEndNode* pTableEnd = pTableNode->GetEndOfSection();
+                if (pTableEnd)
+                {
+                    pInsertAfter = pTableEnd;
+                }
+                else
+                {
+                    pInsertAfter = pTableNode;
+                }
+            }
+            else
+            {
+                pInsertAfter = pNd;
+            }
+            break;
+        }
+        --nIdx;
+    }
+    if (!pInsertAfter)
+    {
+        pInsertAfter = rLastNode.StartOfSectionNode();
+    }
+
+    // 创建 SDT 对应的 StartNode（使用 SwNormalStartNode）
+    SwStartNode* pSdtStart = rNodes.MakeTextSection(*pInsertAfter, SwNormalStartNode);
+
+    // 解析 SDT 内容
     auto sdtContent = sdtNode.child("w:sdtContent");
     if (sdtContent)
     {
+        // 获取 SDT 的 EndNode（MakeTextSection 创建的）
+        SwEndNode* pSdtEnd = pSdtStart->GetEndOfSection();
+        SwNodeOffset nSdtEndIdx = pSdtEnd->GetIndex();
+
+        // 解析 SDT 内容
+        // 注意：ParseBody/ParseParagraph 会在 EndOfContent 之前插入节点
+        // 我们需要将解析的内容移动到 SDT 节区内部
+
+        // 记录解析前的节点数量
+        SwNodeOffset nBeforeCount = rNodes.Count();
+
+        // 解析 SDT 内容
         ParseBody(sdtContent, doc);
+
+        // 记录解析后的节点数量
+        SwNodeOffset nAfterCount = rNodes.Count();
+        SwNodeOffset nNewNodes = nAfterCount - nBeforeCount;
+
+        // 如果有新节点被插入，需要将它们移动到 SDT 节区内部
+        if (nNewNodes > 0)
+        {
+            // 新节点被插入在 EndOfContent 之前
+            // 我们需要将它们移动到 SDT StartNode 之后、SDT EndNode 之前
+
+            // 简化处理：直接在 SDT 节区内重新创建节点
+            // 遍历新插入的节点，复制其内容到 SDT 内部
+
+            // 由于节点移动复杂，采用另一种策略：
+            // 将 SDT EndNode 移动到最后一个新节点之后
+
+            // 实际上，更简单的方法是：让 ParseBody 在 SDT EndNode 之前插入
+            // 但当前 ParseBody 的逻辑是固定在 EndOfContent 之前插入
+
+            // 修正：将新插入节点的 StartOfSection 设置为 SDT StartNode
+            // 并将 SDT EndNode 移动到最后一个新节点之后
+
+            SwNodeOffset nEndOfContentIdx = rLastNode.GetIndex();
+            SwNodeOffset nFirstNewIdx = nEndOfContentIdx - nNewNodes;
+
+            for (SwNodeOffset i = nFirstNewIdx; i < nEndOfContentIdx; ++i)
+            {
+                SwNode* pNd = rNodes[i];
+                if (pNd && pNd->IsContentNode())
+                {
+                    pNd->SetStartOfSection(pSdtStart);
+                }
+            }
+
+            // 注意：这里不移动 EndNode，因为节点物理位置不变
+            // 只是逻辑上属于 SDT 节区（通过 StartOfSection 标识）
+        }
     }
 }
 

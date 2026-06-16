@@ -26,30 +26,10 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
         if (!pNode)
             continue;
 
-        if (pNode->IsStartNode())
-        {
-            // StartNode: 输出 START_NODE，然后递归到对应 EndNode 之前
-            int endIdx = pNode->GetEndNodeIndex();
-            BuildStartNodeInstruction(rSink, pNode->GetIndex(), nestLevel,
-                                      pNode->GetStartNodeType());
-
-            // 递归子节点
-            if (endIdx > i + 1)
-            {
-                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1);
-            }
-
-            // 输出 EndNode
-            INode* pEndNode = pNodes->GetNode(endIdx);
-            if (pEndNode)
-            {
-                BuildEndNodeInstruction(rSink, pEndNode->GetIndex(), nestLevel);
-            }
-
-            // 跳过已处理的子节点和 EndNode
-            i = endIdx;
-        }
-        else if (pNode->IsTableNode())
+        // 重要：先检查 IsTableNode()，再检查 IsStartNode()
+        // 因为 SwTableNode 继承自 SwStartNode，IsStartNode() 使用位掩码判断会返回 true
+        // 所以必须先检查 IsTableNode()，让 TableNode 走到正确的分支
+        if (pNode->IsTableNode())
         {
             // TableNode: 输出 TABLE_START + 递归 + TABLE_END
             int endIdx = pNode->GetEndNodeIndex();
@@ -76,6 +56,30 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
             }
 
             BuildSectionEndInstruction(rSink, endIdx, nestLevel);
+            i = endIdx;
+        }
+        else if (pNode->IsStartNode())
+        {
+            // StartNode: 输出 START_NODE，然后递归到对应 EndNode 之前
+            // 注意：TableNode 和 SectionNode 已在上面处理，这里只处理普通 StartNode
+            int endIdx = pNode->GetEndNodeIndex();
+            BuildStartNodeInstruction(rSink, pNode->GetIndex(), nestLevel,
+                                      pNode->GetStartNodeType());
+
+            // 递归子节点
+            if (endIdx > i + 1)
+            {
+                WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1);
+            }
+
+            // 输出 EndNode
+            INode* pEndNode = pNodes->GetNode(endIdx);
+            if (pEndNode)
+            {
+                BuildEndNodeInstruction(rSink, pEndNode->GetIndex(), nestLevel);
+            }
+
+            // 跳过已处理的子节点和 EndNode
             i = endIdx;
         }
         else if (pNode->IsTextNode())

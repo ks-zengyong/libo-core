@@ -340,7 +340,7 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     std::cerr << "[TEST] NodesLogger..." << std::endl;
     NodesLogger nodesLogger;
     nodesLogger.LogNodes(rNodes);
-    nodesLogger.WriteToFile(resolvePath("../../test/aproj_nodes.txt"));
+    nodesLogger.WriteToFile(resolvePath("../test/aproj_nodes.txt"));
     std::cerr << "[TEST] NodesLogger done" << std::endl;
 
     // 7. 验证 frame 层

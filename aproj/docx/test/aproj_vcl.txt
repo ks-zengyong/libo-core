@@ -217,45 +217,7 @@ TEXT_RUN	4	1004	61359	0	0	" "	Calibri	20	16777215	144	0	0	0
 SET_FONT	4	Calibri	20	144	0
 SET_TEXT_COLOR	4	16777215
 TEXT_RUN	4	1004	61854	0	0	"More Popular features"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Arial	22	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	62499	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	4	Arial	22	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	2852	62499	0	0	"Table of Contents\nThe Table of Contents can automatically identify the article chapters and title levels, generating the table of contents in just one second.\n"	Arial	22	0	144	0	0	0	
-SET_FONT	4	Arial	22	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	63219	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	4	Arial	22	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	2852	63219	0	0	"Mail Merge\nIt enables you to batch generate and edit multiple documents, such as emails, invitations, greeting cards, pay slips, and more. Say goodbye to repetitive document editing.\n"	Arial	22	0	144	0	0	0	
-SET_FONT	4	Arial	22	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	64419	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	4	Arial	22	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	2852	64419	0	0	"Table Tools\nYou can create tables directly in Writer without the need to create a new document. We provide a comprehensive table toolbox for beautification, formulas, sorting, and more.\n"	Arial	22	0	144	0	0	0	
 PAGE_START	5	11906	16838
 PAGE_END	5
-SET_FONT	5	Arial	22	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	68072	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	5	Arial	22	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	2852	68072	0	0	"File Collection\nWith WPS File Collection, you can efficiently manage file sharing among team members. Collected files are automatically aggregated into a shared folder, allowing you to view, edit, and delete them at any time.\n"	Arial	22	0	144	0	0	0	
-SET_FONT	5	Arial	22	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	69272	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	5	Arial	22	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	2852	69272	0	0	"Merge & Split\nWPS Writer supports splitting or merging files, and you can customize the number of file splits. It provides an easier way to manage your documents.\n"	Arial	22	0	144	0	0	0	
-SET_FONT	5	Arial	22	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	70472	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	5	Arial	22	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	2852	70472	0	0	"Eye Protection Mode\nBy adjusting the screen's color temperature and brightness, you can reduce blue light radiation, minimize eye fatigue, and ensure optimal vision during work and study.\n"	Arial	22	0	144	0	0	0	
-PAGE_START	6	11906	16838
-PAGE_END	6
-SET_FONT	6	Poppins SemiBold	40	144	0
-SET_TEXT_COLOR	6	2500134
+SET_FONT	5	Poppins SemiBold	40	144	0
+SET_TEXT_COLOR	5	2500134
