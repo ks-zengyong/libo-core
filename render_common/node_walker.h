@@ -59,6 +59,10 @@ public:
     virtual int GetFirstChildIndex() const { return -1; }
     // 返回容器对应的 EndNode 索引 (StartNode 用)
     virtual int GetEndNodeIndex() const { return -1; }
+
+    // ── Fly 节区锚点引用 (仅 IsStartNode 且 GetStartNodeType()==2(Fly) 时有效) ──
+    // 返回 Fly 节区锚点所在的文本节点索引，-1 表示无锚点或非 Fly
+    virtual int GetAnchorNodeIndex() const { return -1; }
 };
 
 // ── 抽象 Nodes 数组（LO 和 aproj 各自实现） ──

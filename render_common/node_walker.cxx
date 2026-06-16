@@ -64,7 +64,7 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
             // 注意：TableNode 和 SectionNode 已在上面处理，这里只处理普通 StartNode
             int endIdx = pNode->GetEndNodeIndex();
             BuildStartNodeInstruction(rSink, pNode->GetIndex(), nestLevel,
-                                      pNode->GetStartNodeType());
+                                      pNode->GetStartNodeType(), pNode->GetAnchorNodeIndex());
 
             // 递归子节点
             if (endIdx > i + 1)

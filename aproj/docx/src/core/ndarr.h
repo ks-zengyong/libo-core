@@ -104,6 +104,13 @@ public:
                              SwTextFormatColl* pContentTextColl, sal_uInt16 nLines,
                              sal_uInt16 nRepeat = 0, SwTextFormatColl* pHeadlineTextColl = nullptr);
 
+    // Fly 节区创建（用于浮动框架/文本框）
+    // 在 AutoText 区域创建 Fly 节区，返回 StartNode
+    SwStartNode* InsertFlySection(SwStartNodeType eType = SwFlyStartNode);
+
+    // 图片节点创建
+    SwGrfNode* InsertGrfNode(const SwNode& rWhere);
+
     // 节点删除
     void Delete(const SwNodeIndex& rPos, SwNodeOffset nNodes = SwNodeOffset(1));
 

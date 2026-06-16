@@ -23,11 +23,12 @@ inline void FillNodeInst(NodeInstruction& inst, NodeCmdType type, int nodeIndex,
 
 // ── StartNode (容器 START) ──
 inline void BuildStartNodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
-                                      int startNodeType)
+                                      int startNodeType, int anchorNodeIndex = -1)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::START_NODE, nodeIndex, nestLevel);
     inst.startNodeType = startNodeType;
+    inst.anchorNodeIndex = anchorNodeIndex;
     rSink.OnInstruction(inst);
 }
 

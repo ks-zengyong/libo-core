@@ -68,8 +68,13 @@ void WriteNodeInstructionToStream(std::ostream& out, const NodeInstruction& inst
     switch (inst.type)
     {
         case NodeCmdType::START_NODE:
-            // START_NODE <nodeIndex> <startNodeType>
+            // START_NODE <nodeIndex> <startNodeType> [anchorNodeIndex]
+            // 如果是 Fly 节区 (startNodeType==2) 且有锚点引用，输出 anchorNodeIndex
             out << "\t" << inst.nodeIndex << "\t" << StartNodeTypeName(inst.startNodeType);
+            if (inst.startNodeType == 2 && inst.anchorNodeIndex >= 0)
+            {
+                out << "\tanchor=" << inst.anchorNodeIndex;
+            }
             break;
 
         case NodeCmdType::END_NODE:

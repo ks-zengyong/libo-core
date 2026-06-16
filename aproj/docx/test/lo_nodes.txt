@@ -223,10 +223,10 @@ END_NODE	1
 START_NODE	2	Normal
 END_NODE	3
 START_NODE	4	Normal
-  START_NODE	5	Fly
+  START_NODE	5	Fly	anchor=118
     GRF_NODE	6
   END_NODE	7
-  START_NODE	8	Fly
+  START_NODE	8	Fly	anchor=136
     TEXT_NODE	9	""	Default Paragraph Style
     TEXT_NODE	10	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	Default Paragraph Style
   END_NODE	11
@@ -236,13 +236,13 @@ START_NODE	4	Normal
   START_NODE	15	Fly
     GRF_NODE	16
   END_NODE	17
-  START_NODE	18	Fly
+  START_NODE	18	Fly	anchor=159
     GRF_NODE	19
   END_NODE	20
-  START_NODE	21	Fly
+  START_NODE	21	Fly	anchor=174
     GRF_NODE	22
   END_NODE	23
-  START_NODE	24	Fly
+  START_NODE	24	Fly	anchor=186
     GRF_NODE	25
   END_NODE	26
   START_NODE	27	Fly
@@ -257,7 +257,7 @@ START_NODE	4	Normal
   START_NODE	36	Fly
     GRF_NODE	37
   END_NODE	38
-  START_NODE	39	Fly
+  START_NODE	39	Fly	anchor=208
     TABLE_START	40	6	2
       START_NODE	41	TableBox
         TEXT_NODE	42	" "	Default Paragraph Style
@@ -321,15 +321,15 @@ START_NODE	4	Normal
   START_NODE	100	Fly
     GRF_NODE	101
   END_NODE	102
-  START_NODE	103	Fly
+  START_NODE	103	Fly	anchor=210
     TEXT_NODE	104	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Heading 1
     TEXT_NODE	105	""	Frame Contents
   END_NODE	106
-  START_NODE	107	Fly
+  START_NODE	107	Fly	anchor=210
     TEXT_NODE	108	"Free ALL-IN-ONE Office Suite"	Heading 1
     TEXT_NODE	109	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Frame Contents
   END_NODE	110
-  START_NODE	111	Fly
+  START_NODE	111	Fly	anchor=210
     GRF_NODE	112
   END_NODE	113
 END_NODE	114
@@ -370,7 +370,7 @@ START_NODE	117	Normal
   TEXT_NODE	149	""	Default Paragraph Style
   TEXT_NODE	150	" "	Default Paragraph Style
   TEXT_NODE	151	"For all your document process needs"	Default Paragraph Style
-  START_NODE	152	Normal
+  SECTION_START	152
     TEXT_NODE	153	""	Default Paragraph Style
     TEXT_NODE	154	"\nRestrict Editing"	Default Paragraph Style
     TEXT_NODE	155	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Default Paragraph Style
@@ -405,8 +405,8 @@ START_NODE	117	Normal
     TEXT_NODE	184	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Default Paragraph Style
     TEXT_NODE	185	"Effortlessly batch convert multiple files."	Default Paragraph Style
     TEXT_NODE	186	""	Default Paragraph Style
-  END_NODE	187
-  START_NODE	188	Normal
+  SECTION_END	187
+  SECTION_START	188
     TEXT_NODE	189	"Editing and typesetting"	Default Paragraph Style
     TEXT_NODE	190	"\nFind and Replace"	Default Paragraph Style
     TEXT_NODE	191	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Default Paragraph Style
@@ -427,6 +427,6 @@ START_NODE	117	Normal
     TEXT_NODE	206	""	Default Paragraph Style
     TEXT_NODE	207	"More Popular features"	Default Paragraph Style
     TEXT_NODE	208	""	Default Paragraph Style
-  END_NODE	209
+  SECTION_END	209
   TEXT_NODE	210	""	Default Paragraph Style
 END_NODE	211

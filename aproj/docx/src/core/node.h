@@ -18,6 +18,7 @@ class SwTextFrame;
 class SwStartNode;
 class SwEndNode;
 class SwTextNode;
+class SwGrfNode;
 class SwTableNode;
 class SwSectionNode;
 class SwTextFormatColl;
@@ -106,6 +107,8 @@ public:
     const SwEndNode* GetEndNode() const;
     SwTextNode* GetTextNode();
     const SwTextNode* GetTextNode() const;
+    SwGrfNode* GetGrfNode();
+    const SwGrfNode* GetGrfNode() const;
     SwTableNode* GetTableNode();
     const SwTableNode* GetTableNode() const;
     SwSectionNode* GetSectionNode();
@@ -117,10 +120,13 @@ public:
     SwEndNode* EndOfSectionNode();
     const SwEndNode* EndOfSectionNode() const;
 
-    // 查找包含此节点的表格/节
+    // 查找包含此节点的表格/节/浮动框架
     SwTableNode* FindTableNode();
     SwSectionNode* FindSectionNode();
     SwStartNode* FindStartNodeByType(SwStartNodeType eTyp);
+    const SwStartNode* FindStartNodeByType(SwStartNodeType eTyp) const;
+    const SwStartNode* FindFlyStartNode() const { return FindStartNodeByType(SwFlyStartNode); }
+    const SwStartNode* FindTableBoxStartNode() const { return FindStartNodeByType(SwTableBoxStartNode); }
 
     // 节点索引
     SwNodeOffset GetIndex() const { return SwNodeOffset(GetPos()); }
@@ -252,6 +258,37 @@ private:
     AttrMap m_aAttrs; // 段落属性
 };
 
+// SwGrfNode: 图片节点（继承 SwContentNode）
+class SwGrfNode : public SwContentNode
+{
+    friend class SwNodes;
+
+public:
+    virtual ~SwGrfNode() override;
+
+    // 图片路径
+    const std::string& GetImagePath() const { return m_sImagePath; }
+    void SetImagePath(const std::string& rPath) { m_sImagePath = rPath; }
+
+    // 创建 Frame
+    SwContentFrame* MakeFrame(SwFrame* pSib) override;
+
+    // 图片尺寸（twips）
+    sal_Int32 GetWidth() const { return m_nWidth; }
+    sal_Int32 GetHeight() const { return m_nHeight; }
+    void SetSize(sal_Int32 nW, sal_Int32 nH) { m_nWidth = nW; m_nHeight = nH; }
+
+    sal_Int32 Len() const override { return 0; }
+
+private:
+    SwGrfNode(const SwNode& rWhere);
+    SwGrfNode(SwNodes& rNodes, SwNodeOffset nPos);
+
+    std::string m_sImagePath; // 图片路径
+    sal_Int32 m_nWidth = 0; // 图片宽度
+    sal_Int32 m_nHeight = 0; // 图片高度
+};
+
 // SwTableNode: 表格节点（继承 SwStartNode）
 class SwTableNode : public SwStartNode
 {
@@ -340,6 +377,14 @@ inline SwTextNode* SwNode::GetTextNode()
 inline const SwTextNode* SwNode::GetTextNode() const
 {
     return IsTextNode() ? static_cast<const SwTextNode*>(this) : nullptr;
+}
+inline SwGrfNode* SwNode::GetGrfNode()
+{
+    return IsGrfNode() ? static_cast<SwGrfNode*>(this) : nullptr;
+}
+inline const SwGrfNode* SwNode::GetGrfNode() const
+{
+    return IsGrfNode() ? static_cast<const SwGrfNode*>(this) : nullptr;
 }
 inline SwTableNode* SwNode::GetTableNode()
 {

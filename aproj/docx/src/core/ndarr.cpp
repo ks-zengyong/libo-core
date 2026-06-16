@@ -252,6 +252,33 @@ SwTableNode* SwNodes::InsertTable(const SwNode& rNd, sal_uInt16 nBoxes,
     return pTable;
 }
 
+SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType)
+{
+    // 在 AutoText 区域创建 Fly 节区
+    // Fly 节区位于 EndOfAutotext 和 EndOfRedlines 之间
+    // 结构：StartNode (Fly) ... EndNode (Fly)
+
+    SwNodeOffset nPos = m_pEndOfAutotext->GetIndex() + SwNodeOffset(1);
+
+    // 创建 Fly StartNode
+    auto* pFlyStt = new SwStartNode(*this, nPos, eType);
+    InsertNode(pFlyStt, nPos);
+
+    // 创建 Fly EndNode
+    auto* pFlyEnd = new SwEndNode(*this, nPos + SwNodeOffset(1), *pFlyStt);
+    InsertNode(pFlyEnd, nPos + SwNodeOffset(1));
+
+    return pFlyStt;
+}
+
+SwGrfNode* SwNodes::InsertGrfNode(const SwNode& rWhere)
+{
+    SwNodeOffset nPos = rWhere.GetIndex() + SwNodeOffset(1);
+    auto* pGrfNode = new SwGrfNode(rWhere);
+    InsertNode(pGrfNode, nPos);
+    return pGrfNode;
+}
+
 void SwNodes::Delete(const SwNodeIndex& rPos, SwNodeOffset nNodes)
 {
     SwNodeOffset nStart = rPos.GetIndex();

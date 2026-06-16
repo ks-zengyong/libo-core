@@ -91,6 +91,18 @@ SwStartNode* SwNode::FindStartNodeByType(SwStartNodeType eTyp)
     return nullptr;
 }
 
+const SwStartNode* SwNode::FindStartNodeByType(SwStartNodeType eTyp) const
+{
+    const SwStartNode* pStt = m_pStartOfSection;
+    while (pStt)
+    {
+        if (pStt->GetStartNodeType() == eTyp)
+            return pStt;
+        pStt = pStt->StartOfSectionNode();
+    }
+    return nullptr;
+}
+
 //===----------------------------------------------------------------------===//
 // SwStartNode
 //===----------------------------------------------------------------------===//
@@ -188,6 +200,29 @@ const std::string* SwTextNode::GetAttr(sal_uInt16 nWhich) const
 {
     auto it = m_aAttrs.find(nWhich);
     return it != m_aAttrs.end() ? &it->second : nullptr;
+}
+
+//===----------------------------------------------------------------------===//
+// SwGrfNode
+//===----------------------------------------------------------------------===//
+
+SwGrfNode::SwGrfNode(const SwNode& rWhere)
+    : SwContentNode(rWhere, SwNodeType::Grf, nullptr)
+{
+}
+
+SwGrfNode::SwGrfNode(SwNodes& rNodes, SwNodeOffset nPos)
+    : SwContentNode(rNodes, nPos, SwNodeType::Grf, nullptr)
+{
+}
+
+SwGrfNode::~SwGrfNode() = default;
+
+SwContentFrame* SwGrfNode::MakeFrame(SwFrame* pSib)
+{
+    // 将在 Phase 2 中实现
+    (void)pSib;
+    return nullptr;
 }
 
 //===----------------------------------------------------------------------===//

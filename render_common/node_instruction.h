@@ -72,8 +72,12 @@ struct NodeInstruction
     int tableRows; // 表格行数
     int tableCols; // 表格列数
 
+    // Fly 节区锚点引用 (仅 START_NODE 且 startNodeType=2(Fly) 有效)
+    // 表示 Fly 节区锚点所在的文本节点索引，-1 表示无锚点或非 Fly
+    int anchorNodeIndex;
+
     // 清零初始化辅助
-    void clear() { memset(this, 0, sizeof(*this)); }
+    void clear() { memset(this, 0, sizeof(*this)); anchorNodeIndex = -1; }
 };
 
 // 指令接收接口 (纯虚类)

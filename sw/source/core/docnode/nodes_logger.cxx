@@ -16,6 +16,10 @@
 #include <ndnotxt.hxx>
 #include <swtable.hxx>
 #include <section.hxx>
+#include <frmfmt.hxx>
+#include <fmtanchr.hxx>
+#include <fmtcntnt.hxx>
+#include <doc.hxx>
 #include <osl/process.h>
 #include <rtl/strbuf.hxx>
 
@@ -149,6 +153,36 @@ public:
             const SwSectionNode* pSectionNode = static_cast<const SwSectionNode*>(m_pNode);
             const SwEndNode* pEndNode = pSectionNode->EndOfSectionNode();
             return pEndNode ? static_cast<int>(pEndNode->GetIndex().get()) : -1;
+        }
+        return -1;
+    }
+
+    int GetAnchorNodeIndex() const override
+    {
+        // 仅对 Fly 节区有效 (startNodeType == 2)
+        if (!m_pNode || !m_pNode->IsStartNode())
+            return -1;
+        const SwStartNode* pStartNode = static_cast<const SwStartNode*>(m_pNode);
+        if (pStartNode->GetStartNodeType() != SwFlyStartNode)
+            return -1;
+
+        // 获取 Fly 的 FrameFormat
+        SwFrameFormat* pFlyFormat = pStartNode->GetFlyFormat();
+        if (!pFlyFormat)
+            return -1;
+
+        // 获取锚点信息
+        const SwFormatAnchor& rAnchor = pFlyFormat->GetAnchor();
+        if (rAnchor.GetAnchorId() == RndStdIds::FLY_AT_PARA
+            || rAnchor.GetAnchorId() == RndStdIds::FLY_AT_CHAR)
+        {
+            // 锚点在段落或字符位置
+            const SwPosition* pPos = rAnchor.GetContentAnchor();
+            if (pPos)
+            {
+                const SwNode* pAnchorNode = &pPos->GetNode();
+                return static_cast<int>(pAnchorNode->GetIndex().get());
+            }
         }
         return -1;
     }
