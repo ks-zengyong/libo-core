@@ -3,6 +3,7 @@
 ## 前置条件
 - `git bash`环境进行编译(make ...)
 - 已运行 `wsl ./autogen.sh` 生成 `config_host.mk`
+- wsl只负责生成配置，不参与编译过程
 
 ## 禁止清理
 - `禁止make clean等清理编译环境，lo已经编译完成，只需增量编译`
