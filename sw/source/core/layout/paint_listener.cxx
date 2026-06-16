@@ -64,18 +64,21 @@ public:
         , m_bIsFlySibling(false)
         , m_pFlyContainer(nullptr)
         , m_flyIndex(0)
+        , m_pAnchorFrame(nullptr)
     {
         if (pFrame && pFrame->IsTextFrame())
             ExtractTextInfo();
     }
 
-    // 浮动对象链节点: 挂在某个 SwLayoutFrame 的 SwSortedObjs 上的第 n 个
-    LoFrameNode(const SwFrame* pFrame, int pageNum, const SwSortedObjs* pContainer, size_t index)
+    // 浮动对象链节点: 挂在某个页面的 SwSortedObjs 上的第 n 个，锚定到 pAnchorFrame
+    LoFrameNode(const SwFrame* pFrame, int pageNum, const SwSortedObjs* pContainer, size_t index,
+                const SwFrame* pAnchorFrame)
         : m_pFrame(pFrame)
         , m_pageNum(pageNum)
         , m_bIsFlySibling(true)
         , m_pFlyContainer(pContainer)
         , m_flyIndex(index)
+        , m_pAnchorFrame(pAnchorFrame)
     {
         if (pFrame && pFrame->IsTextFrame())
             ExtractTextInfo();
@@ -161,42 +164,75 @@ public:
     }
 
     // 浮动对象链:
-    //   - 对 Page 用 SwPageFrame::GetSortedObjs();
-    //   - 对其他 SwLayoutFrame 用 SwFrame::GetDrawObjs()。
-    //   只识别 SwFlyFrame (图片/文本框等)。
+    //   - 在 LO 中，锚定对象存储在页面帧的 SwSortedObjs 中
+    //   - 需要找到页面帧，遍历其 SwSortedObjs，筛选锚定到当前帧的对象
     IFrameNode* GetFirstFly() const override
     {
-        const SwSortedObjs* pObjs = nullptr;
-        if (m_pFrame && m_pFrame->IsPageFrame())
-        {
-            pObjs = static_cast<const SwPageFrame*>(m_pFrame)->GetSortedObjs();
-        }
-        else if (m_pFrame && m_pFrame->IsLayoutFrame())
-        {
-            pObjs = m_pFrame->GetDrawObjs();
-        }
+        if (!m_pFrame)
+            return nullptr;
+
+        // 找到页面帧
+        const SwPageFrame* pPageFrame = m_pFrame->FindPageFrame();
+        if (!pPageFrame)
+            return nullptr;
+
+        // 获取页面的 SwSortedObjs
+        const SwSortedObjs* pObjs = pPageFrame->GetSortedObjs();
         if (!pObjs || pObjs->size() == 0)
             return nullptr;
-        SwAnchoredObject* pA = (*pObjs)[0];
-        SwFlyFrame* pFly = pA ? pA->DynCastFlyFrame() : nullptr;
-        if (!pFly)
-            return nullptr;
-        return new LoFrameNode(pFly, m_pageNum, pObjs, 0);
+
+        // 遍历查找第一个锚定到当前帧的 SwFlyFrame
+        for (size_t i = 0; i < pObjs->size(); ++i)
+        {
+            SwAnchoredObject* pA = (*pObjs)[i];
+            if (!pA)
+                continue;
+
+            // 检查锚定帧是否匹配
+            const SwFrame* pAnchorFrame = pA->GetAnchorFrame();
+            if (pAnchorFrame != m_pFrame)
+                continue;
+
+            // 尝试转换为 SwFlyFrame
+            SwFlyFrame* pFly = pA->DynCastFlyFrame();
+            if (!pFly)
+                continue;
+
+            // 找到第一个匹配的 fly frame，返回一个带有索引信息的节点
+            return new LoFrameNode(pFly, m_pageNum, pObjs, i, m_pFrame);
+        }
+
+        return nullptr;
     }
 
     // 对"已经在 SwSortedObjs 上的"节点返回下一个浮动兄弟
     IFrameNode* GetNextSiblingFly() const override
     {
-        if (!m_bIsFlySibling || !m_pFlyContainer)
+        if (!m_bIsFlySibling || !m_pFlyContainer || !m_pAnchorFrame)
             return nullptr;
-        const size_t nextIndex = m_flyIndex + 1;
-        if (nextIndex >= m_pFlyContainer->size())
-            return nullptr;
-        SwAnchoredObject* pA = (*m_pFlyContainer)[nextIndex];
-        SwFlyFrame* pFly = pA ? pA->DynCastFlyFrame() : nullptr;
-        if (!pFly)
-            return nullptr;
-        return new LoFrameNode(pFly, m_pageNum, m_pFlyContainer, nextIndex);
+
+        // 从当前索引的下一个开始查找
+        for (size_t i = m_flyIndex + 1; i < m_pFlyContainer->size(); ++i)
+        {
+            SwAnchoredObject* pA = (*m_pFlyContainer)[i];
+            if (!pA)
+                continue;
+
+            // 检查锚定帧是否匹配
+            const SwFrame* pAnchorFrame = pA->GetAnchorFrame();
+            if (pAnchorFrame != m_pAnchorFrame)
+                continue;
+
+            // 尝试转换为 SwFlyFrame
+            SwFlyFrame* pFly = pA->DynCastFlyFrame();
+            if (!pFly)
+                continue;
+
+            // 找到下一个匹配的 fly frame
+            return new LoFrameNode(pFly, m_pageNum, m_pFlyContainer, i, m_pAnchorFrame);
+        }
+
+        return nullptr;
     }
 
 private:
@@ -255,6 +291,7 @@ private:
     bool m_bIsFlySibling;
     const SwSortedObjs* m_pFlyContainer;
     size_t m_flyIndex;
+    const SwFrame* m_pAnchorFrame; // 锚定到的帧 (用于筛选页面级浮动对象)
 };
 
 } // namespace
