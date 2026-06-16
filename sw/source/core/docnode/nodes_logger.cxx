@@ -284,7 +284,7 @@ void SwNodesLogger::CheckEnvAndStart()
 
 void SwNodesLogger::LogNodes(const SwNodes& rNodes)
 {
-    if (!m_bLogging)
+    if (!m_bLogging || m_bLogged) // 检查是否已记录
         return;
 
     // 创建适配器
@@ -301,6 +301,7 @@ void SwNodesLogger::LogNodes(const SwNodes& rNodes)
         m_File << content;
         m_File.flush();
     }
+    m_bLogged = true; // 标记为已记录
 }
 
 /* vim:set shiftwidth=4 softtabstop=4 expandtab: */

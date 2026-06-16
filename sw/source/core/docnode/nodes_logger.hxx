@@ -67,6 +67,7 @@ private:
     std::ofstream m_File;
     OString m_sLogPath;
     bool m_bLogging = false;
+    bool m_bLogged = false; // 防止重复记录
 };
 
 #endif // SW_SOURCE_CORE_DOCNODE_NODES_LOGGER_HXX
