@@ -197,7 +197,7 @@ public:
     int GetBodyEndIndex() const override
     {
         SwNode& rEnd = m_rNodes.GetEndOfContent();
-        return static_cast<int>(rEnd.GetIndex()) + 1;
+        return static_cast<int>(rEnd.GetIndex());
     }
 
 private:

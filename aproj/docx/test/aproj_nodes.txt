@@ -1,7 +1,7 @@
 # SwNodes Structure Overview
 # Total nodes: 212
 # BodyStart: 0
-# BodyEnd: 212
+# BodyEnd: 211
 
 # All Nodes (including non-Content areas):
 # [0] START_NODE type=0
