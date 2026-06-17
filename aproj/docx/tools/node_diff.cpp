@@ -1,17 +1,29 @@
 // node_diff.cpp — Nodes 结构差异对比工具
 // 对比 LibreOffice 与 aproj/docx 的 nodes 输出（lo_nodes.txt / aproj_nodes.txt）
 //
-// 支持两种输入格式（可自动识别）：
-//   A. 结构化 (structured)：直接以 <TYPE>\t<index>\t... 行构成，前导空格表示缩进层级
-//   B. 平面+结构化混合 (mixed)：顶部若干 "# " 注释 / 空行 / 结构头（如 "Body Area Nodes (structured):"），
-//      之后进入与 A 相同的结构化部分。
+// 根据 render_common/node_format.cxx 中 WriteNodeInstructionToStream() 的实际
+// 输出格式，进行逐字段语义解析和精确对比：
+//
+//   START_NODE   <tab> nodeIndex <tab> (Normal|TableBox|Fly|Footnote|Header|Footer)
+//                                             [<tab> anchor=<idx>]           [<tab> refs=<idx,...>]
+//   END_NODE     <tab> nodeIndex                                             [<tab> refs=<idx,...>]
+//   TEXT_NODE    <tab> nodeIndex <tab> "text"   <tab> styleName             [<tab> refs=<idx,...>]
+//   GRF_NODE     <tab> nodeIndex                                             [<tab> refs=<idx,...>]
+//   OLE_NODE     <tab> nodeIndex                                             [<tab> refs=<idx,...>]
+//   TABLE_START  <tab> nodeIndex <tab> rows      <tab> cols                [<tab> refs=<idx,...>]
+//   TABLE_END    <tab> nodeIndex                                             [<tab> refs=<idx,...>]
+//   SECTION_START<tab> nodeIndex                                             [<tab> refs=<idx,...>]
+//   SECTION_END  <tab> nodeIndex                                             [<tab> refs=<idx,...>]
+//
+// 另外，结构化部分每行有 2 空格 * nestLevel 的前导缩进。
+// "text" 字段使用双引号包裹，内部的 \n / \t / \" / \r 被字面转义写入（见
+// EscapeForTsv() in node_format.cxx），因此不能简单按 \t 切分。
 //
 // 用法:
-//   node_diff <ref.txt> <test.txt>          对比任意两个 nodes 文件
-//   node_diff <ref.txt> <test.txt> --verbose   显示所有节点（含匹配项）
+//   node_diff <ref.txt> <test.txt>              对比
+//   node_diff <ref.txt> <test.txt> --verbose    同时显示匹配项
 //
-// 编译：见项目根 CMakeLists.txt —— 该文件为独立的 STANDALONE 单文件工具，
-//       不依赖 render_diff / render_common，仅使用 C++17 标准库。
+// 编译：C++17 标准库，单文件。
 
 #include <iostream>
 #include <fstream>
@@ -20,19 +32,11 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include <cstdint>
 
-// ── Node 条目：一个节点一行（结构化部分） ──
-struct NodeEntry
-{
-    int lineNum; // 源文件中原始行号（用于 diff 输出定位）
-    int indent; // 缩进层级（以 2 空格为 1 级）
-    std::string
-        type; // 第一个字段: START_NODE / END_NODE / TEXT_NODE / GRF_NODE / TABLE_START / TABLE_END / SECTION_START / SECTION_END ...
-    int index; // 第二个字段: 节点索引
-    std::string rawRest; // 除前两字段外的剩余原始文本（用于附加属性对比）
-};
-
-// ── 工具：裁剪字符串两端空白 ──
+// ----------------------------------------------------------------------------
+// 工具：裁剪空白
+// ----------------------------------------------------------------------------
 static std::string trim(const std::string& s)
 {
     size_t a = 0, b = s.size();
@@ -43,58 +47,402 @@ static std::string trim(const std::string& s)
     return s.substr(a, b - a);
 }
 
-// ── 工具：按 \t 拆分，最多 nParts 段（最后一段保留剩余所有内容） ──
-static std::vector<std::string> splitTab(const std::string& line, int nParts)
+// ----------------------------------------------------------------------------
+// NodeEntry：统一的节点条目
+// ----------------------------------------------------------------------------
+enum class NodeType : std::uint8_t
 {
-    std::vector<std::string> out;
-    out.reserve(nParts);
-    size_t start = 0;
-    int parts = 0;
-    while (parts + 1 < nParts)
+    UNKNOWN = 0,
+    START_NODE,
+    END_NODE,
+    TEXT_NODE,
+    GRF_NODE,
+    OLE_NODE,
+    TABLE_START,
+    TABLE_END,
+    SECTION_START,
+    SECTION_END,
+};
+
+static const char* NodeTypeName(NodeType t)
+{
+    switch (t)
     {
-        size_t tab = line.find('\t', start);
-        if (tab == std::string::npos)
-            break;
-        out.push_back(line.substr(start, tab - start));
-        start = tab + 1;
-        parts++;
+        case NodeType::START_NODE:
+            return "START_NODE";
+        case NodeType::END_NODE:
+            return "END_NODE";
+        case NodeType::TEXT_NODE:
+            return "TEXT_NODE";
+        case NodeType::GRF_NODE:
+            return "GRF_NODE";
+        case NodeType::OLE_NODE:
+            return "OLE_NODE";
+        case NodeType::TABLE_START:
+            return "TABLE_START";
+        case NodeType::TABLE_END:
+            return "TABLE_END";
+        case NodeType::SECTION_START:
+            return "SECTION_START";
+        case NodeType::SECTION_END:
+            return "SECTION_END";
+        default:
+            return "UNKNOWN";
     }
-    out.push_back(line.substr(start));
+}
+
+static NodeType ParseNodeType(const std::string& tok)
+{
+    if (tok == "START_NODE")
+        return NodeType::START_NODE;
+    if (tok == "END_NODE")
+        return NodeType::END_NODE;
+    if (tok == "TEXT_NODE")
+        return NodeType::TEXT_NODE;
+    if (tok == "GRF_NODE")
+        return NodeType::GRF_NODE;
+    if (tok == "OLE_NODE")
+        return NodeType::OLE_NODE;
+    if (tok == "TABLE_START")
+        return NodeType::TABLE_START;
+    if (tok == "TABLE_END")
+        return NodeType::TABLE_END;
+    if (tok == "SECTION_START")
+        return NodeType::SECTION_START;
+    if (tok == "SECTION_END")
+        return NodeType::SECTION_END;
+    return NodeType::UNKNOWN;
+}
+
+struct NodeEntry
+{
+    int lineNum = 0; // 源文件行号
+    int indent = 0; // 缩进层级（= 前导空格数 / 2）
+    NodeType type = NodeType::UNKNOWN;
+
+    // 所有节点通用
+    int nodeIndex = -1;
+
+    // START_NODE 专用
+    std::string startNodeSubType; // Normal / TableBox / Fly / Footnote / Header / Footer / ""
+    int anchorNodeIndex = -1; // -1 表示无 anchor=
+
+    // TEXT_NODE 专用
+    std::string text; // 已解转义的文本内容（原样，不包括引号）
+    std::string styleName; // 可能为空（不强制 Default Paragraph Style）
+
+    // TABLE_START 专用
+    int tableRows = -1;
+    int tableCols = -1;
+
+    // 通用：refs= 字段，可能为空
+    std::string refs;
+};
+
+// ----------------------------------------------------------------------------
+// 解转义：与 node_format.cxx 中的 EscapeForTsv 反向
+//   \n -> LF,  \t -> TAB,  \" -> ",  \r -> CR
+// 其余字符保持不变。输入是引号内部的原始文本内容。
+// ----------------------------------------------------------------------------
+static std::string UnescapeForTsv(const std::string& raw)
+{
+    std::string out;
+    out.reserve(raw.size());
+    for (size_t i = 0; i < raw.size(); ++i)
+    {
+        if (raw[i] == '\\' && i + 1 < raw.size())
+        {
+            switch (raw[i + 1])
+            {
+                case 'n':
+                    out += '\n';
+                    i++;
+                    break;
+                case 't':
+                    out += '\t';
+                    i++;
+                    break;
+                case '"':
+                    out += '"';
+                    i++;
+                    break;
+                case 'r':
+                    out += '\r';
+                    i++;
+                    break;
+                case '\\':
+                    out += '\\';
+                    i++;
+                    break;
+                default:
+                    out += raw[i];
+                    break;
+            }
+        }
+        else
+        {
+            out += raw[i];
+        }
+    }
     return out;
 }
 
-// ── 判断行是否为"结构化"节点行（不以 "# " 开头，非空行，首字段为 XXXX_NODE / TABLE_* / SECTION_*） ──
-static bool isStructuredNodeLine(const std::string& line)
+// ----------------------------------------------------------------------------
+// 解析一行：从结构化区域的 "TYPE\t..." 中提取字段
+//
+// 关键难点：TEXT_NODE 的 "text" 字段内部可能含有字面 \t、\n，所以必须以
+//           " 字符作为引号边界处理，而不能一刀切地按 \t 切分。
+// ----------------------------------------------------------------------------
+static std::vector<std::string> TokenizeNodeLine(const std::string& content,
+                                                 std::string& parseError)
 {
-    std::string t = trim(line);
-    if (t.empty())
-        return false;
-    // 注释 / 标题行
-    if (t[0] == '#' || t[0] == '=' || t[0] == '-')
-        return false;
-    // 跳过前导空格，得到第一个 token
+    std::vector<std::string> tokens;
     size_t i = 0;
-    while (i < t.size() && t[i] == ' ')
-        i++;
-    size_t tokenEnd = t.find_first_of("\t ", i);
-    std::string firstTok = t.substr(i, tokenEnd - i);
-    // 合法的节点类型关键字（大小写敏感）
-    auto endsWithNode = [](const std::string& s) {
-        if (s.size() < 5)
-            return false;
-        return (s.compare(s.size() - 5, 5, "_NODE") == 0);
-    };
-    if (endsWithNode(firstTok))
-        return true;
-    if (firstTok == "TABLE_START" || firstTok == "TABLE_END")
-        return true;
-    if (firstTok == "SECTION_START" || firstTok == "SECTION_END")
-        return true;
-    return false;
+    const size_t n = content.size();
+
+    // 第 1 个 token：类型（不允许引号）
+    {
+        size_t j = content.find('\t', i);
+        if (j == std::string::npos)
+        {
+            // 可能没有任何 tab —— 只包含类型
+            tokens.push_back(trim(content.substr(i)));
+            return tokens;
+        }
+        tokens.push_back(trim(content.substr(i, j - i)));
+        i = j + 1;
+    }
+
+    // 后续 tokens：以 \t 为分隔；若某 token 首字符是 " 则按引号解析
+    while (i < n)
+    {
+        // 跳过可能的前导空白
+        size_t s = i;
+        while (s < n && content[s] == ' ')
+            s++;
+
+        if (s < n && content[s] == '"')
+        {
+            // 引号 token：寻找结束引号（考虑转义）
+            size_t k = s + 1;
+            std::string raw;
+            while (k < n)
+            {
+                if (content[k] == '\\' && k + 1 < n)
+                {
+                    raw += content[k];
+                    raw += content[k + 1];
+                    k += 2;
+                    continue;
+                }
+                if (content[k] == '"')
+                {
+                    k++; // 越过结束引号
+                    break;
+                }
+                raw += content[k];
+                k++;
+            }
+            tokens.push_back(UnescapeForTsv(raw));
+            // 下一个字段（可能存在）
+            if (k < n && content[k] == '\t')
+                i = k + 1;
+            else
+                i = k;
+        }
+        else
+        {
+            // 普通 token：读到下一个 \t
+            size_t j = content.find('\t', i);
+            if (j == std::string::npos)
+            {
+                tokens.push_back(trim(content.substr(i)));
+                i = n;
+            }
+            else
+            {
+                tokens.push_back(trim(content.substr(i, j - i)));
+                i = j + 1;
+            }
+        }
+    }
+
+    (void)parseError;
+    return tokens;
 }
 
-// ── 解析文件：跳过顶部非结构化段，从第一行结构化数据开始读 ──
-static std::vector<NodeEntry> parseNodesFile(const std::string& path, std::string& outError)
+// ----------------------------------------------------------------------------
+// 解析单行
+// ----------------------------------------------------------------------------
+static bool ParseEntry(const std::string& line, int lineNum, NodeEntry& out)
+{
+    out.lineNum = lineNum;
+
+    // 计算前导空格缩进（2 空格 = 1 level）
+    size_t spaces = 0;
+    while (spaces < line.size() && line[spaces] == ' ')
+        spaces++;
+    out.indent = static_cast<int>(spaces / 2);
+
+    std::string content = (spaces < line.size()) ? line.substr(spaces) : std::string();
+    if (content.empty())
+        return false;
+
+    // 切分成 tokens（识别 TEXT_NODE 的引号字段）
+    std::string err;
+    auto tokens = TokenizeNodeLine(content, err);
+    if (tokens.empty())
+        return false;
+
+    out.type = ParseNodeType(tokens[0]);
+    if (out.type == NodeType::UNKNOWN)
+        return false;
+
+    // nodeIndex：所有类型都需要第 2 个 token 作为整数索引
+    if (tokens.size() < 2)
+        return false;
+    try
+    {
+        out.nodeIndex = std::stoi(tokens[1]);
+    }
+    catch (...)
+    {
+        return false;
+    }
+
+    // 类型相关字段
+    switch (out.type)
+    {
+        case NodeType::START_NODE:
+        {
+            // tokens[2] = 子类型；可能 tokens[3] = anchor=xxx；可能末尾 tokens[...] = refs=xxx
+            for (size_t k = 2; k < tokens.size(); ++k)
+            {
+                const auto& t = tokens[k];
+                if (t.rfind("anchor=", 0) == 0)
+                {
+                    try
+                    {
+                        out.anchorNodeIndex = std::stoi(t.substr(7));
+                    }
+                    catch (...)
+                    {
+                        out.anchorNodeIndex = -1;
+                    }
+                }
+                else if (t.rfind("refs=", 0) == 0)
+                {
+                    out.refs = t.substr(5);
+                }
+                else if (out.startNodeSubType.empty())
+                {
+                    out.startNodeSubType = t;
+                }
+                else
+                {
+                    // 未知字段（保留到 refs 里作回退）—— 避免漏判
+                    // 这里不做处理，保持严格模式。
+                }
+            }
+            break;
+        }
+        case NodeType::TEXT_NODE:
+        {
+            // tokens[2] = text（引号内已解转义）；tokens[3] = styleName；可能 tokens[4] = refs=...
+            if (tokens.size() >= 3)
+                out.text = tokens[2];
+            if (tokens.size() >= 4)
+            {
+                // styleName 可能以 "refs=" 开头（若 style 缺失时），判断一下
+                if (tokens[3].rfind("refs=", 0) == 0)
+                {
+                    out.refs = tokens[3].substr(5);
+                }
+                else
+                {
+                    out.styleName = tokens[3];
+                }
+            }
+            if (tokens.size() >= 5)
+            {
+                if (tokens[4].rfind("refs=", 0) == 0)
+                    out.refs = tokens[4].substr(5);
+            }
+            break;
+        }
+        case NodeType::TABLE_START:
+        {
+            if (tokens.size() >= 3)
+            {
+                try
+                {
+                    out.tableRows = std::stoi(tokens[2]);
+                }
+                catch (...)
+                {
+                }
+            }
+            if (tokens.size() >= 4)
+            {
+                try
+                {
+                    out.tableCols = std::stoi(tokens[3]);
+                }
+                catch (...)
+                {
+                }
+            }
+            if (tokens.size() >= 5)
+            {
+                if (tokens[4].rfind("refs=", 0) == 0)
+                    out.refs = tokens[4].substr(5);
+            }
+            break;
+        }
+        case NodeType::END_NODE:
+        case NodeType::GRF_NODE:
+        case NodeType::OLE_NODE:
+        case NodeType::TABLE_END:
+        case NodeType::SECTION_START:
+        case NodeType::SECTION_END:
+        default:
+        {
+            // 仅可能存在 refs=xxx 在第 3 个或之后 token
+            for (size_t k = 2; k < tokens.size(); ++k)
+            {
+                if (tokens[k].rfind("refs=", 0) == 0)
+                {
+                    out.refs = tokens[k].substr(5);
+                    break;
+                }
+            }
+            break;
+        }
+    }
+
+    return true;
+}
+
+// ----------------------------------------------------------------------------
+// 文件头 vs 结构化判断
+// ----------------------------------------------------------------------------
+static bool IsStructuredNodeLine(const std::string& lineTrimmed)
+{
+    if (lineTrimmed.empty())
+        return false;
+    if (lineTrimmed[0] == '#' || lineTrimmed[0] == '=')
+        return false;
+
+    // 跳过前导空格
+    size_t i = 0;
+    while (i < lineTrimmed.size() && lineTrimmed[i] == ' ')
+        i++;
+    size_t tokenEnd = lineTrimmed.find_first_of("\t ", i);
+    std::string firstTok = lineTrimmed.substr(i, tokenEnd - i);
+    return ParseNodeType(firstTok) != NodeType::UNKNOWN;
+}
+
+static std::vector<NodeEntry> ParseNodesFile(const std::string& path, std::string& outError)
 {
     std::vector<NodeEntry> entries;
     std::ifstream f(path);
@@ -111,98 +459,167 @@ static std::vector<NodeEntry> parseNodesFile(const std::string& path, std::strin
     while (std::getline(f, line))
     {
         lineNum++;
-        // 去掉行尾 \r
         if (!line.empty() && line.back() == '\r')
             line.pop_back();
 
         if (!inStructured)
         {
-            // 遇到首个结构化节点行 → 进入结构化部分
-            if (isStructuredNodeLine(line))
+            if (IsStructuredNodeLine(line))
                 inStructured = true;
             else
-                continue; // 跳过文件头、注释、空行
+                continue;
         }
-
-        std::string trimmed = line;
-        // 计算缩进（以 2 空格为一级）
-        int spaces = 0;
-        size_t si = 0;
-        while (si < trimmed.size() && trimmed[si] == ' ')
+        else
         {
-            spaces++;
-            si++;
+            // 结构化区内的空行：跳过
+            if (trim(line).empty())
+                continue;
+            // 注释行（如 "All Nodes ..." 之类的头部再次出现）：跳过
+            if (line[0] == '#' || line[0] == '=')
+                continue;
         }
-        int indent = spaces / 2;
-
-        std::string content = (si < trimmed.size()) ? trimmed.substr(si) : "";
-        if (content.empty())
-            continue;
-
-        // 按 \t 拆分为 [type, index, rest...]
-        auto parts = splitTab(content, 3);
-        if (parts.size() < 1)
-            continue;
 
         NodeEntry e;
-        e.lineNum = lineNum;
-        e.indent = indent;
-        e.type = parts[0];
-        e.index = -1;
-        if (parts.size() >= 2)
-        {
-            try
-            {
-                e.index = std::stoi(trim(parts[1]));
-            }
-            catch (...)
-            {
-                e.index = -1;
-            }
-        }
-        e.rawRest = (parts.size() >= 3) ? parts[2] : "";
-
-        entries.push_back(e);
+        if (ParseEntry(line, lineNum, e))
+            entries.push_back(e);
     }
 
     if (!inStructured)
-    {
         outError = "No structured node entries found in file: " + path;
-    }
     return entries;
 }
 
-// ── 对两个节点进行内容对比 ──
-struct DiffItem
+// ----------------------------------------------------------------------------
+// 对比两个 NodeEntry 条目，返回精确的差异说明
+// ----------------------------------------------------------------------------
+struct DiffMessage
 {
     int refLine;
     int testLine;
-    int refIndex;
-    int testIndex;
-    std::string message;
+    std::string msg;
 };
 
-static bool entriesEqual(const NodeEntry& a, const NodeEntry& b)
+static bool NodeEntriesEqual(const NodeEntry& a, const NodeEntry& b)
 {
-    return (a.indent == b.indent) && (a.type == b.type) && (a.index == b.index)
-           && (a.rawRest == b.rawRest);
+    if (a.type != b.type)
+        return false;
+    if (a.nodeIndex != b.nodeIndex)
+        return false;
+    if (a.indent != b.indent)
+        return false;
+
+    switch (a.type)
+    {
+        case NodeType::START_NODE:
+            if (a.startNodeSubType != b.startNodeSubType)
+                return false;
+            if (a.anchorNodeIndex != b.anchorNodeIndex)
+                return false;
+            break;
+        case NodeType::TEXT_NODE:
+            if (a.text != b.text)
+                return false;
+            if (a.styleName != b.styleName)
+                return false;
+            break;
+        case NodeType::TABLE_START:
+            if (a.tableRows != b.tableRows)
+                return false;
+            if (a.tableCols != b.tableCols)
+                return false;
+            break;
+        default:
+            break;
+    }
+    if (a.refs != b.refs)
+        return false;
+    return true;
 }
 
-static std::string describeDiff(const NodeEntry& ref, const NodeEntry& test)
+static std::string QuoteForDisplay(const std::string& s)
+{
+    // 用于 diff 消息中的展示——对空白字符做可视化。
+    std::string out;
+    out.reserve(s.size() + 2);
+    for (char c : s)
+    {
+        switch (c)
+        {
+            case '\n':
+                out += "\\n";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '"':
+                out += "\\\"";
+                break;
+            default:
+                out += c;
+                break;
+        }
+    }
+    return "\"" + out + "\"";
+}
+
+static std::string CollectFieldDiffs(const NodeEntry& ref, const NodeEntry& test)
 {
     std::string msg;
+
+    auto addLine = [&](const std::string& field, const std::string& rv, const std::string& tv) {
+        if (!msg.empty())
+            msg += " | ";
+        msg += field + ": ref=" + rv + " test=" + tv;
+    };
+
     if (ref.type != test.type)
-        msg += " type=ref=" + ref.type + "/test=" + test.type;
-    if (ref.index != test.index)
-        msg += " index=ref=" + std::to_string(ref.index) + "/test=" + std::to_string(test.index);
+        addLine("type", NodeTypeName(ref.type), NodeTypeName(test.type));
+    if (ref.nodeIndex != test.nodeIndex)
+        addLine("nodeIndex", std::to_string(ref.nodeIndex), std::to_string(test.nodeIndex));
     if (ref.indent != test.indent)
-        msg += " indent=ref=" + std::to_string(ref.indent) + "/test=" + std::to_string(test.indent);
-    if (ref.rawRest != test.rawRest)
-        msg += " attrs=ref=[" + ref.rawRest + "]/test=[" + test.rawRest + "]";
+        addLine("nestLevel", std::to_string(ref.indent), std::to_string(test.indent));
+
+    switch (ref.type)
+    {
+        case NodeType::START_NODE:
+            if (ref.startNodeSubType != test.startNodeSubType)
+                addLine("subType", ref.startNodeSubType, test.startNodeSubType);
+            if (ref.anchorNodeIndex != test.anchorNodeIndex)
+                addLine("anchor",
+                        ref.anchorNodeIndex == -1 ? "<none>" : std::to_string(ref.anchorNodeIndex),
+                        test.anchorNodeIndex == -1 ? "<none>"
+                                                   : std::to_string(test.anchorNodeIndex));
+            break;
+        case NodeType::TEXT_NODE:
+            if (ref.text != test.text)
+                addLine("text", QuoteForDisplay(ref.text), QuoteForDisplay(test.text));
+            if (ref.styleName != test.styleName)
+                addLine("styleName", QuoteForDisplay(ref.styleName),
+                        QuoteForDisplay(test.styleName));
+            break;
+        case NodeType::TABLE_START:
+            if (ref.tableRows != test.tableRows)
+                addLine("rows", std::to_string(ref.tableRows), std::to_string(test.tableRows));
+            if (ref.tableCols != test.tableCols)
+                addLine("cols", std::to_string(ref.tableCols), std::to_string(test.tableCols));
+            break;
+        default:
+            break;
+    }
+
+    if (ref.refs != test.refs)
+        addLine("refs", ref.refs.empty() ? "<none>" : ref.refs,
+                test.refs.empty() ? "<none>" : test.refs);
+
     return msg;
 }
 
-// ── Main ──
+// ----------------------------------------------------------------------------
+// 主程序
+// ----------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
     std::string refPath;
@@ -212,9 +629,7 @@ int main(int argc, char* argv[])
     for (int i = 1; i < argc; ++i)
     {
         std::string a = argv[i];
-        if (a == "--verbose")
-            verbose = true;
-        else if (a == "-v")
+        if (a == "--verbose" || a == "-v")
             verbose = true;
         else if (refPath.empty())
             refPath = a;
@@ -224,7 +639,7 @@ int main(int argc, char* argv[])
 
     if (refPath.empty() || testPath.empty())
     {
-        std::cerr << "node_diff — 对比两个 nodes.txt 结构差异 (STANDALONE, 不依赖 render_diff)\n\n"
+        std::cerr << "node_diff — 对比两个 nodes.txt 结构差异（C++17, 单文件）\n\n"
                   << "Usage:\n"
                   << "  node_diff <ref.txt> <test.txt> [--verbose]\n"
                   << "\n"
@@ -232,10 +647,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // 读取
     std::string refErr, testErr;
-    auto ref = parseNodesFile(refPath, refErr);
-    auto test = parseNodesFile(testPath, testErr);
+    auto ref = ParseNodesFile(refPath, refErr);
+    auto test = ParseNodesFile(testPath, testErr);
 
     if (!refErr.empty())
     {
@@ -248,67 +662,100 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    // 顺序 + 类型 + 属性 严格对比
-    std::vector<DiffItem> diffs;
+    std::cout << "=== Nodes Structure Comparison (Precise) ===" << std::endl;
+    std::cout << "Reference: " << refPath << " (" << ref.size() << " nodes)" << std::endl;
+    std::cout << "Test:      " << testPath << " (" << test.size() << " nodes)" << std::endl;
+    std::cout << std::endl;
+
+    // 汇总差异列表
+    std::vector<DiffMessage> diffs;
+    diffs.reserve(std::max(ref.size(), test.size()));
+
     size_t maxN = std::max(ref.size(), test.size());
     for (size_t i = 0; i < maxN; ++i)
     {
         if (i >= ref.size())
         {
-            diffs.push_back({ 0, test[i].lineNum, -1, test[i].index,
-                              "额外节点: " + test[i].type
-                                  + " index=" + std::to_string(test[i].index) + " attrs=["
-                                  + test[i].rawRest + "]" });
+            // test 比 ref 多
+            std::ostringstream oss;
+            oss << "额外节点（ref 不存在）: " << NodeTypeName(test[i].type)
+                << " nodeIndex=" << test[i].nodeIndex << " nestLevel=" << test[i].indent;
+            if (test[i].type == NodeType::TEXT_NODE)
+            {
+                oss << " text=" << QuoteForDisplay(test[i].text)
+                    << " style=" << QuoteForDisplay(test[i].styleName);
+            }
+            if (!test[i].refs.empty())
+                oss << " refs=" << test[i].refs;
+            diffs.push_back({ 0, test[i].lineNum, oss.str() });
             continue;
         }
         if (i >= test.size())
         {
-            diffs.push_back({ ref[i].lineNum, 0, ref[i].index, -1,
-                              "缺失节点: " + ref[i].type + " index=" + std::to_string(ref[i].index)
-                                  + " attrs=[" + ref[i].rawRest + "]" });
+            // ref 比 test 多
+            std::ostringstream oss;
+            oss << "缺失节点（test 不存在）: " << NodeTypeName(ref[i].type)
+                << " nodeIndex=" << ref[i].nodeIndex << " nestLevel=" << ref[i].indent;
+            if (ref[i].type == NodeType::TEXT_NODE)
+            {
+                oss << " text=" << QuoteForDisplay(ref[i].text)
+                    << " style=" << QuoteForDisplay(ref[i].styleName);
+            }
+            if (!ref[i].refs.empty())
+                oss << " refs=" << ref[i].refs;
+            diffs.push_back({ ref[i].lineNum, 0, oss.str() });
             continue;
         }
-        if (!entriesEqual(ref[i], test[i]))
-            diffs.push_back({ ref[i].lineNum, test[i].lineNum, ref[i].index, test[i].index,
-                              describeDiff(ref[i], test[i]) });
+        if (!NodeEntriesEqual(ref[i], test[i]))
+        {
+            diffs.push_back(
+                { ref[i].lineNum, test[i].lineNum, CollectFieldDiffs(ref[i], test[i]) });
+        }
     }
 
-    // 输出报告
-    std::cout << "=== Nodes Structure Comparison ===" << std::endl;
-    std::cout << "Reference: " << refPath << " (" << ref.size() << " nodes)" << std::endl;
-    std::cout << "Test:      " << testPath << " (" << test.size() << " nodes)" << std::endl;
-    std::cout << std::endl;
-
+    // 详细输出（--verbose）：显示所有匹配对
     if (verbose)
     {
-        std::cout << "-- verbose: matching pairs shown --" << std::endl;
+        std::cout << "-- verbose: matching pairs shown --\n";
         size_t n = std::min(ref.size(), test.size());
         for (size_t i = 0; i < n; ++i)
         {
-            if (entriesEqual(ref[i], test[i]))
+            if (NodeEntriesEqual(ref[i], test[i]))
             {
                 std::cout << "  [OK]  ref@" << ref[i].lineNum << "  test@" << test[i].lineNum
-                          << "  " << ref[i].type << "  index=" << ref[i].index << "  ["
-                          << ref[i].rawRest << "]" << std::endl;
+                          << "  " << NodeTypeName(ref[i].type) << "  nodeIndex=" << ref[i].nodeIndex
+                          << "  nestLevel=" << ref[i].indent;
+                if (ref[i].type == NodeType::TEXT_NODE)
+                    std::cout << "  text=" << QuoteForDisplay(ref[i].text)
+                              << "  style=" << QuoteForDisplay(ref[i].styleName);
+                if (ref[i].type == NodeType::START_NODE)
+                {
+                    std::cout << "  subType=" << ref[i].startNodeSubType;
+                    if (ref[i].anchorNodeIndex >= 0)
+                        std::cout << "  anchor=" << ref[i].anchorNodeIndex;
+                }
+                if (ref[i].type == NodeType::TABLE_START)
+                    std::cout << "  rows=" << ref[i].tableRows << "  cols=" << ref[i].tableCols;
+                if (!ref[i].refs.empty())
+                    std::cout << "  refs=" << ref[i].refs;
+                std::cout << "\n";
             }
         }
-        std::cout << std::endl;
+        std::cout << "\n";
     }
 
     if (diffs.empty())
     {
-        std::cout << "Result: PASS — 无结构差异。" << std::endl;
+        std::cout << "Result: PASS — 无结构差异。\n";
         return 0;
     }
 
-    std::cout << "Differences: " << diffs.size() << std::endl << std::endl;
+    std::cout << "Differences: " << diffs.size() << "\n\n";
     for (const auto& d : diffs)
     {
-        std::cout << "  [DIFF] ref@" << d.refLine << "(idx=" << d.refIndex << ")"
-                  << "  test@" << d.testLine << "(idx=" << d.testIndex << ")"
-                  << "  " << d.message << std::endl;
+        std::cout << "  [DIFF] ref@" << d.refLine << "  test@" << d.testLine << "  " << d.msg
+                  << "\n";
     }
-    std::cout << std::endl;
-    std::cout << "Result: FAIL — " << diffs.size() << " 处差异。" << std::endl;
+    std::cout << "\nResult: FAIL — " << diffs.size() << " 处差异。\n";
     return 1;
 }
