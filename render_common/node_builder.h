@@ -23,98 +23,98 @@ inline void FillNodeInst(NodeInstruction& inst, NodeCmdType type, int nodeIndex,
 
 // ── StartNode (容器 START) ──
 inline void BuildStartNodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
-                                      int startNodeType, int anchorNodeIndex = -1)
+                                      int startNodeType, int anchorNodeIndex = -1,
+                                      const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::START_NODE, nodeIndex, nestLevel);
     inst.startNodeType = startNodeType;
     inst.anchorNodeIndex = anchorNodeIndex;
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
 // ── EndNode (容器 END) ──
-inline void BuildEndNodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
+inline void BuildEndNodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
+                                    const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::END_NODE, nodeIndex, nestLevel);
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
 // ── TextNode (非容器) ──
 inline void BuildTextNodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
-                                     const char* text, int textLen, const char* styleName)
+                                     const char* text, int textLen, const char* styleName,
+                                     const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::TEXT_NODE, nodeIndex, nestLevel);
     inst.text = text;
     inst.textLen = textLen;
     inst.styleName = styleName;
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
 // ── GrfNode (非容器) ──
-inline void BuildGrfNodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
+inline void BuildGrfNodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
+                                    const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::GRF_NODE, nodeIndex, nestLevel);
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
 // ── OLENode (非容器) ──
-inline void BuildOLENodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
+inline void BuildOLENodeInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
+                                    const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::OLE_NODE, nodeIndex, nestLevel);
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
 // ── TableNode (容器 START/END) ──
 inline void BuildTableStartInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
-                                       int rows, int cols)
+                                       int rows, int cols, const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::TABLE_START, nodeIndex, nestLevel);
     inst.tableRows = rows;
     inst.tableCols = cols;
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildTableEndInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
+inline void BuildTableEndInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
+                                     const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::TABLE_END, nodeIndex, nestLevel);
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
 // ── SectionNode (容器 START/END) ──
-inline void BuildSectionStartInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
+inline void BuildSectionStartInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
+                                         const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::SECTION_START, nodeIndex, nestLevel);
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 
-inline void BuildSectionEndInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
+inline void BuildSectionEndInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
+                                       const char* refs = nullptr)
 {
     NodeInstruction inst;
     FillNodeInst(inst, NodeCmdType::SECTION_END, nodeIndex, nestLevel);
-    rSink.OnInstruction(inst);
-}
-
-// ── AnchorRef (Fly 锚点引用) ──
-inline void BuildAnchorRefStartInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel,
-                                            int flyNodeIndex)
-{
-    NodeInstruction inst;
-    FillNodeInst(inst, NodeCmdType::ANCHOR_REF_START, nodeIndex, nestLevel);
-    inst.flyNodeIndex = flyNodeIndex;
-    rSink.OnInstruction(inst);
-}
-
-inline void BuildAnchorRefEndInstruction(NodeInstructionSink& rSink, int nodeIndex, int nestLevel)
-{
-    NodeInstruction inst;
-    FillNodeInst(inst, NodeCmdType::ANCHOR_REF_END, nodeIndex, nestLevel);
+    inst.refsNodeIndices = refs;
     rSink.OnInstruction(inst);
 }
 

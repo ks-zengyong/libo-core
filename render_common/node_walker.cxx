@@ -7,9 +7,9 @@
  *   容器型节点 (StartNode/TableNode/SectionNode) 输出一对 START/END，
  *   中间递归处理其子节点。
  *
- *   锚点引用展示（两阶段遍历：
- *   阶段 1：收集所有 Fly 节区的 anchor 映射 (anchorNodeIndex -> [flyStartNodeIndex, ...])
- *   阶段 2：正常遍历，在锚点节点处缩进展示引用的 Fly 节区内容
+ *   锚点引用处理（不内联展开，仅在节点行标注 refs=...）：
+ *   阶段 1：收集所有 Fly 节区的 anchor 映射 (anchorNodeIndex -> [flyStartIdx, ...])
+ *   阶段 2：正常遍历，每个节点输出时若有 Fly 引用它，则追加 refs=...
  *
  * 公共模块: render_common/ — sw 和 aproj/docx 共用
  */
@@ -19,6 +19,8 @@
 
 #include <map>
 #include <vector>
+#include <string>
+#include <sstream>
 
 namespace
 {
@@ -27,13 +29,33 @@ namespace
 // 从 startIndex 开始，到 endIndex 结束 (不含 endIndex)
 void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
                    NodeInstructionSink& rSink, int nestLevel,
-                   const std::map<int, std::vector<int>>* pAnchorMap = nullptr)
+                   const std::map<int, std::vector<int>>* pAnchorMap)
 {
     for (int i = startIndex; i < endIndex; ++i)
     {
         INode* pNode = pNodes->GetNode(i);
         if (!pNode)
             continue;
+
+        // 查找当前节点是否被 Fly 节区引用
+        const char* refs = nullptr;
+        std::string refsStr;
+        if (pAnchorMap)
+        {
+            auto it = pAnchorMap->find(pNode->GetIndex());
+            if (it != pAnchorMap->end() && !it->second.empty())
+            {
+                std::ostringstream oss;
+                for (size_t j = 0; j < it->second.size(); ++j)
+                {
+                    if (j > 0)
+                        oss << ",";
+                    oss << it->second[j];
+                }
+                refsStr = oss.str();
+                refs = refsStr.c_str();
+            }
+        }
 
         // 重要：先检查 IsTableNode()，再检查 IsStartNode()
         // 因为 SwTableNode 继承自 SwStartNode，IsStartNode() 使用位掩码判断会返回 true
@@ -42,8 +64,9 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
         {
             // TableNode: 输出 TABLE_START + 递归 + TABLE_END
             int endIdx = pNode->GetEndNodeIndex();
-            BuildTableStartInstruction(rSink, pNode->GetIndex(), nestLevel, pNode->GetTableRows(),
-                                       pNode->GetTableCols());
+            BuildTableStartInstruction(rSink, pNode->GetIndex(), nestLevel,
+                                       pNode->GetTableRows(), pNode->GetTableCols(),
+                                       refs);
 
             // 防御：endIdx 无效（<= i）时跳过递归，避免 i = -1 导致崩溃
             if (endIdx > i + 1)
@@ -66,9 +89,8 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
         {
             // SectionNode: 输出 SECTION_START + 递归 + SECTION_END
             int endIdx = pNode->GetEndNodeIndex();
-            BuildSectionStartInstruction(rSink, pNode->GetIndex(), nestLevel);
+            BuildSectionStartInstruction(rSink, pNode->GetIndex(), nestLevel, refs);
 
-            // 防御：endIdx 无效时跳过递归
             if (endIdx > i + 1)
             {
                 WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1, pAnchorMap);
@@ -91,7 +113,9 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
             // 注意：TableNode 和 SectionNode 已在上面处理，这里只处理普通 StartNode
             int endIdx = pNode->GetEndNodeIndex();
             BuildStartNodeInstruction(rSink, pNode->GetIndex(), nestLevel,
-                                      pNode->GetStartNodeType(), pNode->GetAnchorNodeIndex());
+                                      pNode->GetStartNodeType(),
+                                      pNode->GetAnchorNodeIndex(),
+                                      refs);
 
             // 递归子节点
             if (endIdx > i + 1)
@@ -119,55 +143,22 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
         else if (pNode->IsTextNode())
         {
             BuildTextNodeInstruction(rSink, pNode->GetIndex(), nestLevel, pNode->GetText(),
-                                     pNode->GetTextLen(), pNode->GetStyleName());
+                                     pNode->GetTextLen(), pNode->GetStyleName(), refs);
         }
         else if (pNode->IsGrfNode())
         {
-            BuildGrfNodeInstruction(rSink, pNode->GetIndex(), nestLevel);
+            BuildGrfNodeInstruction(rSink, pNode->GetIndex(), nestLevel, refs);
         }
         else if (pNode->IsOLENode())
         {
-            BuildOLENodeInstruction(rSink, pNode->GetIndex(), nestLevel);
+            BuildOLENodeInstruction(rSink, pNode->GetIndex(), nestLevel, refs);
         }
         else if (pNode->IsEndNode())
         {
             // 孤立的 EndNode (不应出现，但安全处理)
-            BuildEndNodeInstruction(rSink, pNode->GetIndex(), nestLevel);
+            BuildEndNodeInstruction(rSink, pNode->GetIndex(), nestLevel, refs);
         }
         // 其他未知类型: 忽略
-
-        // ── 锚点引用展开：已禁用，Fly 节点按实际位置输出 ──
-        // LO 侧不输出 ANCHOR_REF 标记，Fly 节点直接嵌套在 Normal 节区内
-        // 如需启用锚点引用展开，取消下方注释
-        /*
-        if (pAnchorMap)
-        {
-            auto it = pAnchorMap->find(pNode->GetIndex());
-            if (it != pAnchorMap->end())
-            {
-                // 此节点是 Fly 锚点，缩进展示所有引用的 Fly 节区内容
-                for (int flyStartIdx : it->second)
-                {
-                    INode* pFlyNode = pNodes->GetNode(flyStartIdx);
-                    if (!pFlyNode || !pFlyNode->IsStartNode())
-                        continue;
-
-                    int flyEndIdx = pFlyNode->GetEndNodeIndex();
-                    if (flyEndIdx <= flyStartIdx)
-                        continue;
-
-                    // 输出锚点引用标记和 Fly 节区内容
-                    BuildAnchorRefStartInstruction(rSink, pFlyNode->GetIndex(), nestLevel, flyStartIdx);
-                    if (flyEndIdx > flyStartIdx + 1)
-                    {
-                        WalkNodeRange(pNodes, flyStartIdx + 1, flyEndIdx, rSink,
-                                      nestLevel + 2, nullptr);
-                    }
-                    BuildAnchorRefEndInstruction(rSink, flyEndIdx, nestLevel);
-                }
-            }
-        }
-        */
 
         delete pNode;
     }
@@ -183,8 +174,9 @@ void WalkNodesAndLog(const INodesArray* pNodes, NodeInstructionSink& rSink)
     int bodyStart = pNodes->GetBodyStartIndex();
     int bodyEnd = pNodes->GetBodyEndIndex();
 
-    // ── 阶段 1：收集 Fly anchor 映射
-    // anchorNodeIndex -> [flyStartNodeIndex, ...]
+    // ── 阶段 1：收集 Fly anchor 反向映射
+    //   anchorNodeIndex -> [flyStartNodeIndex, ...]
+    //   含义：哪些 Fly 节区以这个节点为锚点
     std::map<int, std::vector<int>> anchorMap;
 
     for (int i = bodyStart; i < bodyEnd; ++i)
@@ -208,7 +200,7 @@ void WalkNodesAndLog(const INodesArray* pNodes, NodeInstructionSink& rSink)
         delete pNode;
     }
 
-    // ── 阶段 2：正常遍历，在锚点节点处缩进展示引用的 Fly 节区内容
+    // ── 阶段 2：正常遍历（不在锚点处内联展开，仅在节点行追加 refs=...）
     WalkNodeRange(pNodes, bodyStart, bodyEnd, rSink, /*nestLevel=*/0, &anchorMap);
 }
 

@@ -1,5 +1,22 @@
 // 节点结构日志记录器实现 — 使用共享 node_instruction.h 格式
 // 与 LibreOffice 侧 SwNodesLogger 输出完全相同的 TSV 格式
+//
+// 输出结构：
+//   # SwNodes Structure Overview
+//   # Total nodes: N
+//   # BodyStart: N
+//   # BodyEnd: N
+//   (空行)
+//   # All Nodes (including non-Content areas):
+//   # [0] TYPE ...
+//   # [1] TYPE ...
+//   (空行)
+//   # Body Area Nodes (structured):
+//   START_NODE	0	Normal
+//   ... (缩进结构)
+//
+// 锚点引用：如果节点是 Fly anchor（有 Fly 节区引用它），则在该节点下方
+//   缩进展示所有引用的 Fly 节区内容。
 
 #include "nodes_log.h"
 #include "../core/node.h"
@@ -11,6 +28,7 @@
 #include <functional>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <cstring>
 
 //===----------------------------------------------------------------------===//
@@ -35,10 +53,8 @@ public:
         // 与 LO 保持一致
         bool bIsStart = m_pNode && m_pNode->IsStartNode();
         bool bIsTable = m_pNode && m_pNode->IsTableNode();
-        // 调试：如果是 TableNode，输出警告
         if (bIsTable && bIsStart)
         {
-            // TableNode 应该被排除，返回 false
             return false;
         }
         return bIsStart;
@@ -189,6 +205,27 @@ private:
     SwNodes& m_rNodes;
 };
 
+// ── NodeInstructionSink 实现：直接序列化到字符串 ──
+
+class SerializingNodeSink : public NodeInstructionSink
+{
+public:
+    explicit SerializingNodeSink(std::string& content)
+        : m_content(content)
+    {
+    }
+
+    void OnInstruction(const NodeInstruction& inst) override
+    {
+        std::ostringstream oss;
+        WriteNodeInstructionToStream(oss, inst);
+        m_content += oss.str();
+    }
+
+private:
+    std::string& m_content;
+};
+
 } // namespace
 
 //===----------------------------------------------------------------------===//
@@ -199,80 +236,74 @@ NodesLogger::NodesLogger() {}
 
 NodesLogger::~NodesLogger() {}
 
-const char* NodesLogger::StoreString(const char* s)
-{
-    if (!s)
-        return "";
-    try
-    {
-        std::string copy(s);
-        m_aStrings.push_back(copy);
-        return m_aStrings.back().c_str();
-    }
-    catch (...)
-    {
-        return "";
-    }
-}
-
-void NodesLogger::OnInstruction(const NodeInstruction& inst)
-{
-    // 存储字符串副本，避免指针悬空
-    NodeInstruction copy = inst;
-    if (copy.text)
-        copy.text = StoreString(copy.text);
-    if (copy.styleName)
-        copy.styleName = StoreString(copy.styleName);
-
-    m_aInstructions.push_back(copy);
-}
-
 void NodesLogger::LogNodes(SwNodes& rNodes)
 {
     // 创建适配器
     AprojNodesArray nodesArray(rNodes);
 
-    // 诊断输出：检查所有节点
-    std::cerr << "[NodesLogger] Total nodes: " << nodesArray.Count() << std::endl;
-    std::cerr << "[NodesLogger] BodyStart: " << nodesArray.GetBodyStartIndex() << std::endl;
-    std::cerr << "[NodesLogger] BodyEnd: " << nodesArray.GetBodyEndIndex() << std::endl;
+    // 遍历并序列化（与 LO SwNodesLogger::LogNodes 格式完全一致）
+    std::string content;
 
-    // 检查是否有 TableNode
+    // 1. 输出节点数组概览
+    content += "# SwNodes Structure Overview\n";
+    content += "# Total nodes: " + std::to_string(nodesArray.Count()) + "\n";
+    content += "# BodyStart: " + std::to_string(nodesArray.GetBodyStartIndex()) + "\n";
+    content += "# BodyEnd: " + std::to_string(nodesArray.GetBodyEndIndex()) + "\n";
+    content += "\n";
+
+    // 2. 输出所有区域的节点（用于诊断）
+    //    格式：# [idx] TYPE [extra_info]
+    content += "# All Nodes (including non-Content areas):\n";
     for (int i = 0; i < nodesArray.Count(); ++i)
     {
         INode* pNode = nodesArray.GetNode(i);
         if (!pNode)
             continue;
+
+        std::ostringstream oss;
+        oss << "# [" << i << "] ";
+
         if (pNode->IsTableNode())
-        {
-            std::cerr << "[NodesLogger] Found TableNode at index " << i
-                      << " rows=" << pNode->GetTableRows() << " cols=" << pNode->GetTableCols()
-                      << std::endl;
-        }
+            oss << "TABLE_NODE rows=" << pNode->GetTableRows() << " cols=" << pNode->GetTableCols();
+        else if (pNode->IsStartNode())
+            oss << "START_NODE type=" << pNode->GetStartNodeType();
+        else if (pNode->IsEndNode())
+            oss << "END_NODE";
+        else if (pNode->IsTextNode())
+            oss << "TEXT_NODE";
+        else if (pNode->IsGrfNode())
+            oss << "GRF_NODE";
+        else if (pNode->IsOLENode())
+            oss << "OLE_NODE";
+        else if (pNode->IsSectionNode())
+            oss << "SECTION_NODE";
+        else
+            oss << "UNKNOWN";
+
+        oss << "\n";
+        content += oss.str();
         delete pNode;
     }
+    content += "\n";
 
-    // 使用共享遍历器
-    WalkNodesAndLog(&nodesArray, *this);
+    // 3. 输出 Body 区域的节点结构（缩进形式，支持锚点引用展开）
+    content += "# Body Area Nodes (structured):\n";
+    SerializingNodeSink sink(content);
+    WalkNodesAndLog(&nodesArray, sink);
+
+    m_aOutput = content;
 }
 
 void NodesLogger::WriteToFile(const std::string& filePath)
 {
-    std::cerr << "[NodesLogger] Writing to: " << filePath << std::endl;
-    std::cerr << "[NodesLogger] Instructions count: " << m_aInstructions.size() << std::endl;
-
-    std::ofstream file(filePath);
+    std::ofstream file(filePath, std::ios::out | std::ios::binary);
     if (!file.is_open())
     {
         std::cerr << "[NodesLogger] ERROR: Failed to open file: " << filePath << std::endl;
         return;
     }
 
-    for (const auto& inst : m_aInstructions)
-    {
-        WriteNodeInstructionToStream(file, inst);
-    }
-
+    file << m_aOutput;
+    file.flush();
     file.close();
-    std::cerr << "[NodesLogger] File written successfully" << std::endl;
 }

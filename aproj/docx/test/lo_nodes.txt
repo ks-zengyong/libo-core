@@ -336,7 +336,7 @@ END_NODE	114
 START_NODE	115	Normal
 END_NODE	116
 START_NODE	117	Normal
-  TEXT_NODE	118	""	Default Paragraph Style
+  TEXT_NODE	118	""	Default Paragraph Style	refs=5
   TEXT_NODE	119	"WPS Office®"	Body Text
   TEXT_NODE	120	""	Body Text
   TEXT_NODE	121	"Welcome to WPS Office - Writer"	Default Paragraph Style
@@ -354,7 +354,7 @@ START_NODE	117	Normal
   TEXT_NODE	133	""	Body Text
   TEXT_NODE	134	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Body Text
   TEXT_NODE	135	""	Body Text
-  TEXT_NODE	136	""	Body Text
+  TEXT_NODE	136	""	Body Text	refs=8
   TEXT_NODE	137	""	Body Text
   TEXT_NODE	138	""	Body Text
   TEXT_NODE	139	""	Body Text
@@ -377,7 +377,7 @@ START_NODE	117	Normal
     TEXT_NODE	156	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Default Paragraph Style
     TEXT_NODE	157	""	Default Paragraph Style
     TEXT_NODE	158	""	Default Paragraph Style
-    TEXT_NODE	159	""	Default Paragraph Style
+    TEXT_NODE	159	""	Default Paragraph Style	refs=18
     TEXT_NODE	160	""	Default Paragraph Style
     TEXT_NODE	161	""	Default Paragraph Style
     TEXT_NODE	162	""	Default Paragraph Style
@@ -392,7 +392,7 @@ START_NODE	117	Normal
     TEXT_NODE	171	""	Default Paragraph Style
     TEXT_NODE	172	""	Default Paragraph Style
     TEXT_NODE	173	""	Default Paragraph Style
-    TEXT_NODE	174	""	Default Paragraph Style
+    TEXT_NODE	174	""	Default Paragraph Style	refs=21
     TEXT_NODE	175	""	Default Paragraph Style
     TEXT_NODE	176	""	Default Paragraph Style
     TEXT_NODE	177	""	Default Paragraph Style
@@ -404,7 +404,7 @@ START_NODE	117	Normal
     TEXT_NODE	183	"\nFormat Conversion"	Default Paragraph Style
     TEXT_NODE	184	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Default Paragraph Style
     TEXT_NODE	185	"Effortlessly batch convert multiple files."	Default Paragraph Style
-    TEXT_NODE	186	""	Default Paragraph Style
+    TEXT_NODE	186	""	Default Paragraph Style	refs=24
   SECTION_END	187
   SECTION_START	188
     TEXT_NODE	189	"Editing and typesetting"	Default Paragraph Style
@@ -426,7 +426,7 @@ START_NODE	117	Normal
     TEXT_NODE	205	" "	Default Paragraph Style
     TEXT_NODE	206	""	Default Paragraph Style
     TEXT_NODE	207	"More Popular features"	Default Paragraph Style
-    TEXT_NODE	208	""	Default Paragraph Style
+    TEXT_NODE	208	""	Default Paragraph Style	refs=39
   SECTION_END	209
-  TEXT_NODE	210	""	Default Paragraph Style
+  TEXT_NODE	210	""	Default Paragraph Style	refs=103,107,111
 END_NODE	211

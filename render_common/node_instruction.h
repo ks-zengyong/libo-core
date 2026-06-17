@@ -36,11 +36,6 @@ enum class NodeCmdType : uint8_t
     // ── 节节点 (容器) ──
     SECTION_START = 30, // SwSectionNode (容器 START)
     SECTION_END = 31, // SwSectionNode (容器 END)
-
-    // ── 锚点引用 (容器) ──
-    // Fly 节区引用，在锚点节点处缩进展示 Fly 节区内容
-    ANCHOR_REF_START = 40, // 锚点引用 START
-    ANCHOR_REF_END = 41, // 锚点引用 END
 };
 
 // 辅助判断：某指令类型是否是"容器型 END"
@@ -51,7 +46,6 @@ inline bool IsNodeContainerEnd(NodeCmdType t)
         case NodeCmdType::END_NODE:
         case NodeCmdType::TABLE_END:
         case NodeCmdType::SECTION_END:
-        case NodeCmdType::ANCHOR_REF_END:
             return true;
         default:
             return false;
@@ -82,12 +76,18 @@ struct NodeInstruction
     // 表示 Fly 节区锚点所在的文本节点索引，-1 表示无锚点或非 Fly
     int anchorNodeIndex;
 
-    // 锚点引用的 Fly 节点索引 (仅 ANCHOR_REF_START 有效)
-    // 表示此锚点引用对应的 Fly 节区 StartNode 索引
-    int flyNodeIndex;
+    // 反向引用：被哪些 Fly 节区引用 (任何节点类型都可能有效)
+    // 逗号分隔的节点索引列表，例如 "5,8,39"，nullptr 表示无引用
+    // 这是锚点引用的反向映射，便于在锚点节点处看到所有引用它的 Fly
+    const char* refsNodeIndices;
 
     // 清零初始化辅助
-    void clear() { memset(this, 0, sizeof(*this)); anchorNodeIndex = -1; flyNodeIndex = -1; }
+    void clear()
+    {
+        memset(this, 0, sizeof(*this));
+        anchorNodeIndex = -1;
+        refsNodeIndices = nullptr;
+    }
 };
 
 // 指令接收接口 (纯虚类)
@@ -121,10 +121,6 @@ inline const char* NodeCmdTypeName(NodeCmdType t)
             return "SECTION_START";
         case NodeCmdType::SECTION_END:
             return "SECTION_END";
-        case NodeCmdType::ANCHOR_REF_START:
-            return "ANCHOR_REF_START";
-        case NodeCmdType::ANCHOR_REF_END:
-            return "ANCHOR_REF_END";
         default:
             return "UNKNOWN";
     }

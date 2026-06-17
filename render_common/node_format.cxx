@@ -110,22 +110,18 @@ void WriteNodeInstructionToStream(std::ostream& out, const NodeInstruction& inst
             out << "\t" << inst.nodeIndex;
             break;
 
-        case NodeCmdType::ANCHOR_REF_START:
-            // ANCHOR_REF_START <nodeIndex> (flyNodeIndex=X)
-            out << "\t" << inst.nodeIndex << "\t(flyNodeIndex=" << inst.flyNodeIndex << ")";
-            break;
-
-        case NodeCmdType::ANCHOR_REF_END:
-            // ANCHOR_REF_END <nodeIndex>
-            out << "\t" << inst.nodeIndex;
-            break;
-
         default:
             out << "\t" << inst.nodeIndex;
             break;
     }
 
-    // 3) 行尾
+    // 3) refs=...: 此节点被哪些 Fly 节区引用（锚点引用反向映射）
+    if (inst.refsNodeIndices != nullptr && inst.refsNodeIndices[0] != '\0')
+    {
+        out << "\trefs=" << inst.refsNodeIndices;
+    }
+
+    // 4) 行尾
     out << "\n";
 }
 

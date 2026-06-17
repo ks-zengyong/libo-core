@@ -5,227 +5,231 @@ SET_TEXT_COLOR	1	0
 SET_FONT	1	Arial	22	144	0
 SET_TEXT_COLOR	1	0
 TEXT_RUN	1	284	1680	0	0	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	4056	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	4536	0	0	"Free ALL-IN-ONE Office Suite"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	4776	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	5256	0	0	"WPS Office®"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	5736	0	0	"Welcome to WPS Office - Writer"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	5976	0	0	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	6936	0	0	"Switch tabs to find different commands to process your document."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	7176	0	0	"Share your documents with others."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	7416	0	0	"Find all of Writer's commands."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	7656	0	0	"Search the Help center for answers when you get stuck."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	7896	0	0	"Quickly switch views and adjust the scale of the page display."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	8376	0	0	"Count the number of words and pages in your document in real time."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	8856	0	0	"WPS AI+Writer"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	9336	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	11496	0	0	"to help you write and understand your Word document"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	11976	0	0	"WPS AI-generated content"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	12216	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	13416	0	0	"WPS AI-based content rewriting"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	13656	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Arial	22	0	144	0	0	0	
 PAGE_START	2	11906	16838
 PAGE_END	2
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	18758	0	0	"For all your document process needs"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	19238	0	0	"Restrict Editing"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	19478	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	19718	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	22838	0	0	"Co-Edit with Others"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	23078	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	26678	0	0	"Format Conversion"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	26918	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	27158	0	0	"Effortlessly batch convert multiple files."	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	27398	0	0	"Editing and typesetting"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	27638	0	0	"Find and Replace"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	27878	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.Click on Home > Find and Replace, with the shortcut key being Ctrl+F."	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	29078	0	0	"Efficient Word Typesetting"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	29318	0	0	"Using WPS saves time on document layout and leaves more room for creativity. Click on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	30518	0	0	"Spell Check"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	30758	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. Click on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Arial	22	0	144	0	0	0	
 PAGE_START	3	11906	16838
 PAGE_END	3
 SET_FONT	3	Arial	22	144	0
 SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	35116	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Arial	22	0	144	0	0	0	
 SET_FONT	3	Arial	22	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Arial	22	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	284	35596	0	0	"Track Changes"	Arial	22	0	144	0	0	0	
+TEXT_RUN	3	284	35596	0	0	"Free ALL-IN-ONE Office Suite"	Arial	22	0	144	0	0	0	
 SET_FONT	3	Arial	22	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	284	35836	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. You can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. Additionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Arial	22	0	144	0	0	0	
-SET_FONT	3	Arial	22	144	0
-SET_TEXT_COLOR	3	0
-SET_FONT	3	Arial	22	144	0
-SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	35836	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Arial	22	0	144	0	0	0	
 SET_FONT	3	Arial	22	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Arial	22	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	284	37516	0	0	"More Popular features"	Arial	22	0	144	0	0	0	
+TEXT_RUN	3	284	37756	0	0	"WPS Office®"	Arial	22	0	144	0	0	0	
 SET_FONT	3	Arial	22	144	0
 SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	38236	0	0	"Welcome to WPS Office - Writer"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	38476	0	0	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	39436	0	0	"Switch tabs to find different commands to process your document."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	39676	0	0	"Share your documents with others."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	39916	0	0	"Find all of Writer's commands."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	40156	0	0	"Search the Help center for answers when you get stuck."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	40396	0	0	"Quickly switch views and adjust the scale of the page display."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	40876	0	0	"Count the number of words and pages in your document in real time."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	41356	0	0	"WPS AI+Writer"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	41836	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	43996	0	0	"to help you write and understand your Word document"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	44476	0	0	"WPS AI-generated content"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	44716	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	45916	0	0	"WPS AI-based content rewriting"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	46156	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	47356	0	0	"For all your document process needs"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+PAGE_START	4	11906	16838
+PAGE_END	4
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	51954	0	0	"Restrict Editing"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	52194	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	52434	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	55554	0	0	"Co-Edit with Others"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	55794	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	59394	0	0	"Format Conversion"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	59634	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	59874	0	0	"Effortlessly batch convert multiple files."	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	60114	0	0	"Editing and typesetting"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	60354	0	0	"Find and Replace"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	60594	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.Click on Home > Find and Replace, with the shortcut key being Ctrl+F."	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	61794	0	0	"Efficient Word Typesetting"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	62034	0	0	"Using WPS saves time on document layout and leaves more room for creativity. Click on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	63234	0	0	"Spell Check"	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	284	63474	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. Click on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Arial	22	0	144	0	0	0	
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Arial	22	144	0
+SET_TEXT_COLOR	4	0
+PAGE_START	5	11906	16838
+PAGE_END	5
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	284	68792	0	0	"Track Changes"	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	284	69032	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. You can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. Additionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	284	70712	0	0	"More Popular features"	Arial	22	0	144	0	0	0	
+SET_FONT	5	Arial	22	144	0
+SET_TEXT_COLOR	5	0
