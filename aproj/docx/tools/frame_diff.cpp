@@ -1,0 +1,1396 @@
+// frame_diff.cpp — Frame 结构差异对比工具
+// 对比 LibreOffice 与 aproj/docx 的 frame/vcl 渲染指令输出
+//
+// 支持多种对齐算法，解决逐行对比无法处理插入/删除的问题。
+// 精确对比，不支持容差。
+//
+// 用法:
+//   frame_diff <ref.txt> <test.txt>                    逐行对比（默认）
+//   frame_diff <ref.txt> <test.txt> --algo=lcs         LCS 算法对比
+//   frame_diff <ref.txt> <test.txt> --algo=myers       Myers Diff 算法对比
+//   frame_diff <ref.txt> <test.txt> --algo=needleman   Needleman-Wunsch 算法对比
+//   frame_diff <ref.txt> <test.txt> --all              输出所有算法结果
+//   frame_diff <ref.txt> <test.txt> --verbose          同时显示匹配项
+//
+//   frame_diff frame                   快捷: 对比 test/lo_frame.txt vs test/aproj_frame.txt
+//   frame_diff vcl                     快捷: 对比 test/lo_vcl.txt vs test/aproj_vcl.txt
+//
+// 编译: cmake --build build
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+
+#include "../../../render_common/render_instruction.h"
+
+#ifdef _WIN32
+#define NOMINMAX
+#include <windows.h>
+#else
+#include <unistd.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+#endif
+
+// ── Get executable directory ──
+static std::string getExeDir()
+{
+    std::string exePath;
+#ifdef _WIN32
+    char buf[MAX_PATH];
+    DWORD len = GetModuleFileNameA(nullptr, buf, sizeof(buf));
+    if (len > 0)
+        exePath.assign(buf, len);
+#else
+    char buf[4096];
+#ifdef __APPLE__
+    uint32_t size = sizeof(buf);
+    if (_NSGetExecutablePath(buf, &size) == 0)
+        exePath = buf;
+#else
+    ssize_t len = readlink("/proc/self/exe", buf, sizeof(buf) - 1);
+    if (len > 0)
+        exePath.assign(buf, len);
+#endif
+#endif
+    auto pos = exePath.find_last_of("/\\");
+    if (pos != std::string::npos)
+        return exePath.substr(0, pos + 1);
+    return "";
+}
+
+// ── 工具函数 ──
+
+static std::string trim(const std::string& s)
+{
+    size_t a = 0, b = s.size();
+    while (a < b && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r'))
+        a++;
+    while (b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r'))
+        b--;
+    return s.substr(a, b - a);
+}
+
+static int parseInt(const std::string& s)
+{
+    try
+    {
+        return std::stoi(s);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+static uint32_t parseHex(const std::string& s)
+{
+    try
+    {
+        return static_cast<uint32_t>(std::stoul(s, nullptr, 16));
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+// ── 转义处理（与 render_format.cxx 中 EscapeForTsv 反向）──
+
+static std::string UnescapeForTsv(const std::string& raw)
+{
+    std::string out;
+    out.reserve(raw.size());
+    for (size_t i = 0; i < raw.size(); ++i)
+    {
+        if (raw[i] == '\\' && i + 1 < raw.size())
+        {
+            switch (raw[i + 1])
+            {
+                case 'n':
+                    out += '\n';
+                    i++;
+                    break;
+                case 't':
+                    out += '\t';
+                    i++;
+                    break;
+                case '"':
+                    out += '"';
+                    i++;
+                    break;
+                case 'r':
+                    out += '\r';
+                    i++;
+                    break;
+                case '\\':
+                    out += '\\';
+                    i++;
+                    break;
+                default:
+                    out += raw[i];
+                    break;
+            }
+        }
+        else
+        {
+            out += raw[i];
+        }
+    }
+    return out;
+}
+
+// ── Tokenize（处理引号字段，参考 node_diff.cpp）──
+
+static std::vector<std::string> TokenizeLine(const std::string& content)
+{
+    std::vector<std::string> tokens;
+    size_t i = 0;
+    const size_t n = content.size();
+
+    while (i < n)
+    {
+        // 跳过前导空白
+        while (i < n && content[i] == ' ')
+            i++;
+        if (i >= n)
+            break;
+
+        if (content[i] == '"')
+        {
+            // 引号 token：寻找结束引号（考虑转义）
+            size_t k = i + 1;
+            std::string raw;
+            while (k < n)
+            {
+                if (content[k] == '\\' && k + 1 < n)
+                {
+                    raw += content[k];
+                    raw += content[k + 1];
+                    k += 2;
+                    continue;
+                }
+                if (content[k] == '"')
+                {
+                    k++;
+                    break;
+                }
+                raw += content[k];
+                k++;
+            }
+            tokens.push_back(UnescapeForTsv(raw));
+            // 跳过 tab 分隔符
+            if (k < n && content[k] == '\t')
+                i = k + 1;
+            else
+                i = k;
+        }
+        else
+        {
+            // 普通 token：读到下一个 \t
+            size_t j = content.find('\t', i);
+            if (j == std::string::npos)
+            {
+                tokens.push_back(trim(content.substr(i)));
+                i = n;
+            }
+            else
+            {
+                tokens.push_back(trim(content.substr(i, j - i)));
+                i = j + 1;
+            }
+        }
+    }
+
+    return tokens;
+}
+
+// ── FrameEntry：统一的帧条目 ──
+
+struct FrameEntry
+{
+    int lineNum = 0; // 源文件行号
+    int indent = 0; // 缩进层级（= 前导空格数 / 2）
+    RenderCmdType type = RenderCmdType::UNKNOWN;
+
+    // 几何
+    int pageNum = 0;
+    int x = 0, y = 0, width = 0, height = 0;
+
+    // 文本相关
+    std::string text;
+    std::string fontName;
+    int fontSize = 0;
+    uint32_t fontColor = 0;
+    int fontWeight = 400;
+    int fontItalic = 0;
+    int underline = 0;
+    int strikeout = 0;
+    std::string styleName;
+
+    // 状态变更
+    int color = 0; // SET_TEXT_COLOR / SET_FILL_COLOR / SET_LINE_COLOR
+};
+
+// ── 解析一行 ──
+
+static bool ParseFrameEntry(const std::string& line, int lineNum, FrameEntry& out)
+{
+    out.lineNum = lineNum;
+
+    // 计算前导空格缩进（2 空格 = 1 level）
+    size_t spaces = 0;
+    while (spaces < line.size() && line[spaces] == ' ')
+        spaces++;
+    out.indent = static_cast<int>(spaces / 2);
+
+    std::string content = (spaces < line.size()) ? line.substr(spaces) : std::string();
+    if (content.empty())
+        return false;
+
+    auto tokens = TokenizeLine(content);
+    if (tokens.empty())
+        return false;
+
+    out.type = RenderCmdTypeFromName(tokens[0].c_str());
+    if (out.type == RenderCmdType::UNKNOWN)
+        return false;
+
+    // PAGE_START: TYPE pageNum width height
+    if (out.type == RenderCmdType::PAGE_START)
+    {
+        if (tokens.size() >= 2)
+            out.pageNum = parseInt(tokens[1]);
+        if (tokens.size() >= 3)
+            out.width = parseInt(tokens[2]);
+        if (tokens.size() >= 4)
+            out.height = parseInt(tokens[3]);
+    }
+    // PAGE_END / SET_CLIP_REGION / PUSH / POP: TYPE pageNum
+    else if (out.type == RenderCmdType::PAGE_END || out.type == RenderCmdType::SET_CLIP_REGION
+             || out.type == RenderCmdType::PUSH || out.type == RenderCmdType::POP)
+    {
+        if (tokens.size() >= 2)
+            out.pageNum = parseInt(tokens[1]);
+    }
+    // TEXT_FRAME / TEXT_LINE / TEXT_RUN: TYPE pageNum x y w h "text" fontName fontSize fontColor fontWeight fontItalic underline strikeout styleName
+    else if (out.type == RenderCmdType::TEXT_FRAME || out.type == RenderCmdType::TEXT_LINE
+             || out.type == RenderCmdType::TEXT_RUN)
+    {
+        if (tokens.size() >= 2)
+            out.pageNum = parseInt(tokens[1]);
+        if (tokens.size() >= 3)
+            out.x = parseInt(tokens[2]);
+        if (tokens.size() >= 4)
+            out.y = parseInt(tokens[3]);
+        if (tokens.size() >= 5)
+            out.width = parseInt(tokens[4]);
+        if (tokens.size() >= 6)
+            out.height = parseInt(tokens[5]);
+        if (tokens.size() >= 7)
+            out.text = tokens[6]; // 已由 TokenizeLine 解转义
+        if (tokens.size() >= 8)
+            out.fontName = tokens[7];
+        if (tokens.size() >= 9)
+            out.fontSize = parseInt(tokens[8]);
+        if (tokens.size() >= 10)
+            out.fontColor = static_cast<uint32_t>(parseInt(tokens[9]));
+        if (tokens.size() >= 11)
+            out.fontWeight = parseInt(tokens[10]);
+        if (tokens.size() >= 12)
+            out.fontItalic = parseInt(tokens[11]);
+        if (tokens.size() >= 13)
+            out.underline = parseInt(tokens[12]);
+        if (tokens.size() >= 14)
+            out.strikeout = parseInt(tokens[13]);
+        if (tokens.size() >= 15)
+            out.styleName = tokens[14];
+    }
+    // SET_FONT: TYPE pageNum fontName fontSize fontWeight fontItalic
+    else if (out.type == RenderCmdType::SET_FONT)
+    {
+        if (tokens.size() >= 2)
+            out.pageNum = parseInt(tokens[1]);
+        if (tokens.size() >= 3)
+            out.fontName = tokens[2];
+        if (tokens.size() >= 4)
+            out.fontSize = parseInt(tokens[3]);
+        if (tokens.size() >= 5)
+            out.fontWeight = parseInt(tokens[4]);
+        if (tokens.size() >= 6)
+            out.fontItalic = parseInt(tokens[5]);
+    }
+    // SET_TEXT_COLOR / SET_FILL_COLOR / SET_LINE_COLOR: TYPE pageNum color
+    else if (out.type == RenderCmdType::SET_TEXT_COLOR || out.type == RenderCmdType::SET_FILL_COLOR
+             || out.type == RenderCmdType::SET_LINE_COLOR)
+    {
+        if (tokens.size() >= 2)
+            out.pageNum = parseInt(tokens[1]);
+        if (tokens.size() >= 3)
+            out.color = parseInt(tokens[2]);
+    }
+    // LINE / POLYLINE: TYPE pageNum x1 y1 x2 y2
+    else if (out.type == RenderCmdType::LINE || out.type == RenderCmdType::POLYLINE)
+    {
+        if (tokens.size() >= 2)
+            out.pageNum = parseInt(tokens[1]);
+        if (tokens.size() >= 3)
+            out.x = parseInt(tokens[2]);
+        if (tokens.size() >= 4)
+            out.y = parseInt(tokens[3]);
+        if (tokens.size() >= 5)
+            out.width = parseInt(tokens[4]); // x2
+        if (tokens.size() >= 6)
+            out.height = parseInt(tokens[5]); // y2
+    }
+    // 容器型 START / IMAGE / RECT 等: TYPE pageNum x y w h
+    else
+    {
+        if (tokens.size() >= 2)
+            out.pageNum = parseInt(tokens[1]);
+        if (tokens.size() >= 3)
+            out.x = parseInt(tokens[2]);
+        if (tokens.size() >= 4)
+            out.y = parseInt(tokens[3]);
+        if (tokens.size() >= 5)
+            out.width = parseInt(tokens[4]);
+        if (tokens.size() >= 6)
+            out.height = parseInt(tokens[5]);
+    }
+
+    return true;
+}
+
+// ── 文件解析 ──
+
+static std::vector<FrameEntry> ParseFrameFile(const std::string& path, std::string& outError)
+{
+    std::vector<FrameEntry> entries;
+    std::ifstream f(path);
+    if (!f.is_open())
+    {
+        outError = "Cannot open file: " + path;
+        return entries;
+    }
+
+    std::string line;
+    int lineNum = 0;
+    while (std::getline(f, line))
+    {
+        lineNum++;
+        if (!line.empty() && line.back() == '\r')
+            line.pop_back();
+        if (trim(line).empty())
+            continue;
+
+        FrameEntry e;
+        if (ParseFrameEntry(line, lineNum, e))
+            entries.push_back(e);
+    }
+
+    if (entries.empty())
+        outError = "No valid frame entries found in file: " + path;
+    return entries;
+}
+
+// ── 对比两个 FrameEntry ──
+
+static bool FrameEntriesEqual(const FrameEntry& a, const FrameEntry& b)
+{
+    if (a.type != b.type)
+        return false;
+    if (a.indent != b.indent)
+        return false;
+    if (a.pageNum != b.pageNum)
+        return false;
+
+    // PAGE_START
+    if (a.type == RenderCmdType::PAGE_START)
+    {
+        return a.width == b.width && a.height == b.height;
+    }
+
+    // PAGE_END / SET_CLIP_REGION / PUSH / POP — 只有 pageNum
+    if (a.type == RenderCmdType::PAGE_END || a.type == RenderCmdType::SET_CLIP_REGION
+        || a.type == RenderCmdType::PUSH || a.type == RenderCmdType::POP)
+    {
+        return true; // pageNum 已比较
+    }
+
+    // TEXT_FRAME / TEXT_LINE / TEXT_RUN
+    if (a.type == RenderCmdType::TEXT_FRAME || a.type == RenderCmdType::TEXT_LINE
+        || a.type == RenderCmdType::TEXT_RUN)
+    {
+        return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height
+               && a.text == b.text && a.fontName == b.fontName && a.fontSize == b.fontSize
+               && a.fontColor == b.fontColor && a.fontWeight == b.fontWeight
+               && a.fontItalic == b.fontItalic && a.underline == b.underline
+               && a.strikeout == b.strikeout && a.styleName == b.styleName;
+    }
+
+    // SET_FONT
+    if (a.type == RenderCmdType::SET_FONT)
+    {
+        return a.fontName == b.fontName && a.fontSize == b.fontSize && a.fontWeight == b.fontWeight
+               && a.fontItalic == b.fontItalic;
+    }
+
+    // SET_TEXT_COLOR / SET_FILL_COLOR / SET_LINE_COLOR
+    if (a.type == RenderCmdType::SET_TEXT_COLOR || a.type == RenderCmdType::SET_FILL_COLOR
+        || a.type == RenderCmdType::SET_LINE_COLOR)
+    {
+        return a.color == b.color;
+    }
+
+    // LINE / POLYLINE
+    if (a.type == RenderCmdType::LINE || a.type == RenderCmdType::POLYLINE)
+    {
+        return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
+    }
+
+    // 其他（容器 START / IMAGE / RECT 等）
+    return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
+}
+
+// ── 差异描述 ──
+
+struct DiffMessage
+{
+    int refLine;
+    int testLine;
+    std::string msg;
+};
+
+static std::string QuoteForDisplay(const std::string& s)
+{
+    std::string out;
+    out.reserve(s.size() + 2);
+    for (char c : s)
+    {
+        switch (c)
+        {
+            case '\n':
+                out += "\\n";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '"':
+                out += "\\\"";
+                break;
+            default:
+                out += c;
+                break;
+        }
+    }
+    return "\"" + out + "\"";
+}
+
+static std::string CollectFieldDiffs(const FrameEntry& ref, const FrameEntry& test)
+{
+    std::string msg;
+
+    auto addLine = [&](const std::string& field, const std::string& rv, const std::string& tv) {
+        if (!msg.empty())
+            msg += " | ";
+        msg += field + ": ref=" + rv + " test=" + tv;
+    };
+
+    if (ref.type != test.type)
+        addLine("type", RenderCmdTypeName(ref.type), RenderCmdTypeName(test.type));
+    if (ref.pageNum != test.pageNum)
+        addLine("pageNum", std::to_string(ref.pageNum), std::to_string(test.pageNum));
+    if (ref.indent != test.indent)
+        addLine("nestLevel", std::to_string(ref.indent), std::to_string(test.indent));
+
+    // PAGE_START
+    if (ref.type == RenderCmdType::PAGE_START)
+    {
+        if (ref.width != test.width)
+            addLine("width", std::to_string(ref.width), std::to_string(test.width));
+        if (ref.height != test.height)
+            addLine("height", std::to_string(ref.height), std::to_string(test.height));
+        return msg;
+    }
+
+    // TEXT_FRAME / TEXT_LINE / TEXT_RUN
+    if (ref.type == RenderCmdType::TEXT_FRAME || ref.type == RenderCmdType::TEXT_LINE
+        || ref.type == RenderCmdType::TEXT_RUN)
+    {
+        if (ref.x != test.x)
+            addLine("x", std::to_string(ref.x), std::to_string(test.x));
+        if (ref.y != test.y)
+            addLine("y", std::to_string(ref.y), std::to_string(test.y));
+        if (ref.width != test.width)
+            addLine("width", std::to_string(ref.width), std::to_string(test.width));
+        if (ref.height != test.height)
+            addLine("height", std::to_string(ref.height), std::to_string(test.height));
+        if (ref.text != test.text)
+            addLine("text", QuoteForDisplay(ref.text), QuoteForDisplay(test.text));
+        if (ref.fontName != test.fontName)
+            addLine("fontName", QuoteForDisplay(ref.fontName), QuoteForDisplay(test.fontName));
+        if (ref.fontSize != test.fontSize)
+            addLine("fontSize", std::to_string(ref.fontSize), std::to_string(test.fontSize));
+        if (ref.fontColor != test.fontColor)
+            addLine("fontColor", std::to_string(ref.fontColor), std::to_string(test.fontColor));
+        if (ref.fontWeight != test.fontWeight)
+            addLine("fontWeight", std::to_string(ref.fontWeight), std::to_string(test.fontWeight));
+        if (ref.fontItalic != test.fontItalic)
+            addLine("fontItalic", std::to_string(ref.fontItalic), std::to_string(test.fontItalic));
+        if (ref.underline != test.underline)
+            addLine("underline", std::to_string(ref.underline), std::to_string(test.underline));
+        if (ref.strikeout != test.strikeout)
+            addLine("strikeout", std::to_string(ref.strikeout), std::to_string(test.strikeout));
+        if (ref.styleName != test.styleName)
+            addLine("styleName", QuoteForDisplay(ref.styleName), QuoteForDisplay(test.styleName));
+        return msg;
+    }
+
+    // SET_FONT
+    if (ref.type == RenderCmdType::SET_FONT)
+    {
+        if (ref.fontName != test.fontName)
+            addLine("fontName", QuoteForDisplay(ref.fontName), QuoteForDisplay(test.fontName));
+        if (ref.fontSize != test.fontSize)
+            addLine("fontSize", std::to_string(ref.fontSize), std::to_string(test.fontSize));
+        if (ref.fontWeight != test.fontWeight)
+            addLine("fontWeight", std::to_string(ref.fontWeight), std::to_string(test.fontWeight));
+        if (ref.fontItalic != test.fontItalic)
+            addLine("fontItalic", std::to_string(ref.fontItalic), std::to_string(test.fontItalic));
+        return msg;
+    }
+
+    // SET_TEXT_COLOR / SET_FILL_COLOR / SET_LINE_COLOR
+    if (ref.type == RenderCmdType::SET_TEXT_COLOR || ref.type == RenderCmdType::SET_FILL_COLOR
+        || ref.type == RenderCmdType::SET_LINE_COLOR)
+    {
+        if (ref.color != test.color)
+            addLine("color", std::to_string(ref.color), std::to_string(test.color));
+        return msg;
+    }
+
+    // 通用几何字段
+    if (ref.x != test.x)
+        addLine("x", std::to_string(ref.x), std::to_string(test.x));
+    if (ref.y != test.y)
+        addLine("y", std::to_string(ref.y), std::to_string(test.y));
+    if (ref.width != test.width)
+        addLine("width", std::to_string(ref.width), std::to_string(test.width));
+    if (ref.height != test.height)
+        addLine("height", std::to_string(ref.height), std::to_string(test.height));
+
+    return msg;
+}
+
+// ── 简短描述 ──
+
+static std::string EntryToShortDesc(const FrameEntry& e)
+{
+    std::ostringstream oss;
+    oss << RenderCmdTypeName(e.type) << " pg=" << e.pageNum << " lvl=" << e.indent;
+    if (e.type == RenderCmdType::TEXT_FRAME || e.type == RenderCmdType::TEXT_LINE
+        || e.type == RenderCmdType::TEXT_RUN)
+    {
+        oss << " pos=(" << e.x << "," << e.y << ") size=(" << e.width << "," << e.height << ")";
+        oss << " text=" << QuoteForDisplay(e.text);
+        if (!e.fontName.empty())
+            oss << " font=" << QuoteForDisplay(e.fontName) << " sz=" << e.fontSize;
+    }
+    else if (e.type == RenderCmdType::PAGE_START)
+    {
+        oss << " size=(" << e.width << "," << e.height << ")";
+    }
+    else if (e.type == RenderCmdType::SET_FONT)
+    {
+        oss << " font=" << QuoteForDisplay(e.fontName) << " sz=" << e.fontSize;
+    }
+    else
+    {
+        oss << " pos=(" << e.x << "," << e.y << ") size=(" << e.width << "," << e.height << ")";
+    }
+    return oss.str();
+}
+
+// ── Diff 操作类型 ──
+
+enum class DiffOp
+{
+    OP_EQUAL,
+    OP_INSERT, // test 中新增
+    OP_DELETE, // ref 中删除
+    OP_CHANGE // 字段修改
+};
+
+struct DiffResult
+{
+    DiffOp op;
+    const FrameEntry* refEntry;
+    const FrameEntry* testEntry;
+    int refIdx;
+    int testIdx;
+    std::string description;
+};
+
+static const char* DiffOpName(DiffOp op)
+{
+    switch (op)
+    {
+        case DiffOp::OP_EQUAL:
+            return "EQUAL";
+        case DiffOp::OP_INSERT:
+            return "INSERT";
+        case DiffOp::OP_DELETE:
+            return "DELETE";
+        case DiffOp::OP_CHANGE:
+            return "CHANGE";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+// ── 算法 1: LCS (最长公共子序列) ──
+
+static std::vector<DiffResult> ComputeLcsDiff(const std::vector<FrameEntry>& ref,
+                                              const std::vector<FrameEntry>& test)
+{
+    size_t m = ref.size();
+    size_t n = test.size();
+
+    std::vector<std::vector<size_t>> dp(m + 1, std::vector<size_t>(n + 1, 0));
+
+    for (size_t i = 1; i <= m; ++i)
+    {
+        for (size_t j = 1; j <= n; ++j)
+        {
+            if (FrameEntriesEqual(ref[i - 1], test[j - 1]))
+                dp[i][j] = dp[i - 1][j - 1] + 1;
+            else
+                dp[i][j] = std::max(dp[i - 1][j], dp[i][j - 1]);
+        }
+    }
+
+    std::vector<DiffResult> results;
+    int i = static_cast<int>(m), j = static_cast<int>(n);
+
+    while (i > 0 || j > 0)
+    {
+        if (i > 0 && j > 0 && FrameEntriesEqual(ref[i - 1], test[j - 1]))
+        {
+            DiffResult r;
+            r.op = DiffOp::OP_EQUAL;
+            r.refEntry = &ref[i - 1];
+            r.testEntry = &test[j - 1];
+            r.refIdx = i - 1;
+            r.testIdx = j - 1;
+            r.description = "";
+            results.push_back(r);
+            --i;
+            --j;
+        }
+        else if (i > 0 && (j == 0 || dp[i - 1][j] >= dp[i][j - 1]))
+        {
+            DiffResult r;
+            r.op = DiffOp::OP_DELETE;
+            r.refEntry = &ref[i - 1];
+            r.testEntry = nullptr;
+            r.refIdx = i - 1;
+            r.testIdx = -1;
+            std::ostringstream oss;
+            oss << "缺失: " << EntryToShortDesc(ref[i - 1]);
+            r.description = oss.str();
+            results.push_back(r);
+            --i;
+        }
+        else
+        {
+            DiffResult r;
+            r.op = DiffOp::OP_INSERT;
+            r.refEntry = nullptr;
+            r.testEntry = &test[j - 1];
+            r.refIdx = -1;
+            r.testIdx = j - 1;
+            std::ostringstream oss;
+            oss << "额外: " << EntryToShortDesc(test[j - 1]);
+            r.description = oss.str();
+            results.push_back(r);
+            --j;
+        }
+    }
+
+    std::reverse(results.begin(), results.end());
+    return results;
+}
+
+// ── 算法 2: Myers Diff (O(ND)) ──
+
+static std::vector<DiffResult> ComputeMyersDiff(const std::vector<FrameEntry>& ref,
+                                                const std::vector<FrameEntry>& test)
+{
+    const int N = static_cast<int>(ref.size());
+    const int M = static_cast<int>(test.size());
+
+    if (N == 0)
+    {
+        std::vector<DiffResult> results;
+        for (int j = 0; j < M; ++j)
+        {
+            DiffResult r;
+            r.op = DiffOp::OP_INSERT;
+            r.refEntry = nullptr;
+            r.testEntry = &test[j];
+            r.refIdx = -1;
+            r.testIdx = j;
+            std::ostringstream oss;
+            oss << "额外: " << EntryToShortDesc(test[j]);
+            r.description = oss.str();
+            results.push_back(r);
+        }
+        return results;
+    }
+    if (M == 0)
+    {
+        std::vector<DiffResult> results;
+        for (int i = 0; i < N; ++i)
+        {
+            DiffResult r;
+            r.op = DiffOp::OP_DELETE;
+            r.refEntry = &ref[i];
+            r.testEntry = nullptr;
+            r.refIdx = i;
+            r.testIdx = -1;
+            std::ostringstream oss;
+            oss << "缺失: " << EntryToShortDesc(ref[i]);
+            r.description = oss.str();
+            results.push_back(r);
+        }
+        return results;
+    }
+
+    const int maxD = N + M;
+    const int offset = maxD;
+    std::vector<int> V(2 * maxD + 1, 0);
+    auto Vget = [&](int k) { return V[static_cast<size_t>(k + offset)]; };
+    auto Vset = [&](int k, int val) { V[static_cast<size_t>(k + offset)] = val; };
+
+    Vset(1, 0);
+    std::vector<std::vector<int>> trace;
+    trace.reserve(static_cast<size_t>(maxD + 1));
+
+    int endD = maxD;
+    for (int d = 0; d <= maxD; ++d)
+    {
+        trace.push_back(V);
+        for (int k = -d; k <= d; k += 2)
+        {
+            int x;
+            if (k == -d || (k != d && Vget(k - 1) < Vget(k + 1)))
+                x = Vget(k + 1);
+            else
+                x = Vget(k - 1) + 1;
+
+            int y = x - k;
+            while (x < N && y < M
+                   && FrameEntriesEqual(ref[static_cast<size_t>(x)], test[static_cast<size_t>(y)]))
+            {
+                ++x;
+                ++y;
+            }
+            Vset(k, x);
+
+            if (x >= N && y >= M)
+            {
+                endD = d;
+                goto found_path;
+            }
+        }
+    }
+
+found_path:
+    std::vector<DiffResult> results;
+    int x = N;
+    int y = M;
+
+    for (int d = endD; d >= 0; --d)
+    {
+        int k = x - y;
+        const std::vector<int>& prevV = trace[static_cast<size_t>(d > 0 ? d - 1 : 0)];
+        auto prevGet = [&](int kk) { return prevV[static_cast<size_t>(kk + offset)]; };
+
+        int prevK;
+        if (d == 0)
+        {
+            prevK = 1;
+        }
+        else if (k == -d || (k != d && prevGet(k - 1) < prevGet(k + 1)))
+            prevK = k + 1;
+        else
+            prevK = k - 1;
+
+        int prevX = prevGet(prevK);
+        int prevY = prevX - prevK;
+
+        while (x > prevX && y > prevY)
+        {
+            --x;
+            --y;
+            DiffResult r;
+            r.op = DiffOp::OP_EQUAL;
+            r.refEntry = &ref[static_cast<size_t>(x)];
+            r.testEntry = &test[static_cast<size_t>(y)];
+            r.refIdx = x;
+            r.testIdx = y;
+            r.description = "";
+            results.push_back(r);
+        }
+
+        if (d > 0)
+        {
+            if (x > prevX)
+            {
+                --x;
+                DiffResult r;
+                r.op = DiffOp::OP_DELETE;
+                r.refEntry = &ref[static_cast<size_t>(x)];
+                r.testEntry = nullptr;
+                r.refIdx = x;
+                r.testIdx = -1;
+                std::ostringstream oss;
+                oss << "缺失: " << EntryToShortDesc(ref[static_cast<size_t>(x)]);
+                r.description = oss.str();
+                results.push_back(r);
+            }
+            else if (y > prevY)
+            {
+                --y;
+                DiffResult r;
+                r.op = DiffOp::OP_INSERT;
+                r.refEntry = nullptr;
+                r.testEntry = &test[static_cast<size_t>(y)];
+                r.refIdx = -1;
+                r.testIdx = y;
+                std::ostringstream oss;
+                oss << "额外: " << EntryToShortDesc(test[static_cast<size_t>(y)]);
+                r.description = oss.str();
+                results.push_back(r);
+            }
+        }
+    }
+
+    std::reverse(results.begin(), results.end());
+    return results;
+}
+
+// ── 算法 3: Needleman-Wunsch (全局序列对齐) ──
+
+static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<FrameEntry>& ref,
+                                                          const std::vector<FrameEntry>& test)
+{
+    size_t m = ref.size();
+    size_t n = test.size();
+
+    const int GAP_PENALTY = -1;
+    const int MATCH_SCORE = 2;
+    const int MISMATCH_PENALTY = -1;
+
+    std::vector<std::vector<int>> dp(m + 1, std::vector<int>(n + 1, 0));
+
+    for (size_t i = 1; i <= m; ++i)
+        dp[i][0] = dp[i - 1][0] + GAP_PENALTY;
+    for (size_t j = 1; j <= n; ++j)
+        dp[0][j] = dp[0][j - 1] + GAP_PENALTY;
+
+    for (size_t i = 1; i <= m; ++i)
+    {
+        for (size_t j = 1; j <= n; ++j)
+        {
+            int match = FrameEntriesEqual(ref[i - 1], test[j - 1]) ? MATCH_SCORE : MISMATCH_PENALTY;
+            int scoreDiag = dp[i - 1][j - 1] + match;
+            int scoreUp = dp[i - 1][j] + GAP_PENALTY;
+            int scoreLeft = dp[i][j - 1] + GAP_PENALTY;
+            dp[i][j] = std::max({ scoreDiag, scoreUp, scoreLeft });
+        }
+    }
+
+    std::vector<DiffResult> results;
+    int i = static_cast<int>(m), j = static_cast<int>(n);
+
+    while (i > 0 || j > 0)
+    {
+        if (i > 0 && j > 0)
+        {
+            int diagScore
+                = dp[i - 1][j - 1]
+                  + (FrameEntriesEqual(ref[i - 1], test[j - 1]) ? MATCH_SCORE : MISMATCH_PENALTY);
+            if (dp[i][j] == diagScore)
+            {
+                DiffResult r;
+                if (FrameEntriesEqual(ref[i - 1], test[j - 1]))
+                {
+                    r.op = DiffOp::OP_EQUAL;
+                    r.description = "";
+                }
+                else
+                {
+                    r.op = DiffOp::OP_CHANGE;
+                    r.description = CollectFieldDiffs(ref[i - 1], test[j - 1]);
+                }
+                r.refEntry = &ref[i - 1];
+                r.testEntry = &test[j - 1];
+                r.refIdx = i - 1;
+                r.testIdx = j - 1;
+                results.push_back(r);
+                --i;
+                --j;
+                continue;
+            }
+        }
+        if (i > 0 && dp[i][j] == dp[i - 1][j] + GAP_PENALTY)
+        {
+            DiffResult r;
+            r.op = DiffOp::OP_DELETE;
+            r.refEntry = &ref[i - 1];
+            r.testEntry = nullptr;
+            r.refIdx = i - 1;
+            r.testIdx = -1;
+            std::ostringstream oss;
+            oss << "缺失: " << EntryToShortDesc(ref[i - 1]);
+            r.description = oss.str();
+            results.push_back(r);
+            --i;
+        }
+        else if (j > 0)
+        {
+            DiffResult r;
+            r.op = DiffOp::OP_INSERT;
+            r.refEntry = nullptr;
+            r.testEntry = &test[j - 1];
+            r.refIdx = -1;
+            r.testIdx = j - 1;
+            std::ostringstream oss;
+            oss << "额外: " << EntryToShortDesc(test[j - 1]);
+            r.description = oss.str();
+            results.push_back(r);
+            --j;
+        }
+    }
+
+    std::reverse(results.begin(), results.end());
+    return results;
+}
+
+// ── 输出对齐结果 ──
+
+static void PrintAlignedDiff(const std::string& algorithm, const std::vector<DiffResult>& results,
+                             bool verbose)
+{
+    std::cout << "\n========================================\n";
+    std::cout << "算法: " << algorithm << "\n";
+    std::cout << "========================================\n";
+
+    int equalCount = 0, insertCount = 0, deleteCount = 0, modifyCount = 0;
+
+    for (const auto& r : results)
+    {
+        switch (r.op)
+        {
+            case DiffOp::OP_EQUAL:
+                ++equalCount;
+                break;
+            case DiffOp::OP_INSERT:
+                ++insertCount;
+                break;
+            case DiffOp::OP_DELETE:
+                ++deleteCount;
+                break;
+            case DiffOp::OP_CHANGE:
+                ++modifyCount;
+                break;
+        }
+    }
+
+    int diffCount = insertCount + deleteCount + modifyCount;
+    std::cout << "统计: 匹配=" << equalCount << " 插入=" << insertCount << " 删除=" << deleteCount
+              << " 修改=" << modifyCount << " 差异总数=" << diffCount << "\n\n";
+    std::cout.flush();
+
+    for (const auto& r : results)
+    {
+        if (r.op == DiffOp::OP_EQUAL)
+        {
+            if (verbose)
+            {
+                std::cout << "  [OK]";
+                if (r.refIdx >= 0)
+                    std::cout << " ref@" << r.refEntry->lineNum << "(idx=" << r.refIdx << ")";
+                if (r.testIdx >= 0)
+                    std::cout << " test@" << r.testEntry->lineNum << "(idx=" << r.testIdx << ")";
+                std::cout << " " << EntryToShortDesc(*r.refEntry) << "\n";
+            }
+            continue;
+        }
+
+        std::cout << "  [" << DiffOpName(r.op) << "]";
+        if (r.refIdx >= 0)
+            std::cout << " ref@" << r.refEntry->lineNum << "(idx=" << r.refIdx << ")";
+        if (r.testIdx >= 0)
+            std::cout << " test@" << r.testEntry->lineNum << "(idx=" << r.testIdx << ")";
+        if (!r.description.empty())
+            std::cout << " " << r.description;
+        std::cout << "\n";
+    }
+
+    if (diffCount == 0)
+        std::cout << "\nResult: PASS — 无差异\n";
+    else
+        std::cout << "\nResult: FAIL — " << diffCount << " 处差异\n";
+    std::cout.flush();
+}
+
+// ── 算法类型 ──
+
+enum class AlgoType
+{
+    POSITION,
+    LCS,
+    MYERS,
+    NEEDLEMAN,
+    ALL
+};
+
+static AlgoType ParseAlgoType(const std::string& s)
+{
+    if (s == "position" || s == "pos")
+        return AlgoType::POSITION;
+    if (s == "lcs")
+        return AlgoType::LCS;
+    if (s == "myers")
+        return AlgoType::MYERS;
+    if (s == "needleman" || s == "nw")
+        return AlgoType::NEEDLEMAN;
+    if (s == "all")
+        return AlgoType::ALL;
+    return AlgoType::POSITION;
+}
+
+static const char* AlgoTypeName(AlgoType t)
+{
+    switch (t)
+    {
+        case AlgoType::POSITION:
+            return "逐行对比（原始位置索引）";
+        case AlgoType::LCS:
+            return "LCS（最长公共子序列）";
+        case AlgoType::MYERS:
+            return "Myers Diff（最短编辑路径）";
+        case AlgoType::NEEDLEMAN:
+            return "Needleman-Wunsch（全局序列对齐）";
+        case AlgoType::ALL:
+            return "全部算法";
+        default:
+            return "未知";
+    }
+}
+
+// ── 快捷模式路径解析 ──
+
+static std::string resolveLayerPath(const std::string& testDir, const std::string& prefix,
+                                    const std::string& layer)
+{
+    std::string resolved = testDir;
+    if (!testDir.empty())
+    {
+#ifdef _WIN32
+        bool isAbsolute = (testDir.size() >= 2 && testDir[1] == ':');
+#else
+        bool isAbsolute = (testDir[0] == '/');
+#endif
+        if (!isAbsolute)
+            resolved = getExeDir() + testDir;
+    }
+    return resolved + "/" + prefix + layer + ".txt";
+}
+
+// ── 主程序 ──
+
+int main(int argc, char* argv[])
+{
+    if (argc < 2)
+    {
+        std::cerr
+            << "frame_diff — Frame 结构差异对比工具（C++17, 单文件）\n\n"
+            << "Usage:\n"
+            << "  frame_diff <ref.txt> <test.txt>                       逐行对比（默认）\n"
+            << "  frame_diff <ref.txt> <test.txt> --algo=lcs           LCS 算法对比\n"
+            << "  frame_diff <ref.txt> <test.txt> --algo=myers         Myers Diff 算法对比\n"
+            << "  frame_diff <ref.txt> <test.txt> --algo=needleman     Needleman-Wunsch 算法对比\n"
+            << "  frame_diff <ref.txt> <test.txt> --all                输出所有算法结果\n"
+            << "  frame_diff <ref.txt> <test.txt> --verbose            同时显示匹配项\n"
+            << "\n"
+            << "  frame_diff frame                   快捷: 对比 test/lo_frame.txt vs "
+               "test/aproj_frame.txt\n"
+            << "  frame_diff vcl                     快捷: 对比 test/lo_vcl.txt vs "
+               "test/aproj_vcl.txt\n"
+            << "\n"
+            << "算法说明:\n"
+            << "  position  - 逐行按位置索引对比，适合行列完全对齐的场景（默认）\n"
+            << "  lcs       - 最长公共子序列，忽略中间缺失/新增行\n"
+            << "  myers     - 最短编辑路径，生成最小编辑操作数\n"
+            << "  needleman - 全局序列对齐，考虑全局最优对齐\n"
+            << "\n"
+            << "Exit code: 0 = 无差异, 1 = 有差异或错误.\n";
+        return 1;
+    }
+
+    std::string refPath;
+    std::string testPath;
+    std::string testDir = "../test";
+    bool verbose = false;
+    AlgoType algo = AlgoType::POSITION;
+
+    // 解析第一个参数：判断是 layer 名称还是文件路径
+    std::string arg1 = argv[1];
+    bool isLayer = (arg1 == "frame" || arg1 == "vcl");
+
+    // 解析 --test-dir
+    for (int i = 1; i < argc; ++i)
+    {
+        if (strcmp(argv[i], "--test-dir") == 0 && i + 1 < argc)
+        {
+            testDir = argv[++i];
+        }
+    }
+
+    if (isLayer)
+    {
+        refPath = resolveLayerPath(testDir, "lo_", arg1);
+        testPath = resolveLayerPath(testDir, "aproj_", arg1);
+        for (int i = 2; i < argc; ++i)
+        {
+            std::string a = argv[i];
+            if (a.rfind("--algo=", 0) == 0)
+                algo = ParseAlgoType(a.substr(7));
+            else if (a == "--all")
+                algo = AlgoType::ALL;
+            else if (a == "--verbose" || a == "-v")
+                verbose = true;
+        }
+    }
+    else
+    {
+        for (int i = 1; i < argc; ++i)
+        {
+            std::string a = argv[i];
+            if (a == "--verbose" || a == "-v")
+                verbose = true;
+            else if (a.rfind("--algo=", 0) == 0)
+                algo = ParseAlgoType(a.substr(7));
+            else if (a == "--all")
+                algo = AlgoType::ALL;
+            else if (refPath.empty())
+                refPath = a;
+            else if (testPath.empty())
+                testPath = a;
+        }
+    }
+
+    if (refPath.empty() || testPath.empty())
+    {
+        std::cerr << "ERROR: two file paths required (or use 'frame'/'vcl' shortcut)\n";
+        return 1;
+    }
+
+    // 解析文件
+    std::string refErr, testErr;
+    auto ref = ParseFrameFile(refPath, refErr);
+    auto test = ParseFrameFile(testPath, testErr);
+
+    if (!refErr.empty())
+    {
+        std::cerr << "[ERROR] " << refErr << "\n";
+        return 1;
+    }
+    if (!testErr.empty())
+    {
+        std::cerr << "[ERROR] " << testErr << "\n";
+        return 1;
+    }
+
+    std::cout << "=== Frame Structure Comparison ===" << std::endl;
+    std::cout << "Reference: " << refPath << " (" << ref.size() << " instructions)" << std::endl;
+    std::cout << "Test:      " << testPath << " (" << test.size() << " instructions)" << std::endl;
+
+    // 统计各类型指令数
+    auto countByType = [](const std::vector<FrameEntry>& entries) {
+        std::vector<std::pair<RenderCmdType, int>> counts;
+        for (const auto& e : entries)
+        {
+            bool found = false;
+            for (auto& c : counts)
+            {
+                if (c.first == e.type)
+                {
+                    c.second++;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                counts.push_back({ e.type, 1 });
+        }
+        return counts;
+    };
+
+    auto refCounts = countByType(ref);
+    auto testCounts = countByType(test);
+
+    std::cout << "\nInstruction counts by type:" << std::endl;
+    std::cout << "  Type               Ref    Test   Match" << std::endl;
+    for (const auto& rc : refCounts)
+    {
+        int tc = 0;
+        for (const auto& t : testCounts)
+        {
+            if (t.first == rc.first)
+            {
+                tc = t.second;
+                break;
+            }
+        }
+        bool match = (rc.second == tc);
+        std::cout << "  " << RenderCmdTypeName(rc.first);
+        // 对齐列宽
+        size_t nameLen = strlen(RenderCmdTypeName(rc.first));
+        for (size_t pad = nameLen; pad < 20; ++pad)
+            std::cout << " ";
+        std::cout << rc.second << "    " << tc << (match ? "   OK" : "   MISMATCH") << std::endl;
+    }
+    std::cout << std::endl;
+
+    bool runPosition = (algo == AlgoType::POSITION || algo == AlgoType::ALL);
+    bool runLcs = (algo == AlgoType::LCS || algo == AlgoType::ALL);
+    bool runMyers = (algo == AlgoType::MYERS || algo == AlgoType::ALL);
+    bool runNeedleman = (algo == AlgoType::NEEDLEMAN || algo == AlgoType::ALL);
+
+    int finalExitCode = 0;
+
+    // 1. 逐行对比
+    if (runPosition)
+    {
+        std::cout << "\n========================================\n";
+        std::cout << "算法: 逐行对比（原始位置索引）\n";
+        std::cout << "========================================\n";
+
+        std::vector<DiffMessage> diffs;
+        size_t maxN = std::max(ref.size(), test.size());
+        for (size_t i = 0; i < maxN; ++i)
+        {
+            if (i >= ref.size())
+            {
+                std::ostringstream oss;
+                oss << "额外（ref 不存在）: " << EntryToShortDesc(test[i]);
+                diffs.push_back({ 0, test[i].lineNum, oss.str() });
+                continue;
+            }
+            if (i >= test.size())
+            {
+                std::ostringstream oss;
+                oss << "缺失（test 不存在）: " << EntryToShortDesc(ref[i]);
+                diffs.push_back({ ref[i].lineNum, 0, oss.str() });
+                continue;
+            }
+            if (!FrameEntriesEqual(ref[i], test[i]))
+            {
+                diffs.push_back(
+                    { ref[i].lineNum, test[i].lineNum, CollectFieldDiffs(ref[i], test[i]) });
+            }
+        }
+
+        if (verbose)
+        {
+            std::cout << "-- verbose: matching pairs shown --\n";
+            size_t n = std::min(ref.size(), test.size());
+            for (size_t i = 0; i < n; ++i)
+            {
+                if (FrameEntriesEqual(ref[i], test[i]))
+                {
+                    std::cout << "  [OK]  ref@" << ref[i].lineNum << "  test@" << test[i].lineNum
+                              << "  " << EntryToShortDesc(ref[i]) << "\n";
+                }
+            }
+            std::cout << "\n";
+        }
+
+        if (diffs.empty())
+        {
+            std::cout << "Result: PASS — 无差异。\n";
+        }
+        else
+        {
+            std::cout << "Differences: " << diffs.size() << "\n\n";
+            for (const auto& d : diffs)
+            {
+                std::cout << "  [DIFF] ref@" << d.refLine << "  test@" << d.testLine << "  "
+                          << d.msg << "\n";
+            }
+            std::cout << "\nResult: FAIL — " << diffs.size() << " 处差异。\n";
+            finalExitCode = 1;
+        }
+    }
+
+    // 2. LCS
+    if (runLcs)
+    {
+        auto results = ComputeLcsDiff(ref, test);
+        PrintAlignedDiff("LCS（最长公共子序列）", results, verbose);
+        for (const auto& r : results)
+        {
+            if (r.op != DiffOp::OP_EQUAL)
+            {
+                finalExitCode = 1;
+                break;
+            }
+        }
+    }
+
+    // 3. Myers
+    if (runMyers)
+    {
+        auto results = ComputeMyersDiff(ref, test);
+        PrintAlignedDiff("Myers Diff（最短编辑路径）", results, verbose);
+        for (const auto& r : results)
+        {
+            if (r.op != DiffOp::OP_EQUAL)
+            {
+                finalExitCode = 1;
+                break;
+            }
+        }
+    }
+
+    // 4. Needleman-Wunsch
+    if (runNeedleman)
+    {
+        auto results = ComputeNeedlemanWunschDiff(ref, test);
+        PrintAlignedDiff("Needleman-Wunsch（全局序列对齐）", results, verbose);
+        for (const auto& r : results)
+        {
+            if (r.op != DiffOp::OP_EQUAL)
+            {
+                finalExitCode = 1;
+                break;
+            }
+        }
+    }
+
+    return finalExitCode;
+}

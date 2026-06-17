@@ -92,12 +92,18 @@ target_compile_definitions(render_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 add_executable(node_diff tools/node_diff.cpp)
 target_compile_definitions(node_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 
+# Frame 专用独立对比工具 (支持多种对齐算法，替代 render_diff 用于 frame/vcl 对比)
+add_executable(frame_diff tools/frame_diff.cpp)
+target_include_directories(frame_diff PRIVATE ${RENDER_COMMON_DIR})
+target_compile_definitions(frame_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
+
 # Debug 编译产物加 _debug 后缀
-set_target_properties(docx_e2e_test render_diff node_diff PROPERTIES DEBUG_POSTFIX "_debug")
+set_target_properties(docx_e2e_test render_diff node_diff frame_diff PROPERTIES DEBUG_POSTFIX "_debug")
 
 # MSVC specific
 if(MSVC)
     target_compile_options(docx_e2e_test PRIVATE /W3 /utf-8)
     target_compile_options(render_diff PRIVATE /W3 /utf-8)
     target_compile_options(node_diff PRIVATE /W3 /utf-8)
+    target_compile_options(frame_diff PRIVATE /W3 /utf-8)
 endif()

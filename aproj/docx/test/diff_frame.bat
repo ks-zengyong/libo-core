@@ -1,15 +1,13 @@
 @echo off
-REM diff_frame.bat - Compare Frame layer rendering differences
-REM Usage: diff_frame.bat
-REM 使用 output 下的 render_diff_debug.exe 进行差异对比
+setlocal
 
 set "SCRIPT_DIR=%~dp0"
-set "RENDER_DIFF=%SCRIPT_DIR%..\output\render_diff_debug.exe"
+set "FRAME_DIFF=%SCRIPT_DIR%..\output\frame_diff_debug.exe"
 set "REF=%SCRIPT_DIR%lo_frame.txt"
 set "TEST=%SCRIPT_DIR%aproj_frame.txt"
 
-if not exist "%RENDER_DIFF%" (
-    echo [ERROR] render_diff_debug.exe not found: %RENDER_DIFF%
+if not exist "%FRAME_DIFF%" (
+    echo [ERROR] frame_diff_debug.exe not found: %FRAME_DIFF%
     echo         Please build first: build.bat
     exit /b 1
 )
@@ -31,6 +29,6 @@ echo Reference: %REF%
 echo Test:      %TEST%
 echo.
 
-"%RENDER_DIFF%" "%REF%" "%TEST%"
+"%FRAME_DIFF%" "%REF%" "%TEST%" %*
 
 exit /b %ERRORLEVEL%
