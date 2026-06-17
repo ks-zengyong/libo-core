@@ -177,6 +177,7 @@ public:
     SwStartNodeType GetStartNodeType() const { return m_eStartNodeType; }
     SwEndNode* GetEndOfSection() { return m_pEndOfSection; }
     const SwEndNode* GetEndOfSection() const { return m_pEndOfSection; }
+    void SetEndOfSection(SwEndNode* pEnd) { m_pEndOfSection = pEnd; }
 
     // Fly 节区锚点节点索引（仅对 SwFlyStartNode 有效）
     int GetAnchorNodeIndex() const { return m_nAnchorNodeIndex; }

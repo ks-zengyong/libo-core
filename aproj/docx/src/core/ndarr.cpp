@@ -25,20 +25,16 @@ SwNodes::~SwNodes()
 
 void SwNodes::InitNodes()
 {
-    // 创建 LibreOffice 风格的文档节点结构：
+    // 初始化节点数组，创建 LO 风格的基础结构：
     //   [0] START_NODE (Normal)
-    //   [1] END_NODE                <- 空节 1
+    //   [1] END_NODE                <- 空节 1 (m_pEndOfPostIts)
     //   [2] START_NODE (Normal)
-    //   [3] END_NODE                <- 空节 2
-    //   [4] START_NODE (Normal)     <- Fly 浮动对象区 (内容在这里)
-    //   [5] END_NODE                <- Fly 区结束 (m_pEndOfAutotext 指向此)
-    //   [6] START_NODE (Normal)
-    //   [7] END_NODE                <- 空节 3 (m_pEndOfRedlines 指向此)
-    //   [8] START_NODE (Normal)     <- 正文内容区 (内容在这里)
-    //   [9] END_NODE                <- 正文区结束 (m_pEndOfContent 指向此)
-    // 解析器负责：
-    //   - Fly 节点插入在 m_pEndOfAutotext 之前（即 SwNodeOffset(5) 位置）
-    //   - 正文节点插入在 m_pEndOfContent 之前（即 SwNodeOffset(9) 位置）
+    //   [3] END_NODE                <- 空节 2 (m_pEndOfInserts)
+    //
+    // Fly 区和正文区在 ParseBody 中动态创建：
+    //   [4-?] Normal 节区：Fly 容器 (m_pEndOfAutotext 指向其 EndNode)
+    //   [?-?] 空 Normal 节区 (m_pEndOfRedlines 指向其 EndNode)
+    //   [?-?] Normal 节区：正文容器 (m_pEndOfContent 指向其 EndNode)
 
     // 空 Normal section [0-1]
     auto* pStt1 = new SwStartNode(*this, SwNodeOffset(0), SwNormalStartNode);
@@ -53,27 +49,6 @@ void SwNodes::InitNodes()
     auto* pEnd2 = new SwEndNode(*this, SwNodeOffset(3), *pStt2);
     BigPtrArray::Insert(pEnd2, 3);
     m_pEndOfInserts = pEnd2;
-
-    // Fly 区 [4-5]：浮动对象（图片、文本框、表格等）将插入到 [4] 和 [5] 之间
-    auto* pFlyStt = new SwStartNode(*this, SwNodeOffset(4), SwNormalStartNode);
-    BigPtrArray::Insert(pFlyStt, 4);
-    auto* pFlyEnd = new SwEndNode(*this, SwNodeOffset(5), *pFlyStt);
-    BigPtrArray::Insert(pFlyEnd, 5);
-    m_pEndOfAutotext = pFlyEnd;
-
-    // 空 Normal section [6-7]
-    auto* pStt3 = new SwStartNode(*this, SwNodeOffset(6), SwNormalStartNode);
-    BigPtrArray::Insert(pStt3, 6);
-    auto* pEnd3 = new SwEndNode(*this, SwNodeOffset(7), *pStt3);
-    BigPtrArray::Insert(pEnd3, 7);
-    m_pEndOfRedlines = pEnd3;
-
-    // 正文区 [8-9]：正文文本将插入到 [8] 和 [9] 之间
-    auto* pBodyStt = new SwStartNode(*this, SwNodeOffset(8), SwNormalStartNode);
-    BigPtrArray::Insert(pBodyStt, 8);
-    auto* pBodyEnd = new SwEndNode(*this, SwNodeOffset(9), *pBodyStt);
-    BigPtrArray::Insert(pBodyEnd, 9);
-    m_pEndOfContent.reset(pBodyEnd);
 }
 
 SwNode* SwNodes::operator[](SwNodeOffset n) const
@@ -273,9 +248,43 @@ SwTableNode* SwNodes::InsertTable(const SwNode& rNd, sal_uInt16 nBoxes,
 
 SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType, int nAnchorNodeIndex)
 {
-    // 在 Fly 区末尾（m_pEndOfAutotext 之前）插入 Fly 节区
+    // 在 Fly Container 内按顺序追加 Fly 节区
     // Fly 节区：Fly StartNode + (内容后续插入) + Fly EndNode
-    SwNodeOffset nInsertPos = m_pEndOfAutotext->GetIndex();
+    // 注意：只创建 Fly StartNode，EndNode 由调用者在内容插入后创建
+
+    // 找到插入位置：Fly Container StartNode 之后，已存在的 Fly 之后
+    // 如果有 Fly Container StartNode，在其之后找最后一个 Fly EndNode
+    // 否则在 m_pEndOfAutotext 之前插入（初始情况）
+
+    SwNodeOffset nInsertPos;
+    if (m_pFlyContainerStart)
+    {
+        // 从 Fly Container StartNode 开始，找到最后一个 Fly EndNode
+        // Fly Container 结构：StartNode + (Fly1 Start + ... + Fly1 End) + ... + (FlyN Start + ... + FlyN End) + EndNode
+        // 我们需要在最后一个 Fly EndNode 之后插入新 Fly StartNode
+        SwNodeOffset nSttIdx = m_pFlyContainerStart->GetIndex();
+        SwNodeOffset nEndIdx = m_pEndOfAutotext->GetIndex();
+
+        // 从 Fly Container StartNode + 1 开始，向后扫描
+        // 找到最后一个 Fly EndNode（在 Fly Container EndNode 之前）
+        nInsertPos = nSttIdx + SwNodeOffset(1);  // 默认在 Fly Container StartNode 之后
+        for (SwNodeOffset i = nSttIdx + 1; i < nEndIdx; ++i)
+        {
+            SwNode* pNd = (*this)[i];
+            if (!pNd)
+                break;
+            // 如果是 EndNode 且不是 Fly Container EndNode，则是 Fly EndNode
+            if (pNd->IsEndNode())
+            {
+                nInsertPos = i + SwNodeOffset(1);  // 在 Fly EndNode 之后
+            }
+        }
+    }
+    else
+    {
+        // 初始情况：在 m_pEndOfAutotext 之前插入
+        nInsertPos = m_pEndOfAutotext->GetIndex();
+    }
 
     // 创建 Fly StartNode
     SwNode* pPrev = (*this)[nInsertPos - SwNodeOffset(1)];
@@ -285,12 +294,49 @@ SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType, int nAnchorNodeInd
     pFlyStt->SetAnchorNodeIndex(nAnchorNodeIndex);
     InsertNode(pFlyStt, nInsertPos);
 
-    // 创建 Fly EndNode（与 Fly StartNode 配对）
-    SwNodeOffset nEndPos = pFlyStt->GetIndex() + SwNodeOffset(1);
-    auto* pFlyEnd = new SwEndNode(*pFlyStt, *pFlyStt);
-    InsertNode(pFlyEnd, nEndPos);
+    // 不创建 Fly EndNode，让调用者在内容插入后创建
+    // 这样内容节点会在 Fly StartNode 之后、Fly EndNode 之前
 
     return pFlyStt;
+}
+
+SwEndNode* SwNodes::CloseFlySection(SwStartNode& rFlyStt)
+{
+    // 在 Fly StartNode 的最后一个内容节点之后创建 Fly EndNode
+    // Fly StartNode 的内容节点在其之后连续排列
+    // 
+    // 由于 InsertGrfNode/MakeTextNode 在 StartNode 之后插入内容，
+    // 我们需要在最后一个内容节点之后插入 EndNode。
+    // 
+    // 简化逻辑：Fly StartNode 之后的所有节点（直到下一个 StartNode 或 Fly Container EndNode）
+    // 都是 Fly 的内容。我们在 StartNode 之后找到最后一个非 StartNode/非 EndNode 的节点，
+    // 在其后插入 Fly EndNode。
+
+    SwNodeOffset nFlySttIdx = rFlyStt.GetIndex();
+    
+    // 从 Fly StartNode + 1 开始，找到最后一个内容节点
+    // 内容节点 = 非 StartNode 且 非 EndNode 的节点
+    SwNodeOffset nLastContentIdx = nFlySttIdx;  // 初始指向 Fly StartNode
+    for (SwNodeOffset i = nFlySttIdx + 1; i < Count(); ++i)
+    {
+        SwNode* pNd = (*this)[i];
+        if (!pNd)
+            break;
+        // 遇到下一个 StartNode 或 EndNode，停止
+        if (pNd->IsStartNode() || pNd->IsEndNode())
+            break;
+        nLastContentIdx = i;
+    }
+
+    // 在最后一个内容节点之后插入 Fly EndNode
+    SwNodeOffset nEndPos = nLastContentIdx + SwNodeOffset(1);
+    auto* pFlyEnd = new SwEndNode(rFlyStt, rFlyStt);
+    InsertNode(pFlyEnd, nEndPos);
+
+    // 更新 Fly StartNode 的 EndOfSection 指针
+    rFlyStt.SetEndOfSection(pFlyEnd);
+
+    return pFlyEnd;
 }
 
 SwGrfNode* SwNodes::InsertGrfNode(const SwNode& rWhere)
@@ -307,36 +353,19 @@ SwGrfNode* SwNodes::InsertGrfNode(const SwNode& rWhere)
     return pGrfNode;
 }
 
-SwEndNode* SwNodes::InsertEndNodeAtContent(const SwStartNode& rSttNd)
+SwStartNode* SwNodes::AppendNormalSection()
 {
-    // 在当前末尾之后插入 EndNode，与 rSttNd 配对
-    SwNodeOffset nPos = m_pEndOfContent->GetIndex() + SwNodeOffset(1);
-    auto* pEnd = new SwEndNode(*m_pEndOfContent.get(), const_cast<SwStartNode&>(rSttNd));
-    InsertNode(pEnd, nPos);
-    m_pEndOfContent.reset(pEnd);
-    return pEnd;
-}
+    // 在数组末尾追加一个 Normal 节区（StartNode + EndNode 对）
+    // 返回 StartNode 指针，调用者可设置哨兵指向 EndNode
+    SwNodeOffset nSttPos = BigPtrArray::Count();
+    auto* pPrev = (*this)[nSttPos - SwNodeOffset(1)];
+    auto* pStt = new SwStartNode(*pPrev, SwNormalStartNode);
+    BigPtrArray::Insert(pStt, nSttPos);
 
-SwStartNode* SwNodes::InsertEmptyNormalSection()
-{
-    // 在当前末尾之后插入一个 Normal 节区（StartNode + EndNode）
-    SwNodeOffset nPos = m_pEndOfContent->GetIndex() + SwNodeOffset(1);
-    auto* pStt = new SwStartNode(*m_pEndOfContent.get(), SwNormalStartNode);
-    InsertNode(pStt, nPos);
     SwNodeOffset nEndPos = pStt->GetIndex() + SwNodeOffset(1);
     auto* pEnd = new SwEndNode(*pStt, *pStt);
-    InsertNode(pEnd, nEndPos);
-    m_pEndOfContent.reset(pEnd);
-    return pStt;
-}
+    BigPtrArray::Insert(pEnd, nEndPos);
 
-SwStartNode* SwNodes::InsertBodyStartNode()
-{
-    // 在当前末尾之后插入一个 Normal 节区的 StartNode（不立即插入 EndNode）
-    SwNodeOffset nPos = m_pEndOfContent->GetIndex() + SwNodeOffset(1);
-    auto* pStt = new SwStartNode(*m_pEndOfContent, SwNormalStartNode);
-    InsertNode(pStt, nPos);
-    m_pEndOfContent.reset(pStt);
     return pStt;
 }
 

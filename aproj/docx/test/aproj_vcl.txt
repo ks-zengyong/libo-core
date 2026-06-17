@@ -1,223 +1,231 @@
 PAGE_START	1	11906	16838
 PAGE_END	1
-SET_FONT	1	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	764	0	0	"WPS Office®"	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	fony family	24	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Calibri	20	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	1477	0	0	"Welcome to WPS Office - Writer"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	1	Calibri	20	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	2437	0	0	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	1	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	3937	0	0	"Switch tabs to find different commands to process your document."	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	4193	0	0	"Share your documents with others."	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	4449	0	0	"\nFind all of Writer's commands."	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	5159	0	0	"\nSearch the Help center for answers when you get stuck."	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	5591	0	0	"\nQuickly switch views and adjust the scale of the page display."	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	Calibri	20	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	6023	0	0	"\n"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	6983	0	0	"Count the number of words and pages in your document in real time."	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Calibri	20	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	7719	0	0	"WPS AI+Writer"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	1	fony family	7	188	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Poppins	24	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	8445	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Poppins	24	16777215	144	0	0	0	
-SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	fony family	20	144	0
-SET_TEXT_COLOR	1	16777215
-SET_FONT	1	Calibri	20	144	0
-SET_TEXT_COLOR	1	16777215
-TEXT_RUN	1	284	11811	0	0	"\tto help you \t\twrite and understand your Word document"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	1	fony family	20	144	0
-SET_TEXT_COLOR	1	16777215
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	1680	0	0	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	4056	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	4536	0	0	"Free ALL-IN-ONE Office Suite"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	4776	0	0	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	5256	0	0	"WPS Office®"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	5736	0	0	"Welcome to WPS Office - Writer"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	5976	0	0	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	6936	0	0	"Switch tabs to find different commands to process your document."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	7176	0	0	"Share your documents with others."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	7416	0	0	"Find all of Writer's commands."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	7656	0	0	"Search the Help center for answers when you get stuck."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	7896	0	0	"Quickly switch views and adjust the scale of the page display."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	8376	0	0	"Count the number of words and pages in your document in real time."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	8856	0	0	"WPS AI+Writer"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	9336	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	11496	0	0	"to help you write and understand your Word document"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	11976	0	0	"WPS AI-generated content"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	12216	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	13416	0	0	"WPS AI-based content rewriting"	Arial	22	0	144	0	0	0	
+SET_FONT	1	Arial	22	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	284	13656	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Arial	22	0	144	0	0	0	
 PAGE_START	2	11906	16838
 PAGE_END	2
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	16777215
-TEXT_RUN	2	1004	17558	0	0	"WPS AI-generated content"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	16777215
-TEXT_RUN	2	1004	18038	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	2	Poppins	24	144	0
-SET_TEXT_COLOR	2	16777215
-SET_FONT	2	Poppins	24	144	0
-SET_TEXT_COLOR	2	16777215
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	16777215
-TEXT_RUN	2	1004	19538	0	0	"\nWPS AI-based content rewriting"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	16777215
-TEXT_RUN	2	1004	20498	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	2	Poppins	24	144	0
-SET_TEXT_COLOR	2	16777215
-SET_FONT	2	Poppins SemiBold	40	144	0
-SET_TEXT_COLOR	2	2500134
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	18758	0	0	"For all your document process needs"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	19238	0	0	"Restrict Editing"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	19478	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	19718	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	22838	0	0	"Co-Edit with Others"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	23078	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	26678	0	0	"Format Conversion"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	26918	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	27158	0	0	"Effortlessly batch convert multiple files."	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	27398	0	0	"Editing and typesetting"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	27638	0	0	"Find and Replace"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	27878	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.Click on Home > Find and Replace, with the shortcut key being Ctrl+F."	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	29078	0	0	"Efficient Word Typesetting"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	29318	0	0	"Using WPS saves time on document layout and leaves more room for creativity. Click on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	30518	0	0	"Spell Check"	Arial	22	0	144	0	0	0	
+SET_FONT	2	Arial	22	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	284	30758	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. Click on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Arial	22	0	144	0	0	0	
 PAGE_START	3	11906	16838
 PAGE_END	3
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	1004	34396	0	0	"For all your document process needs"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	1004	35521	0	0	"\nRestrict Editing"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	1004	36481	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	1004	37681	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	1004	41881	0	0	"\n"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	1004	42751	0	0	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	6449	35521	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	6449	36721	0	0	" "	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins	24	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins Medium	36	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Poppins Medium	36	144	0
-SET_TEXT_COLOR	3	16777215
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	6449	40291	0	0	"\nFormat Conversion"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	6449	41041	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Calibri	20	16777215	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	16777215
-TEXT_RUN	3	6449	41341	0	0	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	
-PAGE_START	4	11906	16838
-PAGE_END	4
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	51234	0	0	"Editing and typesetting"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	51879	0	0	"\nFind and Replace"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	52629	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Poppins	24	144	0
-SET_TEXT_COLOR	4	16777215
-SET_FONT	4	Poppins SemiBold	40	144	0
-SET_TEXT_COLOR	4	2500134
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	54024	0	0	"\nEfficient Word Typesetting"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	54774	0	0	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Poppins	24	144	0
-SET_TEXT_COLOR	4	16777215
-SET_FONT	4	Poppins SemiBold	40	144	0
-SET_TEXT_COLOR	4	2500134
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	56769	0	0	"\nSpell Check"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	57519	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Poppins	24	144	0
-SET_TEXT_COLOR	4	16777215
-SET_FONT	4	Poppins SemiBold	40	144	0
-SET_TEXT_COLOR	4	2500134
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	58914	0	0	"\nTrack Changes"	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	59664	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Poppins	24	144	0
-SET_TEXT_COLOR	4	16777215
-SET_FONT	4	Poppins SemiBold	40	144	0
-SET_TEXT_COLOR	4	2500134
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	61359	0	0	" "	Calibri	20	16777215	144	0	0	0	
-SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	16777215
-TEXT_RUN	4	1004	61854	0	0	"More Popular features"	Calibri	20	16777215	144	0	0	0	
-PAGE_START	5	11906	16838
-PAGE_END	5
-SET_FONT	5	Poppins SemiBold	40	144	0
-SET_TEXT_COLOR	5	2500134
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	35596	0	0	"Track Changes"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	35836	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. You can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. Additionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	284	37516	0	0	"More Popular features"	Arial	22	0	144	0	0	0	
+SET_FONT	3	Arial	22	144	0
+SET_TEXT_COLOR	3	0

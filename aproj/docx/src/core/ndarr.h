@@ -81,6 +81,10 @@ public:
     SwNode& GetEndOfAutotext() const { return *m_pEndOfAutotext; }
     SwNode& GetEndOfRedlines() const { return *m_pEndOfRedlines; }
 
+    // Fly Container StartNode（用于按顺序追加Fly）
+    SwStartNode* GetFlyContainerStart() const { return m_pFlyContainerStart; }
+    void SetFlyContainerStart(SwStartNode* pNode) { m_pFlyContainerStart = pNode; }
+
     // 所属文档
     SwDoc& GetDoc() { return m_rMyDoc; }
     const SwDoc& GetDoc() const { return m_rMyDoc; }
@@ -112,10 +116,14 @@ public:
                              SwTextFormatColl* pContentTextColl, sal_uInt16 nLines,
                              sal_uInt16 nRepeat = 0, SwTextFormatColl* pHeadlineTextColl = nullptr);
 
-    // Fly 节区创建：在 Fly 区末尾插入 StartNode+EndNode 对
+    // Fly 节区创建：在 Fly 区末尾插入 StartNode（不创建 EndNode）
     // 返回创建的 Fly StartNode 指针
+    // 调用者需在内容插入后调用 CloseFlySection 创建 EndNode
     SwStartNode* InsertFlySection(SwStartNodeType eType = SwFlyStartNode,
                                   int nAnchorNodeIndex = -1);
+
+    // Fly 节区关闭：在 Fly StartNode 的内容之后创建 EndNode
+    SwEndNode* CloseFlySection(SwStartNode& rFlyStt);
 
     // 图片节点创建：在 rWhere 之后插入
     SwGrfNode* InsertGrfNode(const SwNode& rWhere);
@@ -130,10 +138,14 @@ public:
     // 是否是文档节点数组（而非 Undo 等）
     bool IsDocNodes() const;
 
-    // 内部方法：用于重建 3 节区结构的辅助方法
-    SwStartNode* InsertEmptyNormalSection();           // 在 m_pEndOfInserts 之后插入空 Normal 节区
-    SwStartNode* InsertBodyStartNode();                // 在空节区之后插入正文节区 StartNode
-    SwEndNode* InsertEndNodeAtContent(const SwStartNode& rSttNd); // 在正文 StartNode 后插入 EndNode
+    // 动态追加 Normal 节区（StartNode + EndNode 对）
+    // 返回 StartNode 指针，EndNode 插入到数组末尾
+    SwStartNode* AppendNormalSection();
+
+    // 设置哨兵节点指针（用于动态节区管理）
+    void SetEndOfAutotext(SwNode* pNode) { m_pEndOfAutotext = pNode; }
+    void SetEndOfRedlines(SwNode* pNode) { m_pEndOfRedlines = pNode; }
+    void SetEndOfContent(SwNode* pNode) { m_pEndOfContent.reset(pNode); }
 
 private:
 
@@ -151,4 +163,7 @@ private:
     SwNode* m_pEndOfAutotext;    // Fly 区结束 (node[5] initially)
     SwNode* m_pEndOfRedlines;    // node[7]
     std::unique_ptr<SwNode> m_pEndOfContent;  // 正文区结束 (node[9] initially)
+
+    // Fly Container StartNode（用于按顺序追加Fly）
+    SwStartNode* m_pFlyContainerStart = nullptr;
 };

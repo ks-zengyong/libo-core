@@ -705,33 +705,38 @@ ParagraphInfo CollectParagraphInfo(pugi::xml_node pNode,
     return info;
 }
 
-// 辅助：判断 w:p 中是否含有 w:drawing（图片 / 文本框）
+// 辅助：判断 w:p 中是否含有 w:drawing 或 w:pict（图片 / 文本框 / 形状）
+// 支持两种格式：
+//   - DrawingML: w:p > w:r > w:drawing
+//   - VML:       w:p > w:r > w:pict > v:shape
 bool ParagraphHasDrawing(pugi::xml_node pNode)
 {
-    for (auto r : pNode.children("w:r"))
-    {
-        if (r.child("w:drawing") || r.child("drawing"))
-            return true;
-    }
-    // 处理 mc:AlternateContent
-    for (auto r : pNode.children("w:r"))
-    {
-        for (auto& child : r.children())
+    // 递归扫描段落内的所有元素，查找绘图容器
+    std::function<bool(pugi::xml_node, bool)> scan = [&](pugi::xml_node n, bool insideChoice) -> bool {
+        for (auto& c : n.children())
         {
-            std::string n = child.name();
-            if (n.find("AlternateContent") != std::string::npos
-                || n.find("Choice") != std::string::npos || n.find("Fallback") != std::string::npos)
+            std::string cn = c.name();
+            if (!insideChoice && cn.find("AlternateContent") != std::string::npos)
             {
-                for (auto& sub : child.children())
+                for (auto& ac : c.children())
                 {
-                    std::string sn = sub.name();
-                    if (sn == "w:drawing" || sn == "drawing")
-                        return true;
+                    std::string acn = ac.name();
+                    if (acn.find("Choice") != std::string::npos)
+                        if (scan(ac, true)) return true;
                 }
             }
+            else if (cn == "w:drawing" || cn == "drawing" || cn == "w:pict" || cn == "pict")
+            {
+                return true;
+            }
+            else
+            {
+                if (scan(c, insideChoice)) return true;
+            }
         }
-    }
-    return false;
+        return false;
+    };
+    return scan(pNode, false);
 }
 
 } // namespace
@@ -868,32 +873,96 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             bool hasDrawing = ParagraphHasDrawing(child);
             ParagraphInfo info = CollectParagraphInfo(child, styleIdToName);
 
-            // 处理图片 / 文本框所在段落：为 drawing 创建 Fly 节区
+            // 处理图片 / 文本框所在段落：为 drawing/pict 创建 Fly 节区
             if (hasDrawing)
             {
                 drawingParagraphs.push_back(child);
 
-                // 检查是否是文本框（含有 txbxContent）
+                // 检查是否是文本框（含有 txbxContent 或 v:textbox）
                 bool hasTxbx = false;
                 for (auto r : child.children("w:r"))
                 {
                     for (auto& dr : r.children())
                     {
                         std::string drName = dr.name();
+                        // DrawingML 格式
                         if (drName == "w:drawing" || drName == "drawing")
                         {
-                            std::string s;
                             std::function<void(pugi::xml_node)> findTxbx = [&](pugi::xml_node n) {
                                 for (auto& c : n.children())
                                 {
                                     std::string cn = c.name();
-                                    if (cn.find("txbxContent") != std::string::npos
-                                        || cn.find("txbxContent") != std::string::npos)
+                                    if (cn.find("txbxContent") != std::string::npos)
                                         hasTxbx = true;
                                     findTxbx(c);
                                 }
                             };
                             findTxbx(dr);
+                        }
+                        // VML 格式 (w:pict > v:shape > v:textbox > w:txbxContent)
+                        if (drName == "w:pict" || drName == "pict")
+                        {
+                            std::function<void(pugi::xml_node)> findVmlTxbx = [&](pugi::xml_node n) {
+                                for (auto& c : n.children())
+                                {
+                                    std::string cn = c.name();
+                                    if (cn.find("txbxContent") != std::string::npos)
+                                        hasTxbx = true;
+                                    // 检查 v:textbox 元素
+                                    if (cn.find("textbox") != std::string::npos)
+                                        hasTxbx = true;
+                                    findVmlTxbx(c);
+                                }
+                            };
+                            findVmlTxbx(dr);
+                        }
+                    }
+                    // 也检查嵌套在 mc:AlternateContent 中的 pict
+                    for (auto& alt : r.children())
+                    {
+                        std::string altName = alt.name();
+                        if (altName.find("AlternateContent") != std::string::npos
+                            || altName.find("Choice") != std::string::npos)
+                        {
+                            for (auto& sub : alt.children())
+                            {
+                                std::string sn = sub.name();
+                                if (sn == "w:pict" || sn == "pict")
+                                {
+                                    std::function<void(pugi::xml_node)> findVmlTxbx2 = [&](pugi::xml_node n) {
+                                        for (auto& c : n.children())
+                                        {
+                                            std::string cn = c.name();
+                                            if (cn.find("txbxContent") != std::string::npos)
+                                                hasTxbx = true;
+                                            if (cn.find("textbox") != std::string::npos)
+                                                hasTxbx = true;
+                                            findVmlTxbx2(c);
+                                        }
+                                    };
+                                    findVmlTxbx2(sub);
+                                }
+                                // 递归更深层次
+                                for (auto& sub2 : sub.children())
+                                {
+                                    std::string sn2 = sub2.name();
+                                    if (sn2 == "w:pict" || sn2 == "pict")
+                                    {
+                                        std::function<void(pugi::xml_node)> findVmlTxbx3 = [&](pugi::xml_node n) {
+                                            for (auto& c : n.children())
+                                            {
+                                                std::string cn = c.name();
+                                                if (cn.find("txbxContent") != std::string::npos)
+                                                    hasTxbx = true;
+                                                if (cn.find("textbox") != std::string::npos)
+                                                    hasTxbx = true;
+                                                findVmlTxbx3(c);
+                                            }
+                                        };
+                                        findVmlTxbx3(sub2);
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -911,39 +980,34 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         }
     }
 
-    // ── 阶段 2A：在 [4] 节区内创建所有 Fly 节点 ─────────────────────
-    // 插入顺序与 LO 保持一致：图片 → 文本框 → 图片 → 表格 → ...
+    // ── 阶段 2A：创建 Fly 容器 + 所有 Fly 节点 ──────────────────
     //
-    // 简化策略：按文档顺序重放 drawing / txbx / table，创建 Fly 节区；
-    // 图片 Fly → GRF_NODE，文本框 Fly → TEXT_NODE，表格 Fly → SwTableNode + 单元格 TEXT_NODE。
+    // LO 节点结构：
+    //   [0-1] 空 Normal
+    //   [2-3] 空 Normal
+    //   [4-42] Normal 节区：Fly 容器（包含图片/文本框/表格 Fly）
+    //   [43-44] 空 Normal
+    //   [45-211] Normal 节区：正文容器（TEXT_NODE 和 SECTION）
+    //
+    // 实现：
+    //   1. 在 [3] 后追加 Fly 容器节区（AppendNormalSection）
+    //   2. 设置 m_pEndOfAutotext = Fly 容器的 EndNode
+    //   3. 循环调用 InsertFlySection（在 m_pEndOfAutotext 之前插入）
+    //      每个 Fly 子节区：Fly StartNode + (GRF_NODE 或 TEXT_NODE 或 Table) + Fly EndNode
 
-    // 注意：m_pEndOfContent 始终指向数组末尾的 EndNode；
-    // InsertFlySection / InsertTable / MakeTextNode 会在它"之前"插入新节点。
-    //
-    // 初始结构（来自 InitNodes）：
-    //   [0] StartNode
-    //   [1] EndNode
-    //   [2] StartNode
-    //   [3] EndNode
-    //   [4] StartNode (Content/Body 节区)
-    //   [5] EndNode  ← m_pEndOfContent
-    //
-    // 所有 Fly 内容插入到 [4] 和 [5] 之间，作为 [4] 的子内容。
-    //
-    // 记录当前 body 节区的 StartNode（即 [4]），
-    // 以便后续在完成 Fly 内容后用 EndNode 关闭它。
-    SwStartNode* pContentSectionStart = nullptr;
-    {
-        SwNode* pN = rNodes[SwNodeOffset(4)];
-        if (pN && pN->IsStartNode())
-            pContentSectionStart = static_cast<SwStartNode*>(pN);
-    }
+    // 步骤 1-2：创建 Fly 容器节区
+    SwStartNode* pFlyContainerStt = rNodes.AppendNormalSection();
+    // 设置 Fly Container StartNode（用于按顺序追加 Fly）
+    rNodes.SetFlyContainerStart(pFlyContainerStt);
+    // pFlyContainerStt 的下一个节点是 EndNode（由 AppendNormalSection 创建）
+    SwNode* pFlyContainerEnd = rNodes[pFlyContainerStt->GetIndex() + SwNodeOffset(1)];
+    rNodes.SetEndOfAutotext(pFlyContainerEnd);
 
-    // 收集 body 中按顺序的所有"Fly 节点"段落，以便按文档顺序创建
-    // 为简化，我们单独处理 drawing 段落和 table，按文档顺序：
-    // 遍历 body 的子节点：对每个 w:p 若有 drawing 则在 Fly 中处理，
-    // 对每个 w:tbl 直接创建表格 Fly。
-    int anchorCounter = 0;  // 简单地递增生成锚点索引（只用于非图片 Fly）
+    // 收集 body 中按顺序的所有"Fly 节点"（每个 v:shape 或 drawing 创建一个 Fly）
+    // 按文档顺序遍历：
+    //   - w:p 中的每个 w:pict/v:shape 或 w:drawing → 图片/文本框 Fly
+    //   - w:tbl → 表格 Fly
+    int anchorCounter = 0;  // 简单地递增生成锚点索引
     for (auto child : bodyNode.children())
     {
         std::string name = child.name();
@@ -951,143 +1015,182 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         {
             if (ParagraphHasDrawing(child))
             {
-                // 创建 Fly 节区
-                SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
-                SwNode& flyAnchor = *pFlyStt;
+                // 递归扫描段落内的所有绘制容器（w:drawing / w:pict）
+                // 处理：w:p > w:r > (w:drawing|w:pict) 以及嵌套结构
+                //   （如 w:hyperlink > w:r > w:drawing，或 mc:AlternateContent > mc:Choice > w:drawing）
+                // 在 mc:AlternateContent 中，只处理 mc:Choice，忽略 mc:Fallback
+                std::vector<pugi::xml_node> drawContainers;
 
-                // 判断是图片还是文本框
-                bool isPicture = false;
-                bool isTxbx = false;
-                for (auto r : child.children("w:r"))
-                {
-                    for (auto& dr : r.children())
+                std::function<void(pugi::xml_node, bool)> scanAll = [&](pugi::xml_node n, bool insideChoice) {
+                    for (auto& c : n.children())
                     {
-                        std::string drName = dr.name();
-                        if (drName == "w:drawing" || drName == "drawing")
+                        std::string cn = c.name();
+                        if (!insideChoice && cn.find("AlternateContent") != std::string::npos)
                         {
-                            // 递归探查
-                            std::function<void(pugi::xml_node, bool&, bool&)> probe
-                                = [&](pugi::xml_node n, bool& pic, bool& txbx) {
-                                      for (auto& c : n.children())
-                                      {
-                                          std::string cn = c.name();
-                                          if (cn.find("pic") != std::string::npos
-                                              || cn.find("pic:pic") != std::string::npos)
-                                              pic = true;
-                                          if (cn.find("txbxContent") != std::string::npos
-                                              || cn.find("txbxContent") != std::string::npos)
-                                              txbx = true;
-                                          probe(c, pic, txbx);
-                                      }
-                                  };
-                            probe(dr, isPicture, isTxbx);
+                            // mc:AlternateContent：只扫描 Choice，跳过 Fallback
+                            for (auto& ac : c.children())
+                            {
+                                std::string acn = ac.name();
+                                if (acn.find("Choice") != std::string::npos)
+                                    scanAll(ac, true);  // 递归扫描 Choice 内部
+                                // mc:Fallback 忽略
+                            }
+                        }
+                        else if (cn == "w:drawing" || cn == "drawing" || cn == "w:pict" || cn == "pict")
+                        {
+                            drawContainers.push_back(c);
+                        }
+                        else
+                        {
+                            scanAll(c, insideChoice);  // 继续递归
                         }
                     }
-                    for (auto& child2 : r.children())
-                    {
-                        std::string n2 = child2.name();
-                        if (n2.find("AlternateContent") != std::string::npos
-                            || n2.find("Choice") != std::string::npos
-                            || n2.find("Fallback") != std::string::npos)
+                };
+                scanAll(child, false);
+
+                // 为每个容器内的内容形状创建一个 Fly。
+                // 关键点：递归扫描容器内的所有形状元素（pic:pic、wps:wsp、v:shape），
+                // 对每个形状检测：有 txbxContent/textbox → 文本框，有 pic:pic/imagedata → 图片，
+                // 否则是装饰形状跳过。
+                for (auto& container : drawContainers)
+                {
+                    // 递归收集容器内的所有形状元素
+                    std::vector<pugi::xml_node> shapeNodes;
+
+                    std::function<void(pugi::xml_node)> collectShapes = [&](pugi::xml_node n) {
+                        for (auto& c : n.children())
                         {
-                            for (auto& sub : child2.children())
+                            std::string cn = c.name();
+                            if (cn.find("pic:pic") != std::string::npos)
                             {
-                                std::string sn = sub.name();
-                                if (sn == "w:drawing" || sn == "drawing")
+                                shapeNodes.push_back(c);
+                            }
+                            else if (cn.find("wps:wsp") != std::string::npos ||
+                                     (cn == "wsp") || cn.find(":wsp") != std::string::npos)
+                            {
+                                shapeNodes.push_back(c);
+                            }
+                            else if (cn.find("v:shape") != std::string::npos ||
+                                     (cn.find("shape") != std::string::npos && cn.size() >= 2 && cn.substr(0,2) == "v:"))
+                            {
+                                shapeNodes.push_back(c);
+                            }
+                            else
+                            {
+                                collectShapes(c);  // 递归进入非形状元素
+                            }
+                        }
+                    };
+                    collectShapes(container);
+
+                    // 为每个形状创建 Fly 节点
+                    for (auto& shape : shapeNodes)
+                    {
+                        // 检查形状是否是图片：
+                        //   - 名称包含 "pic:pic" → DrawingML 图片
+                        //   - 名称包含 "v:shape" 且子节点含 imagedata → VML 图片
+                        //   - 内部含 pic:pic / imagedata 子元素
+                        std::function<bool(pugi::xml_node)> checkPicture = [&](pugi::xml_node n) {
+                            std::string nn = n.name();
+                            if (nn.find("pic:pic") != std::string::npos)
+                                return true;
+                            for (auto& c : n.children())
+                            {
+                                std::string cn = c.name();
+                                if (cn.find("pic:pic") != std::string::npos ||
+                                    cn.find("imagedata") != std::string::npos ||
+                                    cn.find("imageData") != std::string::npos)
+                                    return true;
+                                if (checkPicture(c)) return true;
+                            }
+                            return false;
+                        };
+
+                        // 检查形状是否包含文本框内容（txbxContent 内有 w:p 段落）
+                        bool hasTxbxContent = false;
+                        std::function<void(pugi::xml_node, bool&)> scanTxbx = [&](pugi::xml_node n, bool& inside) {
+                            for (auto& c : n.children())
+                            {
+                                std::string cn = c.name();
+                                if (cn.find("txbxContent") != std::string::npos ||
+                                    cn.find("textbox") != std::string::npos)
+                                    inside = true;
+                                if (inside && cn == "w:p")
+                                    hasTxbxContent = true;
+                                scanTxbx(c, inside);
+                            }
+                        };
+                        bool insideTmp = false;
+                        scanTxbx(shape, insideTmp);
+
+                        bool isTextbox = false;
+                        bool isPicture = false;
+                        if (hasTxbxContent)
+                            isTextbox = true;
+                        else if (checkPicture(shape))
+                            isPicture = true;
+                        else
+                            continue;  // 装饰形状（线条、矩形等），跳过
+
+                        // 创建 Fly
+                        if (isTextbox)
+                        {
+                            SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
+                            SwNode& flyAnchor = *pFlyStt;
+
+                            std::vector<std::string> txbxText;
+                            std::function<void(pugi::xml_node, bool)> extractTxbx = [&](pugi::xml_node n, bool insideTxbx) {
+                                for (auto& c : n.children())
                                 {
-                                    std::function<void(pugi::xml_node, bool&, bool&)> probe
-                                        = [&](pugi::xml_node n, bool& pic, bool& txbx) {
-                                              for (auto& c : n.children())
-                                              {
-                                                  std::string cn = c.name();
-                                                  if (cn.find("pic") != std::string::npos
-                                                      || cn.find("pic:pic") != std::string::npos)
-                                                      pic = true;
-                                                  if (cn.find("txbxContent") != std::string::npos)
-                                                      txbx = true;
-                                                  probe(c, pic, txbx);
-                                              }
-                                          };
-                                    probe(sub, isPicture, isTxbx);
+                                    std::string cn = c.name();
+                                    if (cn.find("txbxContent") != std::string::npos || cn.find("textbox") != std::string::npos)
+                                        insideTxbx = true;
+                                    if (insideTxbx && cn == "w:p")
+                                        txbxText.push_back("");
+                                    if (insideTxbx && !txbxText.empty() && cn == "w:t")
+                                        txbxText.back() += c.text().as_string();
+                                    extractTxbx(c, insideTxbx);
+                                }
+                            };
+                            extractTxbx(shape, false);
+
+                            if (!txbxText.empty())
+                            {
+                                for (size_t i = txbxText.size(); i > 0; i--)
+                                {
+                                    SwTextNode* pTN = rNodes.MakeTextNode(flyAnchor, pDefaultColl);
+                                    pTN->SetText(txbxText[i - 1]);
                                 }
                             }
-                        }
-                    }
-                }
-
-                if (isPicture && !isTxbx)
-                {
-                    // 图片 Fly：在 Fly StartNode 后插入 GRF_NODE
-                    rNodes.InsertGrfNode(flyAnchor);
-                }
-                else
-                {
-                    // 文本框 Fly：在 Fly 内创建一个 TEXT_NODE
-                    // 内容来自 w:txbxContent 内的第一个段落（简化）
-                    std::string txbxText;
-                    for (auto r : child.children("w:r"))
-                    {
-                        for (auto& dr : r.children())
-                        {
-                            std::string drName = dr.name();
-                            if (drName == "w:drawing" || drName == "drawing")
+                            else
                             {
-                                std::function<void(pugi::xml_node)> extract
-                                    = [&](pugi::xml_node n) {
-                                          for (auto& c : n.children())
-                                          {
-                                              std::string cn = c.name();
-                                              if (cn.find("txbxContent") != std::string::npos)
-                                              {
-                                                  // 提取其中的 w:p/w:r/w:t
-                                                  for (auto p : c.children("w:p"))
-                                                  {
-                                                      for (auto pr : p.children("w:r"))
-                                                      {
-                                                          for (auto t : pr.children("w:t"))
-                                                          {
-                                                              txbxText += t.text().as_string();
-                                                          }
-                                                      }
-                                                  }
-                                              }
-                                              else
-                                              {
-                                                  extract(c);
-                                              }
-                                          }
-                                      };
-                                extract(dr);
+                                rNodes.InsertGrfNode(flyAnchor);
                             }
+                            // 创建 Fly EndNode
+                            rNodes.CloseFlySection(*pFlyStt);
+                            m_pendingFlyAnchors_.push_back(pFlyStt);
+                            anchorCounter++;
+                        }
+                        else if (isPicture)
+                        {
+                            SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
+                            SwNode& flyAnchor = *pFlyStt;
+                            rNodes.InsertGrfNode(flyAnchor);
+                            // 创建 Fly EndNode
+                            rNodes.CloseFlySection(*pFlyStt);
+                            m_pendingFlyAnchors_.push_back(pFlyStt);
+                            anchorCounter++;
                         }
                     }
-                    SwTextNode* pTN = rNodes.MakeTextNode(flyAnchor, pDefaultColl);
-                    pTN->SetText(txbxText);
-                    // 样式名：对于文本框，LO 会设置为 "Heading 1" 等（看 txbxContent 内的样式）
-                    // 简化：保持空（让 walker 走默认）
-                    if (!txbxText.empty() && txbxText.size() < 60)
-                    {
-                        // 一些 LO 测试文本框内容是标题型，这里保持空以便使用默认样式
-                    }
                 }
-
-                // 设置该 Fly 节区的锚点：锚到正文后续的一个 TEXT_NODE
-                // 由于正文节点还未创建，这里暂存 anchorIdx 为 -1，
-                // 在正文 TEXT_NODE 创建完成后再回填锚点索引。
-                //
-                // 为简化，我们采用另一种策略：仅对有意义的 Fly 节区设置 anchor。
-                // 文本框 Fly 锚定到某个段落（此处用绝对索引，等正文创建完成后再赋值）。
-                m_pendingFlyAnchors_.push_back(pFlyStt);
-                anchorCounter++;
             }
         }
         else if (name == "w:tbl")
         {
-            // 在 m_pEndOfContent 之前插入一个 Fly 节区（StartNode + EndNode 对），
-            // 并在该 Fly 内插入一个 SwTableNode。
+            // 创建表格 Fly 节区
             SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
 
-            // 在该 Fly 内插入表格：计算行列
+            // 计算行列
             int nRows = 0;
             int nCols = 0;
             for (auto tr : child.children("w:tr"))
@@ -1101,68 +1204,93 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             if (nRows == 0 || nCols == 0)
                 continue;
 
-            // 使用 SwNodes::InsertTable 在 Fly StartNode 之后插入完整表格结构
+            // 先收集每个单元格的段落文本（按顺序）
+            // 每格可能包含多个段落（每行一个 TEXT_NODE）
+            std::vector<std::vector<std::string>> allCellParas;
+            for (auto tr : child.children("w:tr"))
+            {
+                for (auto cell : tr.children("w:tc"))
+                {
+                    std::vector<std::string> paras;
+                    for (auto p : cell.children("w:p"))
+                    {
+                        std::string paraText;
+                        for (auto r : p.children("w:r"))
+                        {
+                            for (auto t : r.children("w:t"))
+                                paraText += t.text().as_string();
+                        }
+                        paras.push_back(paraText);
+                    }
+                    allCellParas.push_back(paras);
+                }
+            }
+
+            // 插入表格结构（每格一个 TEXT_NODE）
             SwTableNode* pTableNode = rNodes.InsertTable(*pFlyStt, nCols, pDefaultColl, nRows);
 
-            // 填充单元格文本：遍历每个单元格的 w:p 收集文本，
-            // 并在表格对应单元格内设置 TEXT_NODE 的文本。
-            // 因为 InsertTable 为每个单元格只创建一个 TEXT_NODE，
-            // 这里简化处理：取单元格内的第一段文本（LO 常见结构为每格一个段落）。
             if (pTableNode)
             {
+                // 填充表格单元格内容
                 SwNodeOffset cellStart = pTableNode->GetIndex() + 1;
-                int cellIdx = 0;
-                for (auto tr : child.children("w:tr"))
+                int totalCells = static_cast<int>(allCellParas.size());
+
+                for (int ci = 0; ci < totalCells; ci++)
                 {
-                    for (auto cell : tr.children("w:tc"))
+                    const auto& paras = allCellParas[ci];
+                    if (paras.empty())
+                        continue;
+
+                    // 每格初始结构：BoxStart + TEXT_NODE + BoxEnd = 3 nodes
+                    SwNodeOffset boxStartIdx = cellStart + SwNodeOffset(ci * 3);
+                    SwNodeOffset firstTextIdx = boxStartIdx + SwNodeOffset(1);
+
+                    SwNode* pFirstText = rNodes[firstTextIdx];
+                    if (pFirstText && pFirstText->IsTextNode())
                     {
-                        // 收集单元格内第一段文本（简化：拼接所有段落）
-                        std::string cellText;
-                        bool firstPara = true;
-                        for (auto p : cell.children("w:p"))
+                        static_cast<SwTextNode*>(pFirstText)->SetText(paras[0]);
+
+                        // 在第一个 TEXT_NODE 之后插入额外的段落
+                        SwNode* pAnchor = pFirstText;
+                        for (size_t pi = 1; pi < paras.size(); pi++)
                         {
-                            std::string paraText;
-                            for (auto r : p.children("w:r"))
-                            {
-                                for (auto t : r.children("w:t"))
-                                    paraText += t.text().as_string();
-                            }
-                            if (!paraText.empty())
-                            {
-                                if (!firstPara && !cellText.empty())
-                                    cellText += " ";
-                                cellText += paraText;
-                                firstPara = false;
-                            }
+                            SwTextNode* pNewTN = rNodes.MakeTextNode(*pAnchor, pDefaultColl);
+                            pNewTN->SetText(paras[pi]);
                         }
-                        // 找到该单元格对应的 SwTextNode 并设置文本
-                        // 每个单元格 = BoxStart + TextNode + BoxEnd = 3 个节点
-                        // 总偏移：cellStart + cellIdx * 3 + 1
-                        SwNodeOffset textIdx = cellStart + SwNodeOffset(cellIdx * 3 + 1);
-                        if (textIdx < rNodes.Count())
-                        {
-                            SwNode* pNd = rNodes[textIdx];
-                            if (pNd && pNd->GetNodeType() == SwNodeType::Text)
-                            {
-                                static_cast<SwTextNode*>(pNd)->SetText(cellText);
-                            }
-                        }
-                        cellIdx++;
                     }
                 }
             }
+
+            // 创建 Fly EndNode
+            rNodes.CloseFlySection(*pFlyStt);
+            m_pendingFlyAnchors_.push_back(pFlyStt);
+            anchorCounter++;
         }
     }
 
-    // ── 阶段 2B：关闭 [4] 的内容节区（自动：InitNodes 已创建对应的 EndNode[5]）─
-    // 在所有 Fly 节点之后，继续插入"空节区 [115-116]"和"正文节区 [117+]"。
+    // ── 阶段 2B/2C/2D：创建空节区 + 正文容器节区 ─────────────
+    //
+    // LO 结构：
+    //   Fly 容器节区（结束）
+    //   空 Normal 节区 (2 个节点)
+    //   正文容器节区 (包含 TEXT_NODE + SECTION)
+    //
+    // 实现：
+    //   1. 在 Fly 容器后追加空 Normal 节区
+    //   2. 设置 m_pEndOfRedlines = 空节区的 EndNode
+    //   3. 追加正文容器节区
+    //   4. 设置 m_pEndOfContent = 正文容器的 EndNode
+    //   5. 在正文容器的 StartNode 之后插入正文内容
 
-    // ── 阶段 2C：插入空 Normal section [115-116] ───────────────────
-    rNodes.InsertEmptyNormalSection();
+    // 步骤 1-2：追加空 Normal 节区
+    SwStartNode* pEmptyStt = rNodes.AppendNormalSection();
+    SwNode* pEmptyEnd = rNodes[pEmptyStt->GetIndex() + SwNodeOffset(1)];
+    rNodes.SetEndOfRedlines(pEmptyEnd);
 
-    // ── 阶段 2D：插入正文节区 [117...] ─────────────────────────────
-    // 先插入正文节区的 StartNode（内容在其后插入）
-    SwStartNode* pBodyStt = rNodes.InsertBodyStartNode();
+    // 步骤 3-4：追加正文容器节区
+    SwStartNode* pBodyStt = rNodes.AppendNormalSection();
+    SwNode* pBodyEnd = rNodes[pBodyStt->GetIndex() + SwNodeOffset(1)];
+    rNodes.SetEndOfContent(pBodyEnd);
 
     // 记录创建的 body TEXT_NODE 的索引，用于后面设置 Fly anchor
     std::vector<SwNodeOffset> bodyTextNodeIndices;
@@ -1172,8 +1300,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     bool insideSection = false;
     SwSectionNode* pCurrentSection = nullptr;
 
-    // 最后一个内容节点（作为 MakeTextNode/ MakeSectionNode 的"插入位置"）
-    // 初始为 pBodyStt（在它之后插入正文内容）
+    // 正文插入位置：在正文容器的 StartNode 之后插入
     SwNode* pLastNode = pBodyStt;
 
     for (size_t i = 0; i < bodyParagraphs.size(); ++i)
