@@ -208,6 +208,7 @@ enum SwAttrWhich : sal_uInt16
     // 页面属性
     RES_PAGEDESC = 300,
     RES_BREAK, // 分页符
+    RES_SECTION_INDEX, // 解析时写入的节索引
 
     // 表格属性
     RES_TABLE_WIDTH = 400,

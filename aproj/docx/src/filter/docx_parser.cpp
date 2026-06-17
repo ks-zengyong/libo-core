@@ -459,11 +459,22 @@ void DocxParser::ParseStyles(SwDoc& doc)
         if (type == "paragraph")
         {
             auto* pColl = doc.MakeTextFormatColl(def.name);
-            // 设置属性
             if (!def.alignment.empty())
-            {
                 pColl->SetAttr(RES_PARATR_ADJUST, def.alignment);
-            }
+            if (!def.fontName.empty())
+                pColl->SetAttr(RES_CHRATR_FONT, def.fontName);
+            if (def.fontSize > 0)
+                pColl->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(def.fontSize));
+            if (def.bold)
+                pColl->SetAttr(RES_CHRATR_WEIGHT, "bold");
+            if (def.italic)
+                pColl->SetAttr(RES_CHRATR_POSTURE, "italic");
+            if (def.spacingBefore != 0)
+                pColl->SetAttr(RES_UL_SPACE, std::to_string(def.spacingBefore));
+            if (def.spacingAfter != 0)
+                pColl->SetAttr(RES_UL_SPACE_AFTER, std::to_string(def.spacingAfter));
+            if (def.spacingLine != 240)
+                pColl->SetAttr(RES_PARATR_LINESPACING, std::to_string(def.spacingLine));
         }
     }
 
@@ -751,7 +762,54 @@ struct ParagraphFlyInfo
     bool isPicture = false;
     std::vector<std::string> txbxTexts;
     std::vector<std::string> txbxStyles;
+    SwDoc::FlyLayoutInfo layout;
 };
+
+static SwTwips EmuToTwips(long long nEmu) { return static_cast<SwTwips>(nEmu * 1440 / 914400); }
+
+static void ParseFlyAnchorLayout(pugi::xml_node anchorNode, SwDoc::FlyLayoutInfo& out)
+{
+    out = SwDoc::FlyLayoutInfo{};
+    std::string name = anchorNode.name();
+    if (name.find("anchor") == std::string::npos && name.find("inline") == std::string::npos)
+        return;
+
+    auto posH = anchorNode.child("wp:positionH");
+    if (!posH)
+        posH = anchorNode.child("positionH");
+    if (posH)
+    {
+        out.relFromH = posH.attribute("relativeFrom").as_string("column");
+        auto off = posH.child("wp:posOffset");
+        if (!off)
+            off = posH.child("posOffset");
+        if (off)
+            out.offsetX = EmuToTwips(off.text().as_llong(0));
+    }
+
+    auto posV = anchorNode.child("wp:positionV");
+    if (!posV)
+        posV = anchorNode.child("positionV");
+    if (posV)
+    {
+        out.relFromV = posV.attribute("relativeFrom").as_string("paragraph");
+        auto off = posV.child("wp:posOffset");
+        if (!off)
+            off = posV.child("posOffset");
+        if (off)
+            out.offsetY = EmuToTwips(off.text().as_llong(0));
+    }
+
+    auto ext = anchorNode.child("wp:extent");
+    if (!ext)
+        ext = anchorNode.child("extent");
+    if (ext)
+    {
+        out.width = EmuToTwips(ext.attribute("cx").as_llong(0));
+        out.height = EmuToTwips(ext.attribute("cy").as_llong(0));
+    }
+    out.bValid = true;
+}
 
 static std::string CollectParagraphText(pugi::xml_node pNode)
 {
@@ -795,6 +853,8 @@ static void AnalyzeParagraphFlyContent(pugi::xml_node pNode, ParagraphFlyInfo& o
 {
     out = ParagraphFlyInfo{};
     out.hasDrawing = forceScan || ParagraphHasDrawing(pNode);
+    if (forceScan)
+        ParseFlyAnchorLayout(pNode, out.layout);
     if (!out.hasDrawing)
         return;
 
@@ -983,6 +1043,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         std::vector<std::string> flyTxbxStyles;
         bool hasWpAnchor = false; // 含 wp:anchor（正文仅保留空 anchor TEXT）
         bool isSectPrOnly = false; // 是否是仅含 sectPr 的段落（无文本）
+        bool hasSectPr = false; // 段落 pPr 含 w:sectPr
         std::string styleName;
     };
 
@@ -995,6 +1056,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     };
 
     std::vector<ParaInfo> paras; // 所有 w:p 段落（按文档顺序）
+    std::vector<pugi::xml_node> bodyParaNodes; // 与 paras 一一对应的 w:p 节点
     std::vector<TableInfo> tables; // 所有 w:tbl 表格
     // 记录哪些段落是"fly anchor 段落"（有 drawing的段落，其空段落对应正文 anchor）
     std::vector<int> flyAnchorParaIdx; // fly 对应正文段落的全局索引（paras 中的 index）
@@ -1033,6 +1095,8 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 auto sp = pPr.child("w:sectPr");
                 if (sp && pi.text.empty() && !pi.hasDrawing)
                     pi.isSectPrOnly = true;
+                if (sp)
+                    pi.hasSectPr = true;
 
                 auto pStyle = pPr.child("w:pStyle");
                 if (pStyle)
@@ -1046,6 +1110,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 flyAnchorParaIdx.push_back(static_cast<int>(paras.size()));
 
             paras.push_back(pi);
+            bodyParaNodes.push_back(child);
         }
         else if (name == "w:tbl")
         {
@@ -1121,6 +1186,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         std::vector<std::string> textStyles;
         TableInfo table;
         int anchorParaIdx = -1;
+        SwDoc::FlyLayoutInfo layout;
     };
 
     std::vector<FlySpec> flySpecs;
@@ -1202,6 +1268,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                         fs.type = info.isTextbox ? FlySpec::TEXT : FlySpec::GRF;
                         fs.texts = info.txbxTexts;
                         fs.textStyles = info.txbxStyles;
+                        fs.layout = info.layout;
                         fs.anchorParaIdx = currentParaIdx;
                         flySpecs.push_back(fs);
                     }
@@ -1262,6 +1329,8 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     for (auto& fs : flySpecs)
     {
         SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
+        if (fs.layout.bValid)
+            doc.SetFlyLayout(static_cast<int>(pFlyStt->GetIndex()), fs.layout);
         SwNode& flyAnchor = *pFlyStt;
 
         if (fs.type == FlySpec::GRF)
@@ -1455,6 +1524,16 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 pTN->SetStyleName(pi.styleName);
             else
                 pTN->SetStyleName("Default Paragraph Style");
+
+            pTN->SetAttr(RES_SECTION_INDEX, std::to_string(m_nCurrentSection_));
+            ApplyStyleToTextNode(pTN, pTN->GetStyleName(), !nodeText.empty());
+            if (i < bodyParaNodes.size())
+            {
+                ApplyParagraphMarkFromXml(bodyParaNodes[i], pTN);
+                auto pPr = bodyParaNodes[i].child("w:pPr");
+                if (pPr)
+                    ParseParagraphProps(pPr, pTN);
+            }
 
             if (i < paraFollowedByTable.size() && paraFollowedByTable[i])
             {
@@ -1946,10 +2025,15 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
     if (pStyle)
     {
         std::string styleId = pStyle.attribute("w:val").as_string();
-        // 查找样式的显示名（而非 ID）
-        // 例如：styleId="Normal" → 显示名 "Default Paragraph Style"
-        // 这里先设置 ID，ParseParagraph 中会用显示名覆盖
-        pNode->SetStyleName(styleId);
+        for (auto & [ id, def ] : styles_)
+        {
+            if (id == styleId)
+            {
+                if (!def.name.empty())
+                    pNode->SetStyleName(def.name);
+                break;
+            }
+        }
     }
 
     // 对齐
@@ -2042,53 +2126,149 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
     // 节属性（w:sectPr 在 w:pPr 内定义节的页面设置）
     auto sectPr = pPrNode.child("w:sectPr");
     if (sectPr)
+        ApplySectPr(sectPr, pNode);
+}
+
+void DocxParser::ApplySectPr(pugi::xml_node sectPr, SwTextNode* pNode)
+{
+    if (!sectPr || !pNode)
+        return;
+
+    int nextSection = m_nCurrentSection_ + 1;
+    auto it = sectionBreakTypes_.find(nextSection);
+    std::string breakType = (it != sectionBreakTypes_.end()) ? it->second : "nextPage";
+    std::cerr << "[Parser] sectPr currentSection=" << m_nCurrentSection_
+              << " nextSection=" << nextSection << " breakType=" << breakType << std::endl;
+    m_nCurrentSection_++;
+    if (breakType == "nextPage" || breakType == "evenPage" || breakType == "oddPage")
+        pNode->SetAttr(RES_BREAK, "section");
+    else if (breakType == "continuous")
+        pNode->SetAttr(RES_BREAK, "continuous");
+
+    SwPageDesc* pDesc = pNode->GetDoc().GetDefaultPageDesc();
+    if (pDesc)
     {
-        // OOXML: w:type 在 w:sectPr 中指定该节的起始分隔类型
-        // 所以节 N→N+1 的分隔类型应来自节 N+1 的 sectPr，而非节 N 的 sectPr
-        // 例如：sectPr_2 在节 2 的最后一个段落中，其 w:type 指定节 2 的起始类型
-        // 但节 2→3 的分隔类型应由 sectPr_3 的 w:type 指定（节 3 的起始类型）
-        int nextSection = m_nCurrentSection_ + 1;
-        auto it = sectionBreakTypes_.find(nextSection);
-        std::string breakType = (it != sectionBreakTypes_.end()) ? it->second : "nextPage";
-        std::cerr << "[Parser] sectPr currentSection=" << m_nCurrentSection_
-                  << " nextSection=" << nextSection << " breakType=" << breakType << std::endl;
-        m_nCurrentSection_++;
-        if (breakType == "nextPage" || breakType == "evenPage" || breakType == "oddPage")
+        auto pgSz = sectPr.child("w:pgSz");
+        if (pgSz)
         {
-            // 节分隔 = 分页：在当前段落之前分页
-            pNode->SetAttr(RES_BREAK, "section");
-        }
-        else if (breakType == "continuous")
-        {
-            // 连续节分隔：不分页，但需要更新节属性（列布局等）
-            pNode->SetAttr(RES_BREAK, "continuous");
+            pDesc->SetPageWidth(pgSz.attribute("w:w").as_int(11906));
+            pDesc->SetPageHeight(pgSz.attribute("w:h").as_int(16838));
         }
 
-        // 更新默认页面描述符
-        SwPageDesc* pDesc = pNode->GetDoc().GetDefaultPageDesc();
-        if (pDesc)
+        auto pgMar = sectPr.child("w:pgMar");
+        if (pgMar)
         {
-            // 页面尺寸
-            auto pgSz = sectPr.child("w:pgSz");
-            if (pgSz)
-            {
-                int w = pgSz.attribute("w:w").as_int(11906);
-                int h = pgSz.attribute("w:h").as_int(16838);
-                pDesc->SetPageWidth(w);
-                pDesc->SetPageHeight(h);
-            }
+            pDesc->SetTopMargin(pgMar.attribute("w:top").as_int(1440));
+            pDesc->SetBottomMargin(pgMar.attribute("w:bottom").as_int(1440));
+            pDesc->SetLeftMargin(pgMar.attribute("w:left").as_int(1800));
+            pDesc->SetRightMargin(pgMar.attribute("w:right").as_int(1800));
+            pDesc->SetHeaderMargin(pgMar.attribute("w:header").as_int(720));
+            pDesc->SetFooterMargin(pgMar.attribute("w:footer").as_int(720));
+        }
 
-            // 页面边距
-            auto pgMar = sectPr.child("w:pgMar");
-            if (pgMar)
+        SwDoc::SectionMargins sectMargins;
+        if (pgMar)
+        {
+            sectMargins.top = pgMar.attribute("w:top").as_int(1440);
+            sectMargins.bottom = pgMar.attribute("w:bottom").as_int(1440);
+            sectMargins.left = pgMar.attribute("w:left").as_int(1800);
+            sectMargins.right = pgMar.attribute("w:right").as_int(1800);
+        }
+        auto cols = sectPr.child("w:cols");
+        if (cols)
+        {
+            sectMargins.numCols = cols.attribute("w:num").as_int(1);
+            sectMargins.colSpace = cols.attribute("w:space").as_int(708);
+            auto col = cols.child("w:col");
+            if (col)
+                sectMargins.colWidth = col.attribute("w:w").as_int(0);
+        }
+        pNode->GetDoc().SetSectionMargins(m_nCurrentSection_, sectMargins);
+    }
+}
+
+void DocxParser::ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleName,
+                                      bool bHasTextContent)
+{
+    if (!pTN || styleName.empty())
+        return;
+
+    for (auto & [ id, def ] : styles_)
+    {
+        if (def.name != styleName && id != styleName)
+            continue;
+        if (SwTextFormatColl* pColl = pTN->GetDoc().FindTextFormatColl(def.name))
+            pTN->ChgFormatColl(pColl);
+        if (!def.fontName.empty())
+            pTN->SetAttr(RES_CHRATR_FONT, def.fontName);
+        if (def.fontSize > 0)
+            pTN->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(def.fontSize));
+        if (def.bold)
+            pTN->SetAttr(RES_CHRATR_WEIGHT, "bold");
+        if (def.italic)
+            pTN->SetAttr(RES_CHRATR_POSTURE, "italic");
+        if (def.spacingBefore != 0)
+            pTN->SetAttr(RES_UL_SPACE, std::to_string(def.spacingBefore));
+        if (def.spacingAfter != 0)
+            pTN->SetAttr(RES_UL_SPACE_AFTER, std::to_string(def.spacingAfter));
+        if (def.spacingLine != 240)
+            pTN->SetAttr(RES_PARATR_LINESPACING, std::to_string(def.spacingLine));
+        break;
+    }
+    (void)bHasTextContent;
+}
+
+void DocxParser::ApplyParagraphMarkFromXml(pugi::xml_node pNode, SwTextNode* pTN)
+{
+    if (!pNode || !pTN)
+        return;
+
+    const bool bHasText = !pTN->GetText().empty();
+
+    auto pPr = pNode.child("w:pPr");
+    auto pPrRPr = pPr ? pPr.child("w:rPr") : pugi::xml_node();
+    if (pPrRPr)
+    {
+        if (bHasText)
+        {
+            // 有文本：段落标记格式只写入 PARA_MARK，不覆盖内容字体
+            ParseRunProps(pPrRPr, pTN, false, false, true);
+        }
+        else
+        {
+            ParseRunProps(pPrRPr, pTN);
+            const std::string* pFont = pTN->GetAttr(RES_CHRATR_FONT);
+            if (pFont && !pFont->empty())
+                pTN->SetAttr(RES_CHRATR_FONT_PARA_MARK, *pFont);
+            const std::string* pSize = pTN->GetAttr(RES_CHRATR_FONTSIZE);
+            if (pSize && !pSize->empty())
+                pTN->SetAttr(RES_CHRATR_FONTSIZE_PARA_MARK, *pSize);
+        }
+    }
+    else
+    {
+        // 无 pPr/rPr 时，才从绘图 run 取段落标记格式
+        for (auto r : pNode.children("w:r"))
+        {
+            if (!r.child("w:drawing") && !r.child("w:pict"))
+                continue;
+            auto rPr = r.child("w:rPr");
+            if (rPr)
             {
-                pDesc->SetTopMargin(pgMar.attribute("w:top").as_int(1440));
-                pDesc->SetBottomMargin(pgMar.attribute("w:bottom").as_int(1440));
-                pDesc->SetLeftMargin(pgMar.attribute("w:left").as_int(1800));
-                pDesc->SetRightMargin(pgMar.attribute("w:right").as_int(1800));
-                pDesc->SetHeaderMargin(pgMar.attribute("w:header").as_int(720));
-                pDesc->SetFooterMargin(pgMar.attribute("w:footer").as_int(720));
+                if (bHasText)
+                    ParseRunProps(rPr, pTN, false, false, true);
+                else
+                {
+                    ParseRunProps(rPr, pTN);
+                    const std::string* pFont = pTN->GetAttr(RES_CHRATR_FONT);
+                    if (pFont && !pFont->empty())
+                        pTN->SetAttr(RES_CHRATR_FONT_PARA_MARK, *pFont);
+                    const std::string* pSize = pTN->GetAttr(RES_CHRATR_FONTSIZE);
+                    if (pSize && !pSize->empty())
+                        pTN->SetAttr(RES_CHRATR_FONTSIZE_PARA_MARK, *pSize);
+                }
             }
+            break;
         }
     }
 }
@@ -2441,10 +2621,14 @@ std::string DocxParser::ResolveImage(const std::string& relId)
 //===----------------------------------------------------------------------===//
 
 void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool bSkipColor,
-                               bool bSkipSize)
+                               bool bSkipSize, bool bParaMarkOnly)
 {
     if (!rPrNode || !pNode)
         return;
+
+    const sal_uInt16 nFontWhich = bParaMarkOnly ? RES_CHRATR_FONT_PARA_MARK : RES_CHRATR_FONT;
+    const sal_uInt16 nSizeWhich
+        = bParaMarkOnly ? RES_CHRATR_FONTSIZE_PARA_MARK : RES_CHRATR_FONTSIZE;
 
     // 字体
     auto rFonts = rPrNode.child("w:rFonts");
@@ -2453,7 +2637,7 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool b
         std::string font = rFonts.attribute("w:ascii").as_string();
         if (!font.empty())
         {
-            pNode->SetAttr(RES_CHRATR_FONT, font);
+            pNode->SetAttr(nFontWhich, font);
         }
         else
         {
@@ -2463,7 +2647,7 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool b
             {
                 auto it = themeFonts_.find(themeFont);
                 if (it != themeFonts_.end())
-                    pNode->SetAttr(RES_CHRATR_FONT, it->second);
+                    pNode->SetAttr(nFontWhich, it->second);
             }
         }
     }
@@ -2475,9 +2659,12 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool b
         if (sz)
         {
             int size = sz.attribute("w:val").as_int(22);
-            pNode->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(size));
+            pNode->SetAttr(nSizeWhich, std::to_string(size));
         }
     }
+
+    if (bParaMarkOnly)
+        return;
 
     // 粗体
     auto b = rPrNode.child("w:b");

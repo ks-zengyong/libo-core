@@ -366,6 +366,12 @@ SwPageFrame* SwPageFrame::GetNextPage() const { return static_cast<SwPageFrame*>
 
 SwPageFrame* SwPageFrame::GetPrevPage() const { return static_cast<SwPageFrame*>(GetPrev()); }
 
+void SwPageFrame::RegisterAnchoredFly(SwFlyFrame* pFly, SwFrame* pAnchor)
+{
+    if (pFly && pAnchor)
+        m_aAnchoredFlies.emplace_back(pFly, pAnchor);
+}
+
 SwHeaderFrame* SwPageFrame::FindHeaderFrame() const
 {
     // 在页面子 Frame 中查找页眉 Frame

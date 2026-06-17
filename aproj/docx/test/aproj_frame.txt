@@ -1,109 +1,128 @@
 PAGE_START	1	11906	16838
-    TEXT_FRAME	1	0	1440	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	1	0	1680	11906	720	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    IMAGE_FRAME	1	284	2400	8022	1440
-    IMAGE_FRAME	1	284	3840	8022	1440
-    IMAGE_FRAME	1	284	5280	8022	1440
-    IMAGE_FRAME	1	284	6720	8022	1440
-    IMAGE_FRAME	1	284	8160	8022	1440
-    IMAGE_FRAME	1	284	9600	8022	1440
-    IMAGE_FRAME	1	284	11040	8022	1440
-    IMAGE_FRAME	1	284	12480	8022	1440
-    IMAGE_FRAME	1	284	13920	8022	1440
-    TABLE_START	1	0	15360	8306	276
-      TABLEROW_START	1	0	0	8306	276
-        TABLECELL_START	1	0	0	4153	276
-        TABLECELL_END	1
-        TABLECELL_START	1	4153	0	4153	276
-        TABLECELL_END	1
-      TABLEROW_END	1
-    TABLE_END	1
-    IMAGE_FRAME	1	284	15636	8022	1440
-    IMAGE_FRAME	1	284	17076	8022	1440
-    IMAGE_FRAME	1	284	18516	8022	1440
-    IMAGE_FRAME	1	284	19956	8022	1440
-    IMAGE_FRAME	1	284	21396	8022	1440
-    IMAGE_FRAME	1	284	22836	8022	1440
+    TEXT_FRAME	1	284	284	11906	507	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
+      FLY_START	1	296	284	11878	16812
+        IMAGE_FRAME	1	296	284	11878	16812
+      FLY_END	1
+    TEXT_FRAME	1	284	791	11906	417	"WPS Office®"	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	1208	11906	417	""	fony family	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	1625	11906	1015	"Welcome to WPS Office - Writer"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	2640	11906	1352	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	3992	11906	507	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	4499	11906	339	"Switch tabs to find different commands to process your document."	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	4838	11906	339	"Share your documents with others."	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	5177	11906	774	"\nFind all of Writer's commands."	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	5951	11906	574	"\nSearch the Help center for answers when you get stuck."	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	6525	11906	574	"\nQuickly switch views and adjust the scale of the page display."	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	7099	11906	1014	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	8113	11906	339	"Count the number of words and pages in your document in real time."	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	8452	11906	507	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	8959	11906	676	"WPS AI+Writer"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	9635	11906	104	""	fony family	7	16777215	188	0	0	0	Body Text
+    TEXT_FRAME	1	284	9739	11906	1303	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Poppins	24	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	11042	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	11557	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
+      FLY_START	1	1399	12040	9764	1775
+        TEXT_FRAME	1	1399	12040	9764	282	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+        TEXT_FRAME	1	1399	12322	9764	846	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      FLY_END	1
+    TEXT_FRAME	1	284	12072	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	12587	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	13102	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
+    TEXT_FRAME	1	284	13617	11906	282	""	fony family	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	13899	11906	282	"\tto help you \t\twrite and understand your Word document"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	1	284	14181	11906	282	""	fony family	20	16777215	144	0	0	0	Default Paragraph Style
 PAGE_END	1
 PAGE_START	2	11906	16838
-    TABLE_START	2	0	15360	8306	4298
-      TABLEROW_START	2	0	0	8306	276
-        TABLECELL_START	2	0	0	4153	276
-        TABLECELL_END	2
-        TABLECELL_START	2	4153	0	4153	276
-        TABLECELL_END	2
-      TABLEROW_END	2
-      TABLEROW_START	2	0	276	8306	276
-        TABLECELL_START	2	0	0	4153	276
-        TABLECELL_END	2
-        TABLECELL_START	2	4153	0	4153	276
-        TABLECELL_END	2
-      TABLEROW_END	2
-      TABLEROW_START	2	0	552	8306	276
-        TABLECELL_START	2	0	0	4153	276
-        TABLECELL_END	2
-        TABLECELL_START	2	4153	0	4153	276
-        TABLECELL_END	2
-      TABLEROW_END	2
-      TABLEROW_START	2	0	828	8306	276
-        TABLECELL_START	2	0	0	4153	276
-        TABLECELL_END	2
-        TABLECELL_START	2	4153	0	4153	276
-        TABLECELL_END	2
-      TABLEROW_END	2
-      TABLEROW_START	2	0	1104	8306	276
-        TABLECELL_START	2	0	0	4153	276
-        TABLECELL_END	2
-        TABLECELL_START	2	4153	0	4153	276
-        TABLECELL_END	2
-      TABLEROW_END	2
-    TABLE_END	2
+    TEXT_FRAME	2	284	17122	11906	507	"WPS AI-generated content"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	17629	11906	1182	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	18811	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	19149	11906	338	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	19487	11906	1014	"\nWPS AI-based content rewriting"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	20501	11906	394	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	20895	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	21233	11906	564	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	284	21797	11906	676	"For all your document process needs"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    SECTION_START	2	0	0	0	0
+      TEXT_FRAME	2	284	17122	11906	507	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	17629	11906	1014	"\nRestrict Editing"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	18643	11906	394	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	19037	11906	394	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	19431	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	19769	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	20107	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+        FLY_START	2	296	17122	11878	16812
+          IMAGE_FRAME	2	296	17122	11878	16812
+        FLY_END	2
+      TEXT_FRAME	2	284	20445	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	20783	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	21121	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	21459	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	21797	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	22135	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	22473	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	22811	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	23149	11906	1014	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	24163	11906	507	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	24670	11906	338	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	25008	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	25346	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	25684	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	26022	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+        FLY_START	2	296	17122	11878	16812
+          IMAGE_FRAME	2	296	17122	11878	16812
+        FLY_END	2
+      TEXT_FRAME	2	284	26360	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	26698	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	27036	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	27374	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	27712	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	28050	11906	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	28388	11906	507	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	28895	11906	507	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	29402	11906	1014	"\nFormat Conversion"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	30416	11906	394	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      TEXT_FRAME	2	284	30810	11906	394	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    SECTION_END	2
 PAGE_END	2
 PAGE_START	3	11906	16838
-    TEXT_FRAME	3	0	35116	11906	240	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Heading 1
-    TEXT_FRAME	3	0	35356	11906	240	""	Calibri	20	16777215	144	0	0	0	Frame Contents
-    TEXT_FRAME	3	0	35596	11906	240	"Free ALL-IN-ONE Office Suite"	Calibri	20	16777215	144	0	0	0	Heading 1
-    TEXT_FRAME	3	0	35836	11906	240	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Frame Contents
-    IMAGE_FRAME	3	284	36076	8022	1440
-    TEXT_FRAME	3	0	37516	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	37756	11906	240	"WPS Office®"	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	37996	11906	240	""	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	38236	11906	240	"Welcome to WPS Office - Writer"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	38476	11906	960	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	39436	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	39676	11906	240	"Switch tabs to find different commands to process your document."	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	39916	11906	240	"Share your documents with others."	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	40156	11906	480	"\nFind all of Writer's commands."	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	40636	11906	480	"\nSearch the Help center for answers when you get stuck."	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	41116	11906	480	"\nQuickly switch views and adjust the scale of the page display."	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	41596	11906	480	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	42076	11906	240	"Count the number of words and pages in your document in real time."	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	42316	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	42556	11906	240	"WPS AI+Writer"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	42796	11906	240	""	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	43036	11906	720	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	43756	11906	240	""	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	43996	11906	240	""	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	44236	11906	240	""	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	44476	11906	240	""	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	44716	11906	240	""	Calibri	20	16777215	144	0	0	0	Body Text
-    TEXT_FRAME	3	0	44956	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	45196	11906	240	"\tto help you \t\twrite and understand your Word document"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	45436	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	45676	11906	240	"WPS AI-generated content"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	45916	11906	720	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	46636	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	46876	11906	240	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	47116	11906	480	"\nWPS AI-based content rewriting"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	3	0	47596	11906	720	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    SECTION_START	3	1004	34396	10748	13742
+      COLUMN_START	3	1004	34396	5020	13742
+          TEXT_FRAME	3	1004	34396	5020	676	"Editing and typesetting"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	35072	5020	1014	"\nFind and Replace"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	36086	5020	1970	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	38056	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	38394	5020	564	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	38958	5020	1014	"\nEfficient Word Typesetting"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	39972	5020	1970	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	41942	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	42280	5020	564	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	42844	5020	1014	"\nSpell Check"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	43858	5020	2364	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	46222	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	46560	5020	564	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	47124	5020	1014	"\nTrack Changes"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      COLUMN_END	3
+      COLUMN_START	3	6732	34396	5020	6534
+          TEXT_FRAME	3	6732	34396	5020	3546	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6732	37942	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6732	38280	5020	564	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6732	38844	5020	564	""	Poppins SemiBold	40	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6732	39408	5020	676	"More Popular features"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6732	40084	5020	282	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+            FLY_START	3	0	0	0	0
+            FLY_END	3
+          TEXT_FRAME	3	6732	40366	5020	564	""	Poppins SemiBold	40	16777215	144	0	0	0	Default Paragraph Style
+            FLY_START	3	5349	40597	10530	943
+              TEXT_FRAME	3	5349	40597	10530	282	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Heading 1
+              TEXT_FRAME	3	5349	40879	10530	282	""	Calibri	20	16777215	144	0	0	0	Frame Contents
+            FLY_END	3
+            FLY_START	3	6877	39597	8303	1140
+              TEXT_FRAME	3	6877	39597	8303	282	"Free ALL-IN-ONE Office Suite"	Calibri	20	16777215	144	0	0	0	Heading 1
+              TEXT_FRAME	3	6877	39879	8303	282	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Frame Contents
+            FLY_END	3
+            FLY_START	3	296	33960	11878	16812
+              IMAGE_FRAME	3	296	33960	11878	16812
+            FLY_END	3
+      COLUMN_END	3
+    SECTION_END	3
 PAGE_END	3
-PAGE_START	4	11906	16838
-    TEXT_FRAME	4	0	51954	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	4	0	52194	11906	240	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	4	0	52434	11906	240	"For all your document process needs"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    SECTION_START	4	0	0	0	0
-    SECTION_END	4
-    SECTION_START	4	0	0	0	0
-    SECTION_END	4
-    TEXT_FRAME	4	0	0	11906	240	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-PAGE_END	4

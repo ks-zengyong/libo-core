@@ -47,10 +47,14 @@ private:
     void ParseSdt(pugi::xml_node sdtNode, SwDoc& doc);
     void ParseSectionProps(pugi::xml_node sectPrNode, SwDoc& doc);
 
+    void ApplySectPr(pugi::xml_node sectPrNode, SwTextNode* pNode);
+    void ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleName, bool bHasTextContent);
+    void ApplyParagraphMarkFromXml(pugi::xml_node pNode, SwTextNode* pTN);
+
     // 段落/文本解析
     std::string ParseRunText(pugi::xml_node rNode);
     void ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool bSkipColor = false,
-                       bool bSkipSize = false);
+                       bool bSkipSize = false, bool bParaMarkOnly = false);
     void ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode);
 
     // 属性解析辅助

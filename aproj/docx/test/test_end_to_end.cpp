@@ -104,10 +104,12 @@ static std::string resolvePath(const std::string& path)
     // Normalize path separators for Windows
 #ifdef _WIN32
     for (auto& c : resolved)
-        if (c == '/') c = '\\';
+        if (c == '/')
+            c = '\\';
     // Resolve .. components
     std::string::size_type pos;
-    while ((pos = resolved.find("\\..\\")) != std::string::npos) {
+    while ((pos = resolved.find("\\..\\")) != std::string::npos)
+    {
         auto prev = resolved.rfind('\\', pos - 1);
         if (prev != std::string::npos)
             resolved.erase(prev, pos + 3 - prev);
@@ -269,27 +271,19 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     TEST_ASSERT_TRUE(pRoot != nullptr, "InitLayout returns root frame");
     TEST_ASSERT_EQ(doc.GetRootFrame(), pRoot, "RootFrame registered in SwDoc");
 
-    // 3. 创建 Frame
+    // 3. 创建 Frame（仅正文区 EndOfContent 内节点）
     SwNodes& rNodes = doc.GetNodes();
-    SwNodeOffset nCount = rNodes.Count();
-    SwNode* pFirst = nullptr;
-    SwNode* pLast = nullptr;
-    int nTextNodes = 0;
-    for (SwNodeOffset i = 0; i < nCount; ++i)
-    {
-        SwNode* pNode = rNodes[i];
-        if (pNode && pNode->IsTextNode())
-        {
-            if (!pFirst)
-                pFirst = pNode;
-            pLast = pNode;
-            ++nTextNodes;
-        }
-    }
-    TEST_ASSERT_TRUE(pFirst != nullptr, "Has content nodes");
-    std::cerr << "[TEST] About to call MakeFrames, nCount=" << rNodes.Count() << std::endl;
-    if (pFirst && pLast)
-        MakeFrames(doc, *pFirst, *pLast);
+    SwNode& rEndOfContent = rNodes.GetEndOfContent();
+    TEST_ASSERT_TRUE(rEndOfContent.IsEndNode(), "EndOfContent is EndNode");
+    SwEndNode* pBodyEndNode = rEndOfContent.GetEndNode();
+    SwStartNode* pBodyStart = pBodyEndNode ? pBodyEndNode->GetStartNode() : nullptr;
+    TEST_ASSERT_TRUE(pBodyStart != nullptr, "Body start node exists");
+    SwNodeOffset nBodyStt = pBodyStart->GetIndex() + SwNodeOffset(1);
+    SwNodeOffset nBodyEnd = rEndOfContent.GetIndex() - SwNodeOffset(1);
+    std::cerr << "[TEST] About to call MakeFrames, body range " << nBodyStt << ".." << nBodyEnd
+              << std::endl;
+    MakeFrames(doc, *rNodes[nBodyStt], *rNodes[nBodyEnd]);
+    MakeFlyFrames(doc);
     std::cerr << "[TEST] MakeFrames done" << std::endl;
 
     // 4. 验证 Frame 树
@@ -386,7 +380,7 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     TEST_ASSERT_TRUE(hasSetFont, "VCL layer has SET_FONT");
 
     // 9. 汇总
-    std::cout << "  Summary: " << nTextNodes << " text nodes" << std::endl;
+    std::cout << "  Summary: body range " << nBodyStt << ".." << nBodyEnd << std::endl;
 }
 
 // ── Main ───────────────────────────────────────────────────────

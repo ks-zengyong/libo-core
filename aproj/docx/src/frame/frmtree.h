@@ -24,3 +24,6 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
 
 // InsertNewPage: 创建新页面
 SwPageFrame* InsertNewPage(SwRootFrame* pRoot, SwPageDesc* pDesc = nullptr);
+
+// MakeFlyFrames: 为 Fly 容器中的浮动对象创建 Frame 并注册锚点
+void MakeFlyFrames(SwDoc& rDoc);

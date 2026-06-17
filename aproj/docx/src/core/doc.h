@@ -74,6 +74,27 @@ public:
     }
     int GetSectionCount() const { return static_cast<int>(m_aSectionMargins.size()); }
 
+    // Fly 布局信息（wp:anchor 位置），key = SwFlyStartNode 索引
+    struct FlyLayoutInfo
+    {
+        SwTwips offsetX = 0;
+        SwTwips offsetY = 0;
+        SwTwips width = 0;
+        SwTwips height = 0;
+        std::string relFromH = "column";
+        std::string relFromV = "paragraph";
+        bool bValid = false;
+    };
+    void SetFlyLayout(int nFlyStartIndex, const FlyLayoutInfo& rInfo)
+    {
+        m_aFlyLayouts[nFlyStartIndex] = rInfo;
+    }
+    const FlyLayoutInfo* GetFlyLayout(int nFlyStartIndex) const
+    {
+        auto it = m_aFlyLayouts.find(nFlyStartIndex);
+        return it != m_aFlyLayouts.end() ? &it->second : nullptr;
+    }
+
 private:
     // 初始化默认样式
     void InitDefaultStyles();
@@ -99,4 +120,5 @@ private:
 
     // 节边距映射
     std::map<int, SectionMargins> m_aSectionMargins;
+    std::map<int, FlyLayoutInfo> m_aFlyLayouts;
 };

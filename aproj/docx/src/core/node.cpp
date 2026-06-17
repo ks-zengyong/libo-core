@@ -1,6 +1,7 @@
 // 简化版 SwNode 实现，对应 LibreOffice 的 sw/source/core/docnode/node.cxx
 
 #include "node.h"
+#include "format.h"
 #include "ndarr.h"
 #include <cassert>
 #include <algorithm>
@@ -199,7 +200,15 @@ void SwTextNode::SetAttr(sal_uInt16 nWhich, const std::string& rValue)
 const std::string* SwTextNode::GetAttr(sal_uInt16 nWhich) const
 {
     auto it = m_aAttrs.find(nWhich);
-    return it != m_aAttrs.end() ? &it->second : nullptr;
+    if (it != m_aAttrs.end() && !it->second.empty())
+        return &it->second;
+    if (SwTextFormatColl* pColl = GetFormatColl())
+    {
+        if (const AttrValue* pVal = pColl->ResolveAttr(nWhich))
+            if (!pVal->empty())
+                return pVal;
+    }
+    return nullptr;
 }
 
 //===----------------------------------------------------------------------===//

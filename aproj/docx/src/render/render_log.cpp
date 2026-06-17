@@ -34,6 +34,19 @@ public:
             ExtractTextInfo();
     }
 
+    AprojFrameNode(SwFrame* pFrame, int pageNum, SwPageFrame* pPage, size_t flyIndex,
+                   SwFrame* pAnchor, bool bFlySibling)
+        : m_pFrame(pFrame)
+        , m_pageNum(pageNum)
+        , m_pPageFrame(pPage)
+        , m_flyIndex(flyIndex)
+        , m_pAnchorFrame(pAnchor)
+        , m_bIsFlySibling(bFlySibling)
+    {
+        if (pFrame && pFrame->IsTextFrame())
+            ExtractTextInfo();
+    }
+
     FrameNodeType GetNodeType() const override
     {
         if (!m_pFrame)
@@ -117,28 +130,40 @@ public:
         return pNext ? new AprojFrameNode(pNext, m_pageNum) : nullptr;
     }
 
-    // 浮动对象链: 与主链分离，由 SwFrame 的专用方法返回第一个浮动对象
-    // (如果 aproj 还没实现浮动对象的 frame，会返回 nullptr —— 由
-    // WalkFrameTreeAndLog 的循环安全处理)
+    // 浮动对象链: 对应 LO paint_listener.cxx LoFrameNode::GetFirstFly
+    // 从页面 RegisterAnchoredFly 列表中查找锚定到当前帧的 Fly
     IFrameNode* GetFirstFly() const override
     {
-        if (!m_pFrame || !m_pFrame->IsLayoutFrame())
+        if (!m_pFrame)
             return nullptr;
-        SwFlyFrame* pFly = static_cast<SwLayoutFrame*>(m_pFrame)->GetFirstFly();
-        return pFly ? new AprojFrameNode(pFly, m_pageNum) : nullptr;
+
+        SwPageFrame* pPageFrame = m_pFrame->FindPageFrame();
+        if (!pPageFrame)
+            return nullptr;
+
+        const auto& rFlies = pPageFrame->GetAnchoredFlies();
+        for (size_t i = 0; i < rFlies.size(); ++i)
+        {
+            if (rFlies[i].second == m_pFrame)
+                return new AprojFrameNode(rFlies[i].first, m_pageNum, pPageFrame, i, m_pFrame,
+                                          true);
+        }
+        return nullptr;
     }
 
     IFrameNode* GetNextSiblingFly() const override
     {
-        if (!m_pFrame)
+        if (!m_bIsFlySibling || !m_pPageFrame || !m_pAnchorFrame)
             return nullptr;
-        // m_pFrame 本身必须是 SwFlyFrame* 才能参与“浮动对象链”步进。
-        // 非 Fly 的 frame（例如 SwPageFrame / SwBodyFrame 等）从 GetFirstFly 进入链，
-        // 之后链上的下一个节点都是 SwFlyFrame。
-        if (m_pFrame->GetType() != SwFrameType::Fly)
-            return nullptr;
-        SwFlyFrame* pNext = static_cast<SwFlyFrame*>(m_pFrame)->GetNextFly();
-        return pNext ? new AprojFrameNode(pNext, m_pageNum) : nullptr;
+
+        const auto& rFlies = m_pPageFrame->GetAnchoredFlies();
+        for (size_t i = m_flyIndex + 1; i < rFlies.size(); ++i)
+        {
+            if (rFlies[i].second == m_pAnchorFrame)
+                return new AprojFrameNode(rFlies[i].first, m_pageNum, m_pPageFrame, i,
+                                          m_pAnchorFrame, true);
+        }
+        return nullptr;
     }
 
 private:
@@ -152,8 +177,17 @@ private:
         SwTextNode* pTextNode = static_cast<SwTextNode*>(pContentNode);
         m_textBuf = pTextNode->GetText();
 
-        const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
-        const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+        const std::string* pFont = nullptr;
+        const std::string* pSize = nullptr;
+        if (m_textBuf.empty())
+        {
+            pFont = pTextNode->GetAttr(RES_CHRATR_FONT_PARA_MARK);
+            pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
+        }
+        if (!pFont)
+            pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+        if (!pSize)
+            pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
         const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
         const std::string* pItalic = pTextNode->GetAttr(RES_CHRATR_POSTURE);
 
@@ -170,6 +204,10 @@ private:
 
     SwFrame* m_pFrame;
     int m_pageNum;
+    SwPageFrame* m_pPageFrame = nullptr;
+    size_t m_flyIndex = 0;
+    SwFrame* m_pAnchorFrame = nullptr;
+    bool m_bIsFlySibling = false;
     std::string m_textBuf;
     std::string m_fontBuf;
     std::string m_styleBuf;

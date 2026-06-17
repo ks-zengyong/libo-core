@@ -296,10 +296,18 @@ public:
     SwPageFrame* GetNextPage() const;
     SwPageFrame* GetPrevPage() const;
 
+    // 锚定到正文 Frame 的浮动对象（对应 LO SwSortedObjs 的简化实现）
+    void RegisterAnchoredFly(SwFlyFrame* pFly, SwFrame* pAnchor);
+    const std::vector<std::pair<SwFlyFrame*, SwFrame*>>& GetAnchoredFlies() const
+    {
+        return m_aAnchoredFlies;
+    }
+
 private:
     sal_uInt16 m_nPhyPageNum = 0;
     SwFrameFormat* m_pDesc = nullptr;
     SwFootnoteContFrame* m_pFootnoteCont = nullptr;
+    std::vector<std::pair<SwFlyFrame*, SwFrame*>> m_aAnchoredFlies;
 };
 
 // SwFlyFrame: 浮动框 Frame，对应 LibreOffice 的 SwFlyFrame
