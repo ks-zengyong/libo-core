@@ -196,9 +196,8 @@ public:
 
     int GetBodyEndIndex() const override
     {
-        // 遍历所有节点，确保不遗漏任何内容（包括 Fly 区和正文区）
-        // walker 遍历 [bodyStart, bodyEnd)，使用 Count() 确保包含最后一个节点
-        return static_cast<int>(m_rNodes.Count());
+        SwNode& rEnd = m_rNodes.GetEndOfContent();
+        return static_cast<int>(rEnd.GetIndex()) + 1;
     }
 
 private:

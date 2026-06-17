@@ -267,7 +267,7 @@ SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType, int nAnchorNodeInd
 
         // 从 Fly Container StartNode + 1 开始，向后扫描
         // 找到最后一个 Fly EndNode（在 Fly Container EndNode 之前）
-        nInsertPos = nSttIdx + SwNodeOffset(1);  // 默认在 Fly Container StartNode 之后
+        nInsertPos = nSttIdx + SwNodeOffset(1); // 默认在 Fly Container StartNode 之后
         for (SwNodeOffset i = nSttIdx + 1; i < nEndIdx; ++i)
         {
             SwNode* pNd = (*this)[i];
@@ -276,7 +276,7 @@ SwStartNode* SwNodes::InsertFlySection(SwStartNodeType eType, int nAnchorNodeInd
             // 如果是 EndNode 且不是 Fly Container EndNode，则是 Fly EndNode
             if (pNd->IsEndNode())
             {
-                nInsertPos = i + SwNodeOffset(1);  // 在 Fly EndNode 之后
+                nInsertPos = i + SwNodeOffset(1); // 在 Fly EndNode 之后
             }
         }
     }
@@ -304,25 +304,38 @@ SwEndNode* SwNodes::CloseFlySection(SwStartNode& rFlyStt)
 {
     // 在 Fly StartNode 的最后一个内容节点之后创建 Fly EndNode
     // Fly StartNode 的内容节点在其之后连续排列
-    // 
+    //
     // 由于 InsertGrfNode/MakeTextNode 在 StartNode 之后插入内容，
     // 我们需要在最后一个内容节点之后插入 EndNode。
-    // 
+    //
     // 简化逻辑：Fly StartNode 之后的所有节点（直到下一个 StartNode 或 Fly Container EndNode）
     // 都是 Fly 的内容。我们在 StartNode 之后找到最后一个非 StartNode/非 EndNode 的节点，
     // 在其后插入 Fly EndNode。
 
     SwNodeOffset nFlySttIdx = rFlyStt.GetIndex();
-    
+
     // 从 Fly StartNode + 1 开始，找到最后一个内容节点
     // 内容节点 = 非 StartNode 且 非 EndNode 的节点
-    SwNodeOffset nLastContentIdx = nFlySttIdx;  // 初始指向 Fly StartNode
-    for (SwNodeOffset i = nFlySttIdx + 1; i < Count(); ++i)
+    SwNodeOffset nLastContentIdx = nFlySttIdx;
+    for (SwNodeOffset i = nFlySttIdx + SwNodeOffset(1); i < Count(); ++i)
     {
         SwNode* pNd = (*this)[i];
         if (!pNd)
             break;
-        // 遇到下一个 StartNode 或 EndNode，停止
+        if (pNd->IsTableNode())
+        {
+            SwEndNode* pTableEnd = static_cast<SwTableNode*>(pNd)->GetEndOfSection();
+            if (pTableEnd)
+            {
+                nLastContentIdx = pTableEnd->GetIndex();
+                i = pTableEnd->GetIndex();
+            }
+            else
+            {
+                nLastContentIdx = i;
+            }
+            continue;
+        }
         if (pNd->IsStartNode() || pNd->IsEndNode())
             break;
         nLastContentIdx = i;
@@ -345,8 +358,7 @@ SwGrfNode* SwNodes::InsertGrfNode(const SwNode& rWhere)
     auto* pGrfNode = new SwGrfNode(rWhere);
     InsertNode(pGrfNode, nPos);
     // 若 rWhere 是当前 m_pEndOfContent，则扩展 m_pEndOfContent 指向新节点
-    if (rWhere.GetIndex() + 1 == static_cast<sal_Int32>(nPos)
-        && &rWhere == m_pEndOfContent.get())
+    if (rWhere.GetIndex() + 1 == static_cast<sal_Int32>(nPos) && &rWhere == m_pEndOfContent.get())
     {
         m_pEndOfContent.reset(pGrfNode);
     }
@@ -382,8 +394,8 @@ SwStartNode* SwNodes::AppendFlyStartNode(int nAnchorNodeIndex)
 }
 
 SwTableNode* SwNodes::AppendTableFly(int nRows, int nCols,
-                                      const std::vector<std::vector<std::string>>& boxContents,
-                                      SwTextFormatColl* pColl)
+                                     const std::vector<std::vector<std::string>>& boxContents,
+                                     SwTextFormatColl* pColl)
 {
     // 1. 先创建 Fly StartNode (type=2)
     SwNodeOffset nFlySttPos = BigPtrArray::Count();
@@ -458,10 +470,7 @@ void SwNodes::ForEach(SwNodeOffset nStt, SwNodeOffset nEnd, ForEachFn fn)
     }
 }
 
-bool SwNodes::IsDocNodes() const
-{
-    return true;
-}
+bool SwNodes::IsDocNodes() const { return true; }
 
 //===----------------------------------------------------------------------===//
 // SwNodeIndex

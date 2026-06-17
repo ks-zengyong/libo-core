@@ -261,11 +261,13 @@ const std::string* SwTableNode::GetAttr(sal_uInt16 nWhich) const
 SwSectionNode::SwSectionNode(const SwNode& rWhere)
     : SwStartNode(rWhere, SwNormalStartNode)
 {
+    m_nNodeType = SwNodeType::Section;
 }
 
 SwSectionNode::SwSectionNode(SwNodes& rNodes, SwNodeOffset nPos)
     : SwStartNode(rNodes, nPos, SwNormalStartNode)
 {
+    m_nNodeType = SwNodeType::Section;
 }
 
 SwSectionNode::~SwSectionNode() = default;
