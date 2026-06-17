@@ -1,6 +1,5 @@
 @echo off
-REM diff_node.bat - 对比 Nodes 结构差异 (LibreOffice vs aproj/docx)
-REM 使用 output 下的 node_diff_debug.exe 进行差异对比（独立工具，不与 render_diff 耦合）
+setlocal
 
 set "SCRIPT_DIR=%~dp0"
 set "NODE_DIFF=%SCRIPT_DIR%..\output\node_diff_debug.exe"
@@ -28,6 +27,6 @@ echo Reference: %REF%
 echo Test:      %TEST%
 echo.
 
-"%NODE_DIFF%" "%REF%" "%TEST%"
+"%NODE_DIFF%" "%REF%" "%TEST%" %*
 
 exit /b %ERRORLEVEL%

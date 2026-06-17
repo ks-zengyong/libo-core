@@ -1,7 +1,5 @@
 @echo off
-REM diff_vcl.bat - Compare VCL layer rendering differences
-REM Usage: diff_vcl.bat
-REM 使用 output 下的 render_diff_debug.exe 进行差异对比
+setlocal
 
 set "SCRIPT_DIR=%~dp0"
 set "RENDER_DIFF=%SCRIPT_DIR%..\output\render_diff_debug.exe"
@@ -31,6 +29,6 @@ echo Reference: %REF%
 echo Test:      %TEST%
 echo.
 
-"%RENDER_DIFF%" "%REF%" "%TEST%"
+"%RENDER_DIFF%" "%REF%" "%TEST%" %*
 
 exit /b %ERRORLEVEL%
