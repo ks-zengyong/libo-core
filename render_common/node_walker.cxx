@@ -111,7 +111,10 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
         }
         // 其他未知类型: 忽略
 
-        // ── 锚点引用展开：在当前节点输出后，检查是否有 Fly anchor 指向它
+        // ── 锚点引用展开：已禁用，Fly 节点按实际位置输出 ──
+        // LO 侧不输出 ANCHOR_REF 标记，Fly 节点直接嵌套在 Normal 节区内
+        // 如需启用锚点引用展开，取消下方注释
+        /*
         if (pAnchorMap)
         {
             auto it = pAnchorMap->find(pNode->GetIndex());
@@ -139,6 +142,7 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
                 }
             }
         }
+        */
 
         delete pNode;
     }

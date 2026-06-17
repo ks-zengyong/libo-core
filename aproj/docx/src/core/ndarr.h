@@ -80,7 +80,6 @@ public:
     SwNode& GetEndOfInserts() const { return *m_pEndOfInserts; }
     SwNode& GetEndOfAutotext() const { return *m_pEndOfAutotext; }
     SwNode& GetEndOfRedlines() const { return *m_pEndOfRedlines; }
-    SwNode& GetEndOfExtras() const { return *m_pEndOfRedlines; }
 
     // 所属文档
     SwDoc& GetDoc() { return m_rMyDoc; }
@@ -99,19 +98,33 @@ public:
 
     // 工厂方法
     SwTextNode* MakeTextNode(const SwNode& rWhere, SwTextFormatColl* pColl);
+    SwTextNode* MakeBodyTextNode(SwTextFormatColl* pColl); // 在正文区末尾插入
     SwStartNode* MakeTextSection(const SwNode& rWhere, SwStartNodeType eSttNdTyp);
+
+    // 在 rWhere 之后插入 EndNode（与 rSttNd 配对），返回 EndNode 指针
+    SwEndNode* MakeEndNode(const SwNode& rWhere, SwStartNode& rSttNd);
+
+    // 创建 SwSectionNode（SECTION_START 对应的节点类型）
+    SwSectionNode* MakeSectionNode(const SwNode& rWhere);
+
+    // 表格插入（用于在 Fly 节区内创建表格）
     SwTableNode* InsertTable(const SwNode& rNd, sal_uInt16 nBoxes,
                              SwTextFormatColl* pContentTextColl, sal_uInt16 nLines,
                              sal_uInt16 nRepeat = 0, SwTextFormatColl* pHeadlineTextColl = nullptr);
 
-    // Fly 节区创建（用于浮动框架/文本框）
-    // 在 AutoText 区域创建 Fly 节区，返回 StartNode
-    // nAnchorNodeIndex: 锚点节点索引，-1 表示无锚点
+    // Fly 节区创建：在 Fly 区末尾插入 StartNode+EndNode 对
+    // 返回创建的 Fly StartNode 指针
     SwStartNode* InsertFlySection(SwStartNodeType eType = SwFlyStartNode,
                                   int nAnchorNodeIndex = -1);
 
-    // 图片节点创建
+    // 图片节点创建：在 rWhere 之后插入
     SwGrfNode* InsertGrfNode(const SwNode& rWhere);
+
+    // 在 Fly 节区内部插入内容节点（GRF_NODE）：在 rFlyEnd 之前插入
+    SwGrfNode* InsertGrfIntoFly(const SwNode& rFlyStt);
+
+    // 在 Fly 节区内部插入文本节点
+    SwTextNode* InsertTextIntoFly(const SwNode& rFlyStt, SwTextFormatColl* pColl);
 
     // 节点删除
     void Delete(const SwNodeIndex& rPos, SwNodeOffset nNodes = SwNodeOffset(1));
@@ -133,9 +146,9 @@ private:
     SwDoc& m_rMyDoc;
 
     // 哨兵节点
-    SwNode* m_pEndOfPostIts;
-    SwNode* m_pEndOfInserts;
-    SwNode* m_pEndOfAutotext;
-    SwNode* m_pEndOfRedlines;
-    std::unique_ptr<SwNode> m_pEndOfContent;
+    SwNode* m_pEndOfPostIts;     // node[1]
+    SwNode* m_pEndOfInserts;     // node[3]
+    SwNode* m_pEndOfAutotext;    // Fly 区结束 (node[5] initially)
+    SwNode* m_pEndOfRedlines;    // node[7]
+    std::unique_ptr<SwNode> m_pEndOfContent;  // 正文区结束 (node[9] initially)
 };
