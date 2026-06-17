@@ -1,5 +1,54 @@
 # 测试差异对比与迭代修复工作流
 
+## 0. 调用约定（重要）
+
+> **本技能已封装完整的生成与对比流程，大模型应直接调用已有脚本，不要自行拼接命令或手动生成文件。**
+
+### 生成产物
+
+调用 `aproj/docx/test/` 下的 Python 脚本来生成 nodes、frame、vcl 文件，产物自动写入 `aproj/docx/test/` 目录：
+
+| 脚本 | 作用 | 产物 |
+|------|------|------|
+| `python test/gen_aproj.py` | 编译 aproj/docx 项目并运行端到端测试（docx_e2e_test），生成 Nodes 结构、Frame 树和 VCL 渲染指令记录 | `test/aproj_nodes.txt`, `test/aproj_frame.txt`, `test/aproj_vcl.txt` |
+| `python test/gen_lo.py` | 启动 LibreOffice soffice 无界面模式转换文档，生成 LO 侧的 Nodes 结构、Frame 树和 VCL 渲染指令参考记录 | `test/lo_nodes.txt`, `test/lo_frame.txt`, `test/lo_vcl.txt` |
+
+**不要**自己调用 `docx_e2e_test.exe` 或 LibreOffice `soffice` 来生成这些文件，**不要**自己编写生成脚本。
+
+### 差异对比
+
+调用 `aproj/docx/test/` 下的 bat 脚本来执行对比，脚本自动引用同目录下的上述产物文件：
+
+| 脚本 | 对比内容 |
+|------|----------|
+| `.\test\diff_node.bat` | 对比 aproj 与 LO 的 Nodes 文档节点树结构差异 |
+| `.\test\diff_frame.bat` | 对比 aproj 与 LO 的 Frame 布局树结构差异 |
+| `.\test\diff_vcl.bat` | 对比 aproj 与 LO 的 VCL 渲染层绘制指令差异 |
+
+**不要**自己调用 `render_diff.exe`（渲染指令差异对比工具）并手动拼接路径参数，**不要**自己编写对比脚本。
+
+### 标准操作序列
+
+```powershell
+# 1. 编译 aproj/docx 项目（Debug 配置）
+.\build.bat
+
+# 2. 生成 LibreOffice 侧参考输出（Nodes/Frame/VCL）
+python test\gen_lo.py
+
+# 3. 生成 aproj/docx 侧输出（Nodes/Frame/VCL）
+python test\gen_aproj.py
+
+# 4. 逐级对比差异
+.\test\diff_node.bat    # Nodes 文档节点树结构对比
+.\test\diff_frame.bat   # Frame 布局树结构对比
+.\test\diff_vcl.bat     # VCL 渲染指令对比
+```
+
+按此顺序执行即可，无需额外操作。
+
+---
+
 ## 1. 概述
 
 aproj/docx 的目标是产出与 LibreOffice **0 差异**的排版结果。为了实现这个目标，我们采用**三级差异对比**的方式量化 aproj/docx 与 LibreOffice 的输出差距，然后按差异项逐一定位 LO 源码中未迁移的逻辑，迭代修复。

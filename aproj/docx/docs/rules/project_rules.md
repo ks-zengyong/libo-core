@@ -95,6 +95,7 @@ libo-core/                    # LibreOffice 源代码根目录（即 aproj 的�
 - **使用现有 `*.docx`**（`aproj/docx/samples/*.docx`），**不要自己生成 docx 测试文件**
 - 测试差异即为 frame、vcl 指令记录和 nodes 结构记录的差异项
 - 测试目标是三个指标差异数均为 **0**
+- **调用已有脚本**: 生成产物用 `test/gen_aproj.py` / `test/gen_lo.py`，对比差异用 `test/diff_*.bat`，不要自行拼接命令或编写脚本（详见技能 `test_diff_workflow`）
 
 ### 迭代改进策略
 
