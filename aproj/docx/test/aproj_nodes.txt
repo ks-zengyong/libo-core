@@ -1,7 +1,7 @@
 # SwNodes Structure Overview
-# Total nodes: 211
+# Total nodes: 203
 # BodyStart: 0
-# BodyEnd: 211
+# BodyEnd: 203
 
 # All Nodes (including non-Content areas):
 # [0] START_NODE type=0
@@ -59,16 +59,16 @@
 # [52] GRF_NODE
 # [53] END_NODE
 # [54] START_NODE type=2
-# [55] GRF_NODE
-# [56] END_NODE
-# [57] START_NODE type=2
-# [58] END_NODE
-# [59] TABLE_NODE rows=6 cols=2
+# [55] END_NODE
+# [56] TABLE_NODE rows=6 cols=2
+# [57] START_NODE type=1
+# [58] TEXT_NODE
+# [59] END_NODE
 # [60] START_NODE type=1
 # [61] TEXT_NODE
-# [62] END_NODE
-# [63] START_NODE type=1
-# [64] TEXT_NODE
+# [62] TEXT_NODE
+# [63] END_NODE
+# [64] START_NODE type=1
 # [65] TEXT_NODE
 # [66] END_NODE
 # [67] START_NODE type=1
@@ -98,25 +98,25 @@
 # [91] START_NODE type=1
 # [92] TEXT_NODE
 # [93] END_NODE
-# [94] START_NODE type=1
-# [95] TEXT_NODE
-# [96] END_NODE
-# [97] END_NODE
-# [98] START_NODE type=2
-# [99] TEXT_NODE
+# [94] END_NODE
+# [95] START_NODE type=2
+# [96] TEXT_NODE
+# [97] TEXT_NODE
+# [98] END_NODE
+# [99] START_NODE type=2
 # [100] TEXT_NODE
-# [101] END_NODE
-# [102] START_NODE type=2
-# [103] TEXT_NODE
-# [104] TEXT_NODE
+# [101] TEXT_NODE
+# [102] END_NODE
+# [103] START_NODE type=2
+# [104] GRF_NODE
 # [105] END_NODE
-# [106] START_NODE type=2
-# [107] GRF_NODE
+# [106] END_NODE
+# [107] START_NODE type=0
 # [108] END_NODE
-# [109] END_NODE
-# [110] START_NODE type=0
-# [111] END_NODE
-# [112] START_NODE type=0
+# [109] START_NODE type=0
+# [110] TEXT_NODE
+# [111] TEXT_NODE
+# [112] TEXT_NODE
 # [113] TEXT_NODE
 # [114] TEXT_NODE
 # [115] TEXT_NODE
@@ -139,23 +139,23 @@
 # [132] TEXT_NODE
 # [133] TEXT_NODE
 # [134] TEXT_NODE
-# [135] TEXT_NODE
+# [135] START_NODE type=0
 # [136] TEXT_NODE
 # [137] TEXT_NODE
-# [138] START_NODE type=0
+# [138] TEXT_NODE
 # [139] TEXT_NODE
 # [140] TEXT_NODE
 # [141] TEXT_NODE
 # [142] TEXT_NODE
 # [143] TEXT_NODE
-# [144] TEXT_NODE
+# [144] END_NODE
 # [145] TEXT_NODE
-# [146] TEXT_NODE
-# [147] END_NODE
-# [148] START_NODE type=0
+# [146] START_NODE type=0
+# [147] TEXT_NODE
+# [148] TEXT_NODE
 # [149] TEXT_NODE
-# [150] END_NODE
-# [151] START_NODE type=0
+# [150] TEXT_NODE
+# [151] TEXT_NODE
 # [152] TEXT_NODE
 # [153] TEXT_NODE
 # [154] TEXT_NODE
@@ -184,13 +184,13 @@
 # [177] TEXT_NODE
 # [178] TEXT_NODE
 # [179] TEXT_NODE
-# [180] TEXT_NODE
+# [180] END_NODE
 # [181] TEXT_NODE
 # [182] TEXT_NODE
 # [183] TEXT_NODE
 # [184] TEXT_NODE
-# [185] END_NODE
-# [186] START_NODE type=0
+# [185] TEXT_NODE
+# [186] TEXT_NODE
 # [187] TEXT_NODE
 # [188] TEXT_NODE
 # [189] TEXT_NODE
@@ -206,15 +206,7 @@
 # [199] TEXT_NODE
 # [200] TEXT_NODE
 # [201] TEXT_NODE
-# [202] TEXT_NODE
-# [203] TEXT_NODE
-# [204] TEXT_NODE
-# [205] TEXT_NODE
-# [206] END_NODE
-# [207] START_NODE type=0
-# [208] TEXT_NODE
-# [209] END_NODE
-# [210] END_NODE
+# [202] END_NODE
 
 # Body Area Nodes (structured):
 START_NODE	0	Normal
@@ -222,67 +214,67 @@ END_NODE	1
 START_NODE	2	Normal
 END_NODE	3
 START_NODE	4	Normal
-  START_NODE	5	Fly	anchor=113
+  START_NODE	5	Fly	anchor=118
     GRF_NODE	6
   END_NODE	7
-  START_NODE	8	Fly	anchor=114
+  START_NODE	8	Fly	anchor=136
     GRF_NODE	9
   END_NODE	10
-  START_NODE	11	Fly	anchor=115
+  START_NODE	11	Fly	anchor=136
     GRF_NODE	12
   END_NODE	13
-  START_NODE	14	Fly	anchor=116
+  START_NODE	14	Fly	anchor=136
     GRF_NODE	15
   END_NODE	16
-  START_NODE	17	Fly	anchor=117
+  START_NODE	17	Fly	anchor=136
     GRF_NODE	18
   END_NODE	19
-  START_NODE	20	Fly	anchor=118
+  START_NODE	20	Fly	anchor=136
     GRF_NODE	21
   END_NODE	22
-  START_NODE	23	Fly	anchor=119
+  START_NODE	23	Fly	anchor=136
     GRF_NODE	24
   END_NODE	25
-  START_NODE	26	Fly	anchor=120
+  START_NODE	26	Fly	anchor=136
     TEXT_NODE	27	""	
     TEXT_NODE	28	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	
   END_NODE	29
-  START_NODE	30	Fly	anchor=121
+  START_NODE	30	Fly	anchor=146
     GRF_NODE	31
   END_NODE	32
-  START_NODE	33	Fly	anchor=122
+  START_NODE	33	Fly	anchor=150
     GRF_NODE	34
   END_NODE	35
-  START_NODE	36	Fly	anchor=123
+  START_NODE	36	Fly	anchor=158
     GRF_NODE	37
   END_NODE	38
-  START_NODE	39	Fly	anchor=124
+  START_NODE	39	Fly	anchor=173
     GRF_NODE	40
   END_NODE	41
-  START_NODE	42	Fly	anchor=125
+  START_NODE	42	Fly	anchor=189
     GRF_NODE	43
   END_NODE	44
-  START_NODE	45	Fly	anchor=126
+  START_NODE	45	Fly	anchor=193
     GRF_NODE	46
   END_NODE	47
-  START_NODE	48	Fly	anchor=127
+  START_NODE	48	Fly	anchor=197
     GRF_NODE	49
   END_NODE	50
-  START_NODE	51	Fly	anchor=128
+  START_NODE	51	Fly	anchor=201
     GRF_NODE	52
   END_NODE	53
-  START_NODE	54	Fly	anchor=129
-    GRF_NODE	55
-  END_NODE	56
-  START_NODE	57	Fly	anchor=130
-  END_NODE	58
-  TABLE_START	59	6	2
+  START_NODE	54	Fly	anchor=208
+  END_NODE	55
+  TABLE_START	56	6	2
+    START_NODE	57	TableBox
+      TEXT_NODE	58	""	
+    END_NODE	59
     START_NODE	60	TableBox
-      TEXT_NODE	61	""	
-    END_NODE	62
-    START_NODE	63	TableBox
-      TEXT_NODE	64	"Table of Contents"	
-      TEXT_NODE	65	"The Table of Contents can automatically identify the article chapters and title levels, generating the table of contents in just one second."	
+      TEXT_NODE	61	"Table of Contents"	
+      TEXT_NODE	62	"The Table of Contents can automatically identify the article chapters and title levels, generating the table of contents in just one second."	
+    END_NODE	63
+    START_NODE	64	TableBox
+      TEXT_NODE	65	""	
     END_NODE	66
     START_NODE	67	TableBox
       TEXT_NODE	68	""	
@@ -311,120 +303,112 @@ START_NODE	4	Normal
     START_NODE	91	TableBox
       TEXT_NODE	92	""	
     END_NODE	93
-    START_NODE	94	TableBox
-      TEXT_NODE	95	""	
-    END_NODE	96
-  TABLE_END	97
-  START_NODE	98	Fly	anchor=131
-    TEXT_NODE	99	"Install free WPS Office to enjoy the same benefits on Android & ios!"	
-    TEXT_NODE	100	""	
-  END_NODE	101
-  START_NODE	102	Fly	anchor=132
-    TEXT_NODE	103	"Free ALL-IN-ONE Office Suite"	
-    TEXT_NODE	104	"Install free WPS Office to enjoy the same benefits on Android & ios!"	
+  TABLE_END	94
+  START_NODE	95	Fly	anchor=205
+    TEXT_NODE	96	"Install free WPS Office to enjoy the same benefits on Android & ios!"	
+    TEXT_NODE	97	""	
+  END_NODE	98
+  START_NODE	99	Fly	anchor=205
+    TEXT_NODE	100	"Free ALL-IN-ONE Office Suite"	
+    TEXT_NODE	101	"Install free WPS Office to enjoy the same benefits on Android & ios!"	
+  END_NODE	102
+  START_NODE	103	Fly	anchor=205
+    GRF_NODE	104
   END_NODE	105
-  START_NODE	106	Fly	anchor=133
-    GRF_NODE	107
-  END_NODE	108
-END_NODE	109
-START_NODE	110	Normal
-END_NODE	111
-START_NODE	112	Normal
-  TEXT_NODE	113	""		refs=5
-  TEXT_NODE	114	"WPS Office®"	Body Text	refs=8
-  TEXT_NODE	115	""	Body Text	refs=11
-  TEXT_NODE	116	"Welcome to WPS Office - Writer"		refs=14
-  TEXT_NODE	117	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."		refs=17
-  TEXT_NODE	118	""		refs=20
-  TEXT_NODE	119	"Switch tabs to find different commands to process your document."	Body Text	refs=23
-  TEXT_NODE	120	"Share your documents with others."	Body Text	refs=26
-  TEXT_NODE	121	"Find all of Writer's commands."	Body Text	refs=30
-  TEXT_NODE	122	"Search the Help center for answers when you get stuck."	Body Text	refs=33
-  TEXT_NODE	123	"Quickly switch views and adjust the scale of the page display."	Body Text	refs=36
-  TEXT_NODE	124	""		refs=39
-  TEXT_NODE	125	"Count the number of words and pages in your document in real time."	Body Text	refs=42
-  TEXT_NODE	126	""		refs=45
-  TEXT_NODE	127	"WPS AI+Writer"		refs=48
-  TEXT_NODE	128	""	Body Text	refs=51
-  TEXT_NODE	129	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Body Text	refs=54
-  TEXT_NODE	130	""	Body Text	refs=57
-  TEXT_NODE	131	""	Body Text	refs=98
-  TEXT_NODE	132	""	Body Text	refs=102
-  TEXT_NODE	133	""	Body Text	refs=106
-  TEXT_NODE	134	""	Body Text
-  TEXT_NODE	135	""	
-  TEXT_NODE	136	"to help you write and understand your Word document"	
-  TEXT_NODE	137	""	
-  START_NODE	138	Normal
-    TEXT_NODE	139	"WPS AI-generated content"	
-    TEXT_NODE	140	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	
-    TEXT_NODE	141	""	
+END_NODE	106
+START_NODE	107	Normal
+END_NODE	108
+START_NODE	109	Normal
+  TEXT_NODE	110	""	
+  TEXT_NODE	111	"WPS Office®"	Body Text
+  TEXT_NODE	112	""	Body Text
+  TEXT_NODE	113	"Welcome to WPS Office - Writer"	
+  TEXT_NODE	114	"WPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	
+  TEXT_NODE	115	""	
+  TEXT_NODE	116	"Switch tabs to find different commands to process your document."	Body Text
+  TEXT_NODE	117	"Share your documents with others."	Body Text
+  TEXT_NODE	118	"Find all of Writer's commands."	Body Text	refs=5
+  TEXT_NODE	119	"Search the Help center for answers when you get stuck."	Body Text
+  TEXT_NODE	120	"Quickly switch views and adjust the scale of the page display."	Body Text
+  TEXT_NODE	121	""	
+  TEXT_NODE	122	"Count the number of words and pages in your document in real time."	Body Text
+  TEXT_NODE	123	""	
+  TEXT_NODE	124	"WPS AI+Writer"	
+  TEXT_NODE	125	""	Body Text
+  TEXT_NODE	126	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Body Text
+  TEXT_NODE	127	""	Body Text
+  TEXT_NODE	128	""	Body Text
+  TEXT_NODE	129	""	Body Text
+  TEXT_NODE	130	""	Body Text
+  TEXT_NODE	131	""	Body Text
+  TEXT_NODE	132	""	
+  TEXT_NODE	133	"to help you write and understand your Word document"	
+  TEXT_NODE	134	""	
+  START_NODE	135	Normal
+    TEXT_NODE	136	"WPS AI-generated content"		refs=8,11,14,17,20,23,26
+    TEXT_NODE	137	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	
+    TEXT_NODE	138	""	
+    TEXT_NODE	139	""	
+    TEXT_NODE	140	"WPS AI-based content rewriting"	
+    TEXT_NODE	141	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	
     TEXT_NODE	142	""	
-    TEXT_NODE	143	"WPS AI-based content rewriting"	
-    TEXT_NODE	144	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	
-    TEXT_NODE	145	""	
-    TEXT_NODE	146	""	
-  END_NODE	147
-  START_NODE	148	Normal
-    TEXT_NODE	149	"For all your document process needs"	
-  END_NODE	150
-  START_NODE	151	Normal
+    TEXT_NODE	143	""	
+  END_NODE	144
+  TEXT_NODE	145	"For all your document process needs"	
+  START_NODE	146	Normal	refs=30
+    TEXT_NODE	147	""	
+    TEXT_NODE	148	"Restrict Editing"	
+    TEXT_NODE	149	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	
+    TEXT_NODE	150	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."		refs=33
+    TEXT_NODE	151	""	
     TEXT_NODE	152	""	
-    TEXT_NODE	153	"Restrict Editing"	
-    TEXT_NODE	154	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	
-    TEXT_NODE	155	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	
+    TEXT_NODE	153	""	
+    TEXT_NODE	154	""	
+    TEXT_NODE	155	""	
     TEXT_NODE	156	""	
     TEXT_NODE	157	""	
-    TEXT_NODE	158	""	
+    TEXT_NODE	158	""		refs=36
     TEXT_NODE	159	""	
     TEXT_NODE	160	""	
     TEXT_NODE	161	""	
     TEXT_NODE	162	""	
-    TEXT_NODE	163	""	
-    TEXT_NODE	164	""	
+    TEXT_NODE	163	"Co-Edit with Others"	
+    TEXT_NODE	164	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	
     TEXT_NODE	165	""	
     TEXT_NODE	166	""	
     TEXT_NODE	167	""	
-    TEXT_NODE	168	"Co-Edit with Others"	
-    TEXT_NODE	169	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	
+    TEXT_NODE	168	""	
+    TEXT_NODE	169	""	
     TEXT_NODE	170	""	
     TEXT_NODE	171	""	
     TEXT_NODE	172	""	
-    TEXT_NODE	173	""	
+    TEXT_NODE	173	""		refs=39
     TEXT_NODE	174	""	
     TEXT_NODE	175	""	
     TEXT_NODE	176	""	
-    TEXT_NODE	177	""	
-    TEXT_NODE	178	""	
-    TEXT_NODE	179	""	
-    TEXT_NODE	180	""	
-    TEXT_NODE	181	""	
-    TEXT_NODE	182	"Format Conversion"	
-    TEXT_NODE	183	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	
-    TEXT_NODE	184	"Effortlessly batch convert multiple files."	
-  END_NODE	185
-  START_NODE	186	Normal
-    TEXT_NODE	187	"Editing and typesetting"	
-    TEXT_NODE	188	"Find and Replace"	
-    TEXT_NODE	189	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.Click on Home > Find and Replace, with the shortcut key being Ctrl+F."	
-    TEXT_NODE	190	""	
-    TEXT_NODE	191	""	
-    TEXT_NODE	192	"Efficient Word Typesetting"	
-    TEXT_NODE	193	"Using WPS saves time on document layout and leaves more room for creativity. Click on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	
-    TEXT_NODE	194	""	
-    TEXT_NODE	195	""	
-    TEXT_NODE	196	"Spell Check"	
-    TEXT_NODE	197	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. Click on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	
-    TEXT_NODE	198	""	
-    TEXT_NODE	199	""	
-    TEXT_NODE	200	"Track Changes"	
-    TEXT_NODE	201	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. You can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. Additionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	
-    TEXT_NODE	202	""	
-    TEXT_NODE	203	""	
-    TEXT_NODE	204	""	
-    TEXT_NODE	205	"More Popular features"	
-  END_NODE	206
-  START_NODE	207	Normal
-    TEXT_NODE	208	""	
-  END_NODE	209
-END_NODE	210
+    TEXT_NODE	177	"Format Conversion"	
+    TEXT_NODE	178	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	
+    TEXT_NODE	179	"Effortlessly batch convert multiple files."	
+  END_NODE	180
+  TEXT_NODE	181	"Editing and typesetting"	
+  TEXT_NODE	182	"Find and Replace"	
+  TEXT_NODE	183	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.Click on Home > Find and Replace, with the shortcut key being Ctrl+F."	
+  TEXT_NODE	184	""	
+  TEXT_NODE	185	""	
+  TEXT_NODE	186	"Efficient Word Typesetting"	
+  TEXT_NODE	187	"Using WPS saves time on document layout and leaves more room for creativity. Click on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	
+  TEXT_NODE	188	""	
+  TEXT_NODE	189	""		refs=42
+  TEXT_NODE	190	"Spell Check"	
+  TEXT_NODE	191	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. Click on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	
+  TEXT_NODE	192	""	
+  TEXT_NODE	193	""		refs=45
+  TEXT_NODE	194	"Track Changes"	
+  TEXT_NODE	195	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. You can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. Additionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	
+  TEXT_NODE	196	""	
+  TEXT_NODE	197	""		refs=48
+  TEXT_NODE	198	""	
+  TEXT_NODE	199	"More Popular features"	
+  TEXT_NODE	200	""	
+  TEXT_NODE	201	""		refs=51
+END_NODE	202

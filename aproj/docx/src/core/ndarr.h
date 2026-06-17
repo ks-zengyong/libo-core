@@ -116,6 +116,13 @@ public:
                              SwTextFormatColl* pContentTextColl, sal_uInt16 nLines,
                              sal_uInt16 nRepeat = 0, SwTextFormatColl* pHeadlineTextColl = nullptr);
 
+    // 在数组末尾插入一个表格 Fly：创建 TABLE_NODE + 单元格 boxes + 关闭 EndNode
+    // boxContents: 每个单元格的文本段落（可为空）
+    // 返回 tableNode 指针（也用于后续设置 anchor）
+    SwTableNode* AppendTableFly(int nRows, int nCols,
+                                const std::vector<std::vector<std::string>>& boxContents,
+                                SwTextFormatColl* pColl);
+
     // Fly 节区创建：在 Fly 区末尾插入 StartNode（不创建 EndNode）
     // 返回创建的 Fly StartNode 指针
     // 调用者需在内容插入后调用 CloseFlySection 创建 EndNode
@@ -141,6 +148,10 @@ public:
     // 动态追加 Normal 节区（StartNode + EndNode 对）
     // 返回 StartNode 指针，EndNode 插入到数组末尾
     SwStartNode* AppendNormalSection();
+
+    // 在数组末尾插入一个新的 Fly 节区 StartNode（type=2）
+    // 返回指针，调用者需在之后插入内容并调用 MakeEndNode 关闭
+    SwStartNode* AppendFlyStartNode(int nAnchorNodeIndex = -1);
 
     // 设置哨兵节点指针（用于动态节区管理）
     void SetEndOfAutotext(SwNode* pNode) { m_pEndOfAutotext = pNode; }

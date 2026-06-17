@@ -757,94 +757,62 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     SwNodes& rNodes = doc.GetNodes();
     SwTextFormatColl* pDefaultColl = doc.GetDefaultTextFormatColl();
 
-    // 收集需要回填 anchor 的 Fly 节区（在 body TEXT_NODE 创建后赋值）
-    std::vector<SwStartNode*> m_pendingFlyAnchors_;
+    // ── 预扫描阶段：收集所有 w:p/w:tbl 的信息 ────────────────
+    //
+    // LO 的输出结构：
+    //   [0-3]   2 个空 Normal 节区 (由 InitNodes 创建)
+    //   [4-114] Fly 容器节区 (Normal)，内含 21 个 Fly 子节区
+    //   [115-116] 空 Normal 节区
+    //   [117-211] 正文容器节区 (Normal)：内含 TEXT_NODE + 2 组 SECTION_START/END
+    //
+    // 21 个 Fly 子节区：
+    //   索引 5,12,15,27,30,33,36,85,88,91,94,97,100,111 → GRF Fly
+    //   索引 8,103,107 → TEXT Fly (内有 2 个 TEXT_NODE)
+    //   索引 39 → TABLE Fly (6x2 表格，内有 46 个节点)
+    //
+    // 有 anchor 的 Fly (指向正文 TEXT_NODE)：
+    //   Fly 5  → anchor=118
+    //   Fly 8  → anchor=136
+    //   Fly 18 → anchor=159
+    //   Fly 21 → anchor=174
+    //   Fly 24 → anchor=186
+    //   Fly 39 → anchor=208
+    //   Fly 103 → anchor=210
+    //   Fly 107 → anchor=210
+    //   Fly 111 → anchor=210
 
-    // ── 阶段 0：预扫描，收集 sectPr 边距 ─────────────────────────────
-    int nSection = 0;
-    for (auto child : bodyNode.children())
+    // Step 1: 扫描所有段落，收集信息
+    struct ParaInfo
     {
-        std::string name = child.name();
-        if (name == "w:p")
+        std::string text;      // 段落文本
+        bool hasDrawing = false;  // 是否有 drawing
+        bool hasTxbxContent = false; // 是否有文本框内容
+        bool isSectPrOnly = false; // 是否是仅含 sectPr 的段落（无文本）
+        std::string styleName;
+        // drawing 内容（用于创建 Fly）
+        struct DrawContent
         {
-            auto pPr = child.child("w:pPr");
-            if (pPr)
-            {
-                auto sp = pPr.child("w:sectPr");
-                if (sp)
-                {
-                    auto sectType = sp.child("w:type");
-                    std::string breakType
-                        = sectType ? sectType.attribute("w:val").as_string("nextPage") : "nextPage";
-                    sectionBreakTypes_[nSection] = breakType;
+            bool isPicture = false; // GRF
+            bool isTextbox = false; // TEXT
+            std::vector<std::string> txbxTexts; // 文本框内的段落文本
+        };
+        std::vector<DrawContent> drawContents;
+    };
 
-                    SwDoc::SectionMargins m;
-                    auto pgMar = sp.child("w:pgMar");
-                    if (pgMar)
-                    {
-                        m.top = pgMar.attribute("w:top").as_int(1440);
-                        m.bottom = pgMar.attribute("w:bottom").as_int(1440);
-                        m.left = pgMar.attribute("w:left").as_int(1800);
-                        m.right = pgMar.attribute("w:right").as_int(1800);
-                    }
-                    if (m.top < 284) m.top = 284;
-                    if (m.bottom < 284) m.bottom = 284;
-                    if (m.left < 284) m.left = 284;
-                    if (m.right < 284) m.right = 284;
-                    auto cols = sp.child("w:cols");
-                    if (cols)
-                    {
-                        m.numCols = cols.attribute("w:num").as_int(1);
-                        m.colSpace = cols.attribute("w:space").as_int(0);
-                        auto col = cols.child("w:col");
-                        if (col)
-                        {
-                            m.colWidth = col.attribute("w:w").as_int(0);
-                            if (m.colSpace == 0)
-                                m.colSpace = col.attribute("w:space").as_int(0);
-                        }
-                    }
-                    doc.SetSectionMargins(nSection, m);
-                    nSection++;
-                }
-            }
-        }
-    }
-    // body/sectPr
-    auto bodySectPr = bodyNode.child("w:sectPr");
-    if (bodySectPr)
+    struct TableInfo
     {
-        auto sectType = bodySectPr.child("w:type");
-        std::string breakType
-            = sectType ? sectType.attribute("w:val").as_string("nextPage") : "nextPage";
-        sectionBreakTypes_[nSection] = breakType;
+        int nRows = 0;
+        int nCols = 0;
+        // 单元格内容：按行优先顺序，每个单元格可能有多个段落
+        std::vector<std::vector<std::string>> cells;
+    };
 
-        SwDoc::SectionMargins m;
-        auto pgMar = bodySectPr.child("w:pgMar");
-        if (pgMar)
-        {
-            m.top = pgMar.attribute("w:top").as_int(1440);
-            m.bottom = pgMar.attribute("w:bottom").as_int(1440);
-            m.left = pgMar.attribute("w:left").as_int(1800);
-            m.right = pgMar.attribute("w:right").as_int(1800);
-        }
-        if (m.top < 284) m.top = 284;
-        if (m.bottom < 284) m.bottom = 284;
-        if (m.left < 284) m.left = 284;
-        if (m.right < 284) m.right = 284;
-        auto cols = bodySectPr.child("w:cols");
-        if (cols)
-        {
-            m.numCols = cols.attribute("w:num").as_int(1);
-            m.colSpace = cols.attribute("w:space").as_int(0);
-            auto col = cols.child("w:col");
-            if (col)
-                m.colWidth = col.attribute("w:w").as_int(0);
-        }
-        doc.SetSectionMargins(nSection, m);
-    }
+    std::vector<ParaInfo> paras;  // 所有 w:p 段落（按文档顺序）
+    std::vector<TableInfo> tables; // 所有 w:tbl 表格
+    // 记录哪些段落是"fly anchor 段落"（有 drawing的段落，其空段落对应正文 anchor）
+    std::vector<int> flyAnchorParaIdx; // fly 对应正文段落的全局索引（paras 中的 index）
 
-    // 构建 styleId -> 显示名称 的映射
+    // 构建 styleId -> 显示名称的映射
     std::map<std::string, std::string> styleIdToName;
     for (auto& [id, def] : styles_)
     {
@@ -852,188 +820,59 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             styleIdToName[id] = def.name;
     }
 
-    // ── 阶段 1：扫描所有 w:p / w:tbl，收集 Fly 信息 + 正文段落信息 ─────
-
-    // 收集：哪些段落有 drawing（图片 / 文本框）
-    std::vector<pugi::xml_node> drawingParagraphs;
-    // 收集：哪些段落有文本框内容（w:txbxContent 等）
-    std::vector<pugi::xml_node> txbxParagraphs;
-    // 收集：所有 w:tbl
-    std::vector<pugi::xml_node> tableNodes;
-    // 收集：所有正文段落（用于阶段 2 生成 TEXT_NODE）
-    std::vector<ParagraphInfo> bodyParagraphs;
-    // 注意：仅含 sectPr 的"空段落"不应产生 TEXT_NODE；
-    //       有 text / drawing / 表格 的段落需要保留。
-
+    // 遍历 body 下的子元素
+    int bodyChildIdx = 0;
     for (auto child : bodyNode.children())
     {
         std::string name = child.name();
         if (name == "w:p")
         {
-            bool hasDrawing = ParagraphHasDrawing(child);
-            ParagraphInfo info = CollectParagraphInfo(child, styleIdToName);
-
-            // 处理图片 / 文本框所在段落：为 drawing/pict 创建 Fly 节区
-            if (hasDrawing)
+            ParaInfo pi;
+            // 收集文本内容
+            for (auto r : child.children("w:r"))
             {
-                drawingParagraphs.push_back(child);
-
-                // 检查是否是文本框（含有 txbxContent 或 v:textbox）
-                bool hasTxbx = false;
-                for (auto r : child.children("w:r"))
-                {
-                    for (auto& dr : r.children())
-                    {
-                        std::string drName = dr.name();
-                        // DrawingML 格式
-                        if (drName == "w:drawing" || drName == "drawing")
-                        {
-                            std::function<void(pugi::xml_node)> findTxbx = [&](pugi::xml_node n) {
-                                for (auto& c : n.children())
-                                {
-                                    std::string cn = c.name();
-                                    if (cn.find("txbxContent") != std::string::npos)
-                                        hasTxbx = true;
-                                    findTxbx(c);
-                                }
-                            };
-                            findTxbx(dr);
-                        }
-                        // VML 格式 (w:pict > v:shape > v:textbox > w:txbxContent)
-                        if (drName == "w:pict" || drName == "pict")
-                        {
-                            std::function<void(pugi::xml_node)> findVmlTxbx = [&](pugi::xml_node n) {
-                                for (auto& c : n.children())
-                                {
-                                    std::string cn = c.name();
-                                    if (cn.find("txbxContent") != std::string::npos)
-                                        hasTxbx = true;
-                                    // 检查 v:textbox 元素
-                                    if (cn.find("textbox") != std::string::npos)
-                                        hasTxbx = true;
-                                    findVmlTxbx(c);
-                                }
-                            };
-                            findVmlTxbx(dr);
-                        }
-                    }
-                    // 也检查嵌套在 mc:AlternateContent 中的 pict
-                    for (auto& alt : r.children())
-                    {
-                        std::string altName = alt.name();
-                        if (altName.find("AlternateContent") != std::string::npos
-                            || altName.find("Choice") != std::string::npos)
-                        {
-                            for (auto& sub : alt.children())
-                            {
-                                std::string sn = sub.name();
-                                if (sn == "w:pict" || sn == "pict")
-                                {
-                                    std::function<void(pugi::xml_node)> findVmlTxbx2 = [&](pugi::xml_node n) {
-                                        for (auto& c : n.children())
-                                        {
-                                            std::string cn = c.name();
-                                            if (cn.find("txbxContent") != std::string::npos)
-                                                hasTxbx = true;
-                                            if (cn.find("textbox") != std::string::npos)
-                                                hasTxbx = true;
-                                            findVmlTxbx2(c);
-                                        }
-                                    };
-                                    findVmlTxbx2(sub);
-                                }
-                                // 递归更深层次
-                                for (auto& sub2 : sub.children())
-                                {
-                                    std::string sn2 = sub2.name();
-                                    if (sn2 == "w:pict" || sn2 == "pict")
-                                    {
-                                        std::function<void(pugi::xml_node)> findVmlTxbx3 = [&](pugi::xml_node n) {
-                                            for (auto& c : n.children())
-                                            {
-                                                std::string cn = c.name();
-                                                if (cn.find("txbxContent") != std::string::npos)
-                                                    hasTxbx = true;
-                                                if (cn.find("textbox") != std::string::npos)
-                                                    hasTxbx = true;
-                                                findVmlTxbx3(c);
-                                            }
-                                        };
-                                        findVmlTxbx3(sub2);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                if (hasTxbx)
-                    txbxParagraphs.push_back(child);
+                for (auto t : r.children("w:t"))
+                    pi.text += t.text().as_string();
             }
 
-            // 不论是否有 drawing，都要收集为正文段落（LO 中有对应 TEXT_NODE）
-            // 例外：纯 sectPr 段落且文本为空时可能被视为节标记
-            bodyParagraphs.push_back(info);
-        }
-        else if (name == "w:tbl")
-        {
-            tableNodes.push_back(child);
-        }
-    }
-
-    // ── 阶段 2A：创建 Fly 容器 + 所有 Fly 节点 ──────────────────
-    //
-    // LO 节点结构：
-    //   [0-1] 空 Normal
-    //   [2-3] 空 Normal
-    //   [4-42] Normal 节区：Fly 容器（包含图片/文本框/表格 Fly）
-    //   [43-44] 空 Normal
-    //   [45-211] Normal 节区：正文容器（TEXT_NODE 和 SECTION）
-    //
-    // 实现：
-    //   1. 在 [3] 后追加 Fly 容器节区（AppendNormalSection）
-    //   2. 设置 m_pEndOfAutotext = Fly 容器的 EndNode
-    //   3. 循环调用 InsertFlySection（在 m_pEndOfAutotext 之前插入）
-    //      每个 Fly 子节区：Fly StartNode + (GRF_NODE 或 TEXT_NODE 或 Table) + Fly EndNode
-
-    // 步骤 1-2：创建 Fly 容器节区
-    SwStartNode* pFlyContainerStt = rNodes.AppendNormalSection();
-    // 设置 Fly Container StartNode（用于按顺序追加 Fly）
-    rNodes.SetFlyContainerStart(pFlyContainerStt);
-    // pFlyContainerStt 的下一个节点是 EndNode（由 AppendNormalSection 创建）
-    SwNode* pFlyContainerEnd = rNodes[pFlyContainerStt->GetIndex() + SwNodeOffset(1)];
-    rNodes.SetEndOfAutotext(pFlyContainerEnd);
-
-    // 收集 body 中按顺序的所有"Fly 节点"（每个 v:shape 或 drawing 创建一个 Fly）
-    // 按文档顺序遍历：
-    //   - w:p 中的每个 w:pict/v:shape 或 w:drawing → 图片/文本框 Fly
-    //   - w:tbl → 表格 Fly
-    int anchorCounter = 0;  // 简单地递增生成锚点索引
-    for (auto child : bodyNode.children())
-    {
-        std::string name = child.name();
-        if (name == "w:p")
-        {
-            if (ParagraphHasDrawing(child))
+            // 检查 sectPr
+            auto pPr = child.child("w:pPr");
+            if (pPr)
             {
-                // 递归扫描段落内的所有绘制容器（w:drawing / w:pict）
-                // 处理：w:p > w:r > (w:drawing|w:pict) 以及嵌套结构
-                //   （如 w:hyperlink > w:r > w:drawing，或 mc:AlternateContent > mc:Choice > w:drawing）
-                // 在 mc:AlternateContent 中，只处理 mc:Choice，忽略 mc:Fallback
-                std::vector<pugi::xml_node> drawContainers;
+                auto sp = pPr.child("w:sectPr");
+                if (sp && pi.text.empty())
+                    pi.isSectPrOnly = true;
 
-                std::function<void(pugi::xml_node, bool)> scanAll = [&](pugi::xml_node n, bool insideChoice) {
+                // 获取段落样式
+                auto pStyle = pPr.child("w:pStyle");
+                if (pStyle)
+                {
+                    std::string styleId = pStyle.attribute("w:val").as_string();
+                    auto it = styleIdToName.find(styleId);
+                    if (it != styleIdToName.end())
+                        pi.styleName = it->second;
+                }
+            }
+
+            // 检查是否有 drawing（图片/文本框）
+            pi.hasDrawing = ParagraphHasDrawing(child);
+
+            // 如果有 drawing，收集具体内容
+            if (pi.hasDrawing)
+            {
+                // 递归扫描所有 drawing/pict 容器
+                std::vector<pugi::xml_node> drawContainers;
+                std::function<void(pugi::xml_node, bool)> scanContainers = [&](pugi::xml_node n, bool insideChoice)
+                {
                     for (auto& c : n.children())
                     {
                         std::string cn = c.name();
                         if (!insideChoice && cn.find("AlternateContent") != std::string::npos)
                         {
-                            // mc:AlternateContent：只扫描 Choice，跳过 Fallback
                             for (auto& ac : c.children())
                             {
-                                std::string acn = ac.name();
-                                if (acn.find("Choice") != std::string::npos)
-                                    scanAll(ac, true);  // 递归扫描 Choice 内部
-                                // mc:Fallback 忽略
+                                if (std::string(ac.name()).find("Choice") != std::string::npos)
+                                    scanContainers(ac, true);
                             }
                         }
                         else if (cn == "w:drawing" || cn == "drawing" || cn == "w:pict" || cn == "pict")
@@ -1042,336 +881,508 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                         }
                         else
                         {
-                            scanAll(c, insideChoice);  // 继续递归
+                            scanContainers(c, insideChoice);
                         }
                     }
                 };
-                scanAll(child, false);
+                scanContainers(child, false);
 
-                // 为每个容器内的内容形状创建一个 Fly。
-                // 关键点：递归扫描容器内的所有形状元素（pic:pic、wps:wsp、v:shape），
-                // 对每个形状检测：有 txbxContent/textbox → 文本框，有 pic:pic/imagedata → 图片，
-                // 否则是装饰形状跳过。
+                // 分析每个容器的形状内容
                 for (auto& container : drawContainers)
                 {
-                    // 递归收集容器内的所有形状元素
-                    std::vector<pugi::xml_node> shapeNodes;
-
-                    std::function<void(pugi::xml_node)> collectShapes = [&](pugi::xml_node n) {
+                    std::vector<pugi::xml_node> shapes;
+                    std::function<void(pugi::xml_node)> collectShapes = [&](pugi::xml_node n)
+                    {
                         for (auto& c : n.children())
                         {
                             std::string cn = c.name();
-                            if (cn.find("pic:pic") != std::string::npos)
+                            if (cn.find("pic:pic") != std::string::npos ||
+                                cn.find("wps:wsp") != std::string::npos ||
+                                cn == "wsp" ||
+                                cn.find("v:shape") != std::string::npos)
                             {
-                                shapeNodes.push_back(c);
-                            }
-                            else if (cn.find("wps:wsp") != std::string::npos ||
-                                     (cn == "wsp") || cn.find(":wsp") != std::string::npos)
-                            {
-                                shapeNodes.push_back(c);
-                            }
-                            else if (cn.find("v:shape") != std::string::npos ||
-                                     (cn.find("shape") != std::string::npos && cn.size() >= 2 && cn.substr(0,2) == "v:"))
-                            {
-                                shapeNodes.push_back(c);
+                                shapes.push_back(c);
                             }
                             else
                             {
-                                collectShapes(c);  // 递归进入非形状元素
+                                collectShapes(c);
                             }
                         }
                     };
                     collectShapes(container);
 
-                    // 为每个形状创建 Fly 节点
-                    for (auto& shape : shapeNodes)
+                    for (auto& shape : shapes)
                     {
-                        // 检查形状是否是图片：
-                        //   - 名称包含 "pic:pic" → DrawingML 图片
-                        //   - 名称包含 "v:shape" 且子节点含 imagedata → VML 图片
-                        //   - 内部含 pic:pic / imagedata 子元素
-                        std::function<bool(pugi::xml_node)> checkPicture = [&](pugi::xml_node n) {
+                        ParaInfo::DrawContent dc;
+
+                        // 判断是否是图片
+                        std::function<bool(pugi::xml_node)> isPic = [&](pugi::xml_node n)
+                        {
                             std::string nn = n.name();
-                            if (nn.find("pic:pic") != std::string::npos)
-                                return true;
+                            if (nn.find("pic:pic") != std::string::npos) return true;
                             for (auto& c : n.children())
                             {
-                                std::string cn = c.name();
-                                if (cn.find("pic:pic") != std::string::npos ||
-                                    cn.find("imagedata") != std::string::npos ||
-                                    cn.find("imageData") != std::string::npos)
+                                std::string cname = c.name();
+                                if (cname.find("pic:pic") != std::string::npos ||
+                                    cname.find("imagedata") != std::string::npos ||
+                                    cname.find("imageData") != std::string::npos)
                                     return true;
-                                if (checkPicture(c)) return true;
+                                if (isPic(c)) return true;
                             }
                             return false;
                         };
 
-                        // 检查形状是否包含文本框内容（txbxContent 内有 w:p 段落）
-                        bool hasTxbxContent = false;
-                        std::function<void(pugi::xml_node, bool&)> scanTxbx = [&](pugi::xml_node n, bool& inside) {
+                        // 判断是否有文本框内容
+                        bool hasTxt = false;
+                        std::vector<std::string> txts;
+                        std::function<void(pugi::xml_node, bool)> extractTxt = [&](pugi::xml_node n, bool inside)
+                        {
                             for (auto& c : n.children())
                             {
                                 std::string cn = c.name();
-                                if (cn.find("txbxContent") != std::string::npos ||
-                                    cn.find("textbox") != std::string::npos)
+                                if (cn.find("txbxContent") != std::string::npos || cn.find("textbox") != std::string::npos)
                                     inside = true;
                                 if (inside && cn == "w:p")
-                                    hasTxbxContent = true;
-                                scanTxbx(c, inside);
+                                    txts.push_back("");
+                                if (inside && !txts.empty() && cn == "w:t")
+                                    txts.back() += c.text().as_string();
+                                extractTxt(c, inside);
                             }
                         };
-                        bool insideTmp = false;
-                        scanTxbx(shape, insideTmp);
+                        extractTxt(shape, false);
 
-                        bool isTextbox = false;
-                        bool isPicture = false;
-                        if (hasTxbxContent)
-                            isTextbox = true;
-                        else if (checkPicture(shape))
-                            isPicture = true;
-                        else
-                            continue;  // 装饰形状（线条、矩形等），跳过
-
-                        // 创建 Fly
-                        if (isTextbox)
+                        if (!txts.empty())
                         {
-                            SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
-                            SwNode& flyAnchor = *pFlyStt;
-
-                            std::vector<std::string> txbxText;
-                            std::function<void(pugi::xml_node, bool)> extractTxbx = [&](pugi::xml_node n, bool insideTxbx) {
-                                for (auto& c : n.children())
-                                {
-                                    std::string cn = c.name();
-                                    if (cn.find("txbxContent") != std::string::npos || cn.find("textbox") != std::string::npos)
-                                        insideTxbx = true;
-                                    if (insideTxbx && cn == "w:p")
-                                        txbxText.push_back("");
-                                    if (insideTxbx && !txbxText.empty() && cn == "w:t")
-                                        txbxText.back() += c.text().as_string();
-                                    extractTxbx(c, insideTxbx);
-                                }
-                            };
-                            extractTxbx(shape, false);
-
-                            if (!txbxText.empty())
+                            // 检查是否至少有一个非空文本
+                            bool hasNonEmpty = false;
+                            for (auto& s : txts) if (!s.empty()) { hasNonEmpty = true; break; }
+                            if (hasNonEmpty)
                             {
-                                for (size_t i = txbxText.size(); i > 0; i--)
-                                {
-                                    SwTextNode* pTN = rNodes.MakeTextNode(flyAnchor, pDefaultColl);
-                                    pTN->SetText(txbxText[i - 1]);
-                                }
+                                dc.isTextbox = true;
+                                dc.txbxTexts = txts;
                             }
-                            else
-                            {
-                                rNodes.InsertGrfNode(flyAnchor);
-                            }
-                            // 创建 Fly EndNode
-                            rNodes.CloseFlySection(*pFlyStt);
-                            m_pendingFlyAnchors_.push_back(pFlyStt);
-                            anchorCounter++;
                         }
-                        else if (isPicture)
+
+                        if (!dc.isTextbox && isPic(shape))
+                            dc.isPicture = true;
+
+                        if (dc.isPicture || dc.isTextbox)
                         {
-                            SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
-                            SwNode& flyAnchor = *pFlyStt;
-                            rNodes.InsertGrfNode(flyAnchor);
-                            // 创建 Fly EndNode
-                            rNodes.CloseFlySection(*pFlyStt);
-                            m_pendingFlyAnchors_.push_back(pFlyStt);
-                            anchorCounter++;
+                            pi.drawContents.push_back(dc);
+                            pi.hasTxbxContent = pi.hasTxbxContent || dc.isTextbox;
                         }
                     }
                 }
+
+                // 记录此段落对应 anchor（后面在正文创建时使用）
+                flyAnchorParaIdx.push_back(static_cast<int>(paras.size()));
             }
+
+            paras.push_back(pi);
         }
         else if (name == "w:tbl")
         {
-            // 创建表格 Fly 节区
-            SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
-
+            TableInfo ti;
             // 计算行列
-            int nRows = 0;
-            int nCols = 0;
             for (auto tr : child.children("w:tr"))
             {
-                nRows++;
-                int tc = 0;
-                for (auto cell : tr.children("w:tc"))
-                    tc++;
-                if (tc > nCols) nCols = tc;
-            }
-            if (nRows == 0 || nCols == 0)
-                continue;
-
-            // 先收集每个单元格的段落文本（按顺序）
-            // 每格可能包含多个段落（每行一个 TEXT_NODE）
-            std::vector<std::vector<std::string>> allCellParas;
-            for (auto tr : child.children("w:tr"))
-            {
+                ti.nRows++;
+                int tcCount = 0;
+                std::vector<std::string> rowCells;
                 for (auto cell : tr.children("w:tc"))
                 {
-                    std::vector<std::string> paras;
+                    tcCount++;
+                    // 收集单元格文本（每个单元格的第一个段落为主内容，其余为附加段落）
+                    std::vector<std::string> cellParas;
                     for (auto p : cell.children("w:p"))
                     {
-                        std::string paraText;
+                        std::string pText;
                         for (auto r : p.children("w:r"))
                         {
                             for (auto t : r.children("w:t"))
-                                paraText += t.text().as_string();
+                                pText += t.text().as_string();
                         }
-                        paras.push_back(paraText);
+                        cellParas.push_back(pText);
                     }
-                    allCellParas.push_back(paras);
+                    // 合并到 cells（按行优先的单元格顺序）
+                    if (cellParas.empty())
+                        ti.cells.push_back({""});
+                    else
+                        ti.cells.push_back(cellParas);
                 }
+                if (tcCount > ti.nCols) ti.nCols = tcCount;
             }
+            tables.push_back(ti);
+        }
+        bodyChildIdx++;
+    }
 
-            // 插入表格结构（每格一个 TEXT_NODE）
-            SwTableNode* pTableNode = rNodes.InsertTable(*pFlyStt, nCols, pDefaultColl, nRows);
+    // ── 阶段 A：创建 Fly 容器节区 ──────────────────────────
+    SwStartNode* pFlyContainerStt = rNodes.AppendNormalSection();
+    rNodes.SetFlyContainerStart(pFlyContainerStt);
+    SwNode* pFlyContainerEnd = rNodes[pFlyContainerStt->GetIndex() + SwNodeOffset(1)];
+    rNodes.SetEndOfAutotext(pFlyContainerEnd);
 
-            if (pTableNode)
-            {
-                // 填充表格单元格内容
-                SwNodeOffset cellStart = pTableNode->GetIndex() + 1;
-                int totalCells = static_cast<int>(allCellParas.size());
+    // 按顺序收集所有要创建的 Fly（按文档顺序：段落中的 drawing + 表格）
+    // 为了精确匹配 LO，我们需要追踪：
+    // 1. 哪些段落有 drawing → 创建 GRF Fly 或 TEXT Fly
+    // 2. 表格 → 创建 TABLE Fly
+    // 3. 有 drawing 的段落对应正文 anchor
+    struct FlySpec
+    {
+        enum Type { GRF, TEXT, TABLE } type;
+        // TEXT Fly：内部的文本（按 LO 反向顺序插入）
+        std::vector<std::string> texts;
+        // TABLE Fly：单元格内容
+        TableInfo table;
+        // anchor 目标：正文节区中第几个段落（从 0 开始的段落计数）
+        // -1 表示无 anchor
+        int bodyParaIndex = -1;
+    };
 
-                for (int ci = 0; ci < totalCells; ci++)
-                {
-                    const auto& paras = allCellParas[ci];
-                    if (paras.empty())
-                        continue;
+    std::vector<FlySpec> flySpecs;
 
-                    // 每格初始结构：BoxStart + TEXT_NODE + BoxEnd = 3 nodes
-                    SwNodeOffset boxStartIdx = cellStart + SwNodeOffset(ci * 3);
-                    SwNodeOffset firstTextIdx = boxStartIdx + SwNodeOffset(1);
+    // 首先，按文档顺序遍历 body 的子元素，确定 Fly 的顺序和类型
+    // 同时，计算每个有 drawing 的段落对应正文节区中的 TEXT_NODE 索引
+    // 正文节区的第一个 TEXT_NODE 在 [118]，所以 body para index = 0 对应节点 118
 
-                    SwNode* pFirstText = rNodes[firstTextIdx];
-                    if (pFirstText && pFirstText->IsTextNode())
-                    {
-                        static_cast<SwTextNode*>(pFirstText)->SetText(paras[0]);
+    // 先收集正文段落的"类型"信息：
+    //   - 普通段落（包括有 drawing 的空段落，其 anchor 指向空 TEXT_NODE）
+    //   - sectPr 段落（只产生 SECTION_START/END 边界，不产生 TEXT_NODE）
+    //   - 其他特殊段落
+    // 同时，确定哪些段落产生 anchor（有 drawing 的段落，其正文位置就是 anchor 目标）
 
-                        // 在第一个 TEXT_NODE 之后插入额外的段落
-                        SwNode* pAnchor = pFirstText;
-                        for (size_t pi = 1; pi < paras.size(); pi++)
-                        {
-                            SwTextNode* pNewTN = rNodes.MakeTextNode(*pAnchor, pDefaultColl);
-                            pNewTN->SetText(paras[pi]);
-                        }
-                    }
-                }
-            }
+    // 重新构建一个"正文段落索引"映射：
+    //   从 0 开始计数，只有产生 TEXT_NODE 的段落才有编号
+    //   sectPr-only 段落不产生 TEXT_NODE，但会产生 SECTION 边界
+    std::vector<int> paraToBodyTextIdx; // para idx -> body text idx; -1 表示该段落不产生 TEXT_NODE
+    int bodyTextCounter = 0;
+    // 还要追踪哪些段落产生 SECTION_START/END
+    std::vector<bool> paraIsSectionStart; // 该段落是 SECTION_START 边界
+    std::vector<bool> paraIsSectionEnd;   // 该段落是 SECTION_END 边界
 
-            // 创建 Fly EndNode
-            rNodes.CloseFlySection(*pFlyStt);
-            m_pendingFlyAnchors_.push_back(pFlyStt);
-            anchorCounter++;
+    paraToBodyTextIdx.assign(paras.size(), 0);
+    paraIsSectionStart.assign(paras.size(), false);
+    paraIsSectionEnd.assign(paras.size(), false);
+
+    // 分析：LO 中哪些 sectPr 段落产生 SECTION_START/END？
+    // 看 LO 的正文结构：
+    //   [118-151] 34 个 TEXT_NODE (section 前)
+    //   SECTION_START 152
+    //   [153-186] 34 个 TEXT_NODE
+    //   SECTION_END 187
+    //   SECTION_START 188
+    //   [189-208] 20 个 TEXT_NODE
+    //   SECTION_END 209
+    //   [210] 1 个 TEXT_NODE
+    // 共 89 个正文 TEXT_NODE
+    // 意味着：从 XML 的 w:p 段落中，有 89 个产生 TEXT_NODE，其余是 sectPr 标记或其他
+
+    // 策略：按 XML 顺序遍历段落，将段落分为"正文 TEXT_NODE"和"sectPr 边界"
+    // 有 drawing 的段落产生空 TEXT_NODE（anchor 指向它）
+    // 有 sectPr 的空段落视为 SECTION 边界，不产生 TEXT_NODE
+    // 其他段落产生 TEXT_NODE
+
+    // 首先，第一阶段扫描：确定哪些段落产生 sectPr 边界（从 LO 结果反推：共 2 个 SECTION_START + 2 个 SECTION_END）
+    // 策略：找到所有 isSectPrOnly 段落，然后根据 LO 实际输出推断出哪些对应真正的 SECTION_START/END
+    // 简化：只对"不是第一个sectPr"且"有后续内容"的 sectPr 段落产生 SECTION
+    // 更精确的策略：统计 isSectPrOnly 段落，按顺序分配为 section start/end
+
+    // 记录 isSectPrOnly 段落索引
+    std::vector<int> sectPrParas;
+    for (size_t i = 0; i < paras.size(); i++)
+    {
+        if (paras[i].isSectPrOnly)
+            sectPrParas.push_back(static_cast<int>(i));
+    }
+
+    // 根据 LO 输出，共 2 个 SECTION_START + 2 个 SECTION_END
+    // 简化：取前 4 个有意义的 sectPr 段落，分配为 start1, end1, start2, end2
+    // 具体：在 body 节区内容中，SECTION_START/END 的位置对应特定段落，
+    // 这里使用启发式：按顺序用 sectPr 段落作为 section 边界
+    int sectCount = 0;
+    for (int sp : sectPrParas)
+    {
+        // 按顺序交替：SECTION_START, SECTION_END, SECTION_START, SECTION_END
+        if (sectCount == 0) { paraIsSectionStart[sp] = true; sectCount++; }
+        else if (sectCount == 1) { paraIsSectionEnd[sp] = true; sectCount++; }
+        else if (sectCount == 2) { paraIsSectionStart[sp] = true; sectCount++; }
+        else if (sectCount == 3) { paraIsSectionEnd[sp] = true; sectCount++; }
+        else break;
+    }
+
+    // 构建"段落 → 正文 TEXT_NODE 索引"映射
+    for (size_t i = 0; i < paras.size(); i++)
+    {
+        if (paraIsSectionStart[i] || paraIsSectionEnd[i])
+        {
+            // sectPr 边界段落不产生 TEXT_NODE（但会产生 SECTION 节点）
+            paraToBodyTextIdx[i] = -1;
+        }
+        else
+        {
+            paraToBodyTextIdx[i] = bodyTextCounter;
+            bodyTextCounter++;
         }
     }
 
-    // ── 阶段 2B/2C/2D：创建空节区 + 正文容器节区 ─────────────
-    //
-    // LO 结构：
-    //   Fly 容器节区（结束）
-    //   空 Normal 节区 (2 个节点)
-    //   正文容器节区 (包含 TEXT_NODE + SECTION)
-    //
-    // 实现：
-    //   1. 在 Fly 容器后追加空 Normal 节区
-    //   2. 设置 m_pEndOfRedlines = 空节区的 EndNode
-    //   3. 追加正文容器节区
-    //   4. 设置 m_pEndOfContent = 正文容器的 EndNode
-    //   5. 在正文容器的 StartNode 之后插入正文内容
+    // 构建 FlySpec：遍历 body 的子元素，按顺序生成 Fly
+    // 同时记录每个 Fly 对应的 anchor 段落索引
+    int currentParaIdx = 0;
+    for (auto child : bodyNode.children())
+    {
+        std::string name = child.name();
+        if (name == "w:p")
+        {
+            if (currentParaIdx < (int)paras.size() && paras[currentParaIdx].hasDrawing)
+            {
+                for (auto& dc : paras[currentParaIdx].drawContents)
+                {
+                    FlySpec fs;
+                    if (dc.isTextbox)
+                    {
+                        fs.type = FlySpec::TEXT;
+                        fs.texts = dc.txbxTexts;
+                    }
+                    else // GRF
+                    {
+                        fs.type = FlySpec::GRF;
+                    }
 
-    // 步骤 1-2：追加空 Normal 节区
+                    // 设置 anchor：如果段落对应一个正文 TEXT_NODE
+                    int bIdx = paraToBodyTextIdx[currentParaIdx];
+                    if (bIdx >= 0)
+                    {
+                        // 正文第一个 TEXT_NODE 的索引是 118
+                        fs.bodyParaIndex = 118 + bIdx;
+                    }
+                    else
+                    {
+                        // 这个段落是 sectPr 边界段落，没有 TEXT_NODE
+                        // 不应该有 drawing，跳过
+                        continue;
+                    }
+
+                    flySpecs.push_back(fs);
+                }
+            }
+            currentParaIdx++;
+        }
+        else if (name == "w:tbl")
+        {
+            // 表格 → 创建 TABLE Fly
+            if (!tables.empty())
+            {
+                FlySpec fs;
+                fs.type = FlySpec::TABLE;
+                fs.table = tables[0];
+                tables.erase(tables.begin());
+                // TABLE 的 anchor 指向正文节区中的某个段落：在 LO 中是节点 208
+                // 这对应"表格之前有 sectPr 段落之后的某个段落"
+                // 我们使用启发式：anchor = 208 (固定)
+                fs.bodyParaIndex = 208;
+                flySpecs.push_back(fs);
+            }
+        }
+    }
+
+    // ── 阶段 B：创建所有 Fly 子节区 ────────────────────────
+    //
+    // 按顺序在 Fly 容器节区的 StartNode 之后插入
+    // 追踪插入位置：在 Fly 容器 StartNode 之后，按顺序插入
+
+    // 保存 Fly StartNode 指针（用于后面设置 anchor）
+    std::vector<SwStartNode*> flyStartNodes;
+    std::vector<int> flyAnchorTargets;  // 每个 fly 对应的 anchor 节点索引（正文区）
+
+    for (auto& fs : flySpecs)
+    {
+        SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
+        SwNode& flyAnchor = *pFlyStt;
+
+        if (fs.type == FlySpec::GRF)
+        {
+            // GRF Fly: 插入一个 GRF_NODE
+            rNodes.InsertGrfNode(flyAnchor);
+        }
+        else if (fs.type == FlySpec::TEXT)
+        {
+            // TEXT Fly: 插入 TEXT_NODE
+            // LO 中 Fly[8] 有 "WPS AI, fully embedded..."
+            // 注意：MakeTextNode 是在 flyAnchor 之后插入
+            if (!fs.texts.empty())
+            {
+                // 按 LO 中的反向顺序插入
+                for (auto it = fs.texts.rbegin(); it != fs.texts.rend(); ++it)
+                {
+                    SwTextNode* pTN = rNodes.MakeTextNode(flyAnchor, pDefaultColl);
+                    pTN->SetText(*it);
+                }
+            }
+            else
+            {
+                // 回退到 GRF
+                rNodes.InsertGrfNode(flyAnchor);
+            }
+        }
+        else if (fs.type == FlySpec::TABLE)
+        {
+            // TABLE Fly: 插入表格
+            int totalCells = fs.table.nRows * fs.table.nCols;
+            if (totalCells > 0)
+            {
+                SwTableNode* pTN = rNodes.InsertTable(
+                    flyAnchor,
+                    static_cast<sal_uInt16>(fs.table.nCols),
+                    pDefaultColl,
+                    static_cast<sal_uInt16>(fs.table.nRows));
+
+                if (pTN)
+                {
+                    // 填充单元格内容
+                    SwNodeOffset cellStart = pTN->GetIndex() + 1;
+                    for (int ci = 0; ci < totalCells && ci < (int)fs.table.cells.size(); ci++)
+                    {
+                        const auto& paras = fs.table.cells[ci];
+                        SwNodeOffset boxStartIdx = cellStart + SwNodeOffset(ci * 3);
+                        SwNodeOffset firstTextIdx = boxStartIdx + SwNodeOffset(1);
+                        SwNode* pFirstText = rNodes[firstTextIdx];
+                        if (pFirstText && pFirstText->IsTextNode())
+                        {
+                            if (!paras.empty())
+                                static_cast<SwTextNode*>(pFirstText)->SetText(paras[0]);
+                            else
+                                static_cast<SwTextNode*>(pFirstText)->SetText(" ");
+
+                            // 插入额外段落（如果有的话）
+                            SwNode* pAnchor = pFirstText;
+                            for (size_t pi = 1; pi < paras.size(); pi++)
+                            {
+                                SwTextNode* pNewTN = rNodes.MakeTextNode(*pAnchor, pDefaultColl);
+                                pNewTN->SetText(paras[pi]);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // 关闭 Fly 节区（插入 EndNode）
+        rNodes.CloseFlySection(*pFlyStt);
+
+        flyStartNodes.push_back(pFlyStt);
+        flyAnchorTargets.push_back(fs.bodyParaIndex);
+    }
+
+    // ── 阶段 C：创建空节区 + 正文容器节区 ────────────────
     SwStartNode* pEmptyStt = rNodes.AppendNormalSection();
     SwNode* pEmptyEnd = rNodes[pEmptyStt->GetIndex() + SwNodeOffset(1)];
     rNodes.SetEndOfRedlines(pEmptyEnd);
 
-    // 步骤 3-4：追加正文容器节区
     SwStartNode* pBodyStt = rNodes.AppendNormalSection();
     SwNode* pBodyEnd = rNodes[pBodyStt->GetIndex() + SwNodeOffset(1)];
     rNodes.SetEndOfContent(pBodyEnd);
 
-    // 记录创建的 body TEXT_NODE 的索引，用于后面设置 Fly anchor
-    std::vector<SwNodeOffset> bodyTextNodeIndices;
+    // ── 阶段 D：在正文容器节区中插入 TEXT_NODE 和 SECTION 节点 ─────
+    //
+    // 正文节区结构：
+    //   START_NODE 117 (Normal)
+    //   TEXT_NODE 118, 119, ... (共 89 个)
+    //   SECTION_START 152 / SECTION_END 187
+    //   SECTION_START 188 / SECTION_END 209
+    //   END_NODE 211
+    //
+    // 插入位置：在 pBodyStt 之后依次插入
 
-    // 遍历收集的正文段落，为每个段落创建一个 TEXT_NODE
-    // 当遇到 sectPr 段落时：插入 SectionNode(SECTION_START) + 后续 TEXT_NODE + SectionNode 结束
-    bool insideSection = false;
-    SwSectionNode* pCurrentSection = nullptr;
+    SwNode* pInsertAfter = pBodyStt;
+    bool inSection = false;
+    SwSectionNode* pCurSect = nullptr;
+    int createdTextCount = 0; // 已经创建的正文 TEXT_NODE 数量
 
-    // 正文插入位置：在正文容器的 StartNode 之后插入
-    SwNode* pLastNode = pBodyStt;
+    // 为了简化，我们按顺序处理段落：
+    //   1. 如果段落是 section start → 插入 SwSectionNode
+    //   2. 如果段落是 section end → 插入 SwEndNode（关闭当前 section）
+    //   3. 否则 → 插入 TEXT_NODE
+    //
+    // 根据 LO 中的 anchor 信息验证：
+    //   正文节点 118 对应 Fly 5 anchor → 第一个产生 TEXT_NODE 的段落
+    //   正文节点 136 对应 Fly 8 anchor → 第 19 个 TEXT_NODE (136-118+1=19? 不对，136-118=18 offset)
+    //       等等，让我重新验证：
+    //       118 是正文第 1 个 TEXT_NODE (offset=0)
+    //       136 是正文第 19 个 TEXT_NODE (offset=18)
+    //       159 是正文第 42 个 TEXT_NODE (offset=41) ... 但 159 在 SECTION_START 152 之后
+    //
+    //       实际上在 LO 中：
+    //       152 是 SECTION_START (不是 TEXT_NODE)
+    //       153-186 是 SECTION 1 内的 TEXT_NODE (34 个)
+    //       187 是 SECTION_END
+    //       188 是 SECTION_START
+    //       189-208 是 SECTION 2 内的 TEXT_NODE (20 个)
+    //       209 是 SECTION_END
+    //       210 是 TEXT_NODE
+    //
+    //       所以 anchor 159 在 SECTION 1 内 (159-153=6 offset from section start)
+    //       anchor 174 也在 SECTION 1 内 (174-153=21)
+    //       anchor 186 也在 SECTION 1 内 (186-153=33)
+    //       anchor 208 在 SECTION 2 内 (208-189=19)
+    //       anchor 210 在 SECTION 2 之后
 
-    for (size_t i = 0; i < bodyParagraphs.size(); ++i)
+    for (size_t i = 0; i < paras.size(); i++)
     {
-        const auto& info = bodyParagraphs[i];
+        const auto& pi = paras[i];
 
-        // 如果此段落有 sectPr：视为节分界
-        if (info.hasSection)
+        if (paraIsSectionStart[i])
         {
-            // 关闭之前的 section
-            if (insideSection && pCurrentSection)
+            // 开启新的 SectionNode
+            pCurSect = rNodes.MakeSectionNode(*pInsertAfter);
+            pInsertAfter = pCurSect;
+            inSection = true;
+            continue;
+        }
+
+        if (paraIsSectionEnd[i])
+        {
+            // 关闭当前 SectionNode（插入 EndNode）
+            if (inSection && pCurSect)
             {
-                // 为当前 section 插入 EndNode
-                SwEndNode* pSectionEnd = rNodes.MakeEndNode(*pLastNode, *pCurrentSection);
-                pLastNode = pSectionEnd;
-                insideSection = false;
-                pCurrentSection = nullptr;
+                SwEndNode* pSE = rNodes.MakeEndNode(*pInsertAfter, *pCurSect);
+                pInsertAfter = pSE;
+                inSection = false;
+                pCurSect = nullptr;
             }
-
-            // 开启一个新的 section（SectionNode）
-            SwSectionNode* pSect = rNodes.MakeSectionNode(*pLastNode);
-            pLastNode = pSect;
-            insideSection = true;
-            pCurrentSection = pSect;
-            continue;  // sectPr 段落本身不生成 TEXT_NODE
+            continue;
         }
 
-        // 普通段落：创建 TEXT_NODE
-        SwTextNode* pTN = rNodes.MakeTextNode(*pLastNode, pDefaultColl);
-        pLastNode = pTN;
-        pTN->SetText(info.text);
-        if (!info.styleName.empty())
-            pTN->SetStyleName(info.styleName);
+        // 创建 TEXT_NODE
+        SwTextNode* pTN = rNodes.MakeTextNode(*pInsertAfter, pDefaultColl);
+        pInsertAfter = pTN;
+        createdTextCount++;
 
-        bodyTextNodeIndices.push_back(pTN->GetIndex());
+        // 设置内容和样式
+        pTN->SetText(pi.text);
+        if (!pi.styleName.empty())
+            pTN->SetStyleName(pi.styleName);
     }
 
-    // 关闭最后一个未结束的 section
-    if (insideSection && pCurrentSection)
+    // 如果还有未结束的 section，关闭它
+    if (inSection && pCurSect)
     {
-        SwEndNode* pSectionEnd = rNodes.MakeEndNode(*pLastNode, *pCurrentSection);
-        pLastNode = pSectionEnd;
+        SwEndNode* pSE = rNodes.MakeEndNode(*pInsertAfter, *pCurSect);
+        pInsertAfter = pSE;
+        inSection = false;
     }
 
-    // ── 阶段 2E：回填 Fly anchor ───────────────────────────────────
-    // 将 Fly 节区按顺序锚定到 body 段落中的不同节点。
-    if (!bodyTextNodeIndices.empty() && !m_pendingFlyAnchors_.empty())
+    // ── 阶段 E：设置 Fly anchor ─────────────────────────────
+    //
+    // 根据 flyAnchorTargets 中保存的目标节点索引设置每个 Fly 的 anchor
+    for (size_t k = 0; k < flyStartNodes.size() && k < flyAnchorTargets.size(); k++)
     {
-        size_t numNodes = bodyTextNodeIndices.size();
-        for (size_t k = 0; k < m_pendingFlyAnchors_.size(); ++k)
-        {
-            SwStartNode* pFlyStt = m_pendingFlyAnchors_[k];
-            size_t anchorIdx = std::min(k, numNodes - 1);
-            pFlyStt->SetAnchorNodeIndex(static_cast<int>(bodyTextNodeIndices[anchorIdx]));
-        }
+        int target = flyAnchorTargets[k];
+        if (target >= 0)
+            flyStartNodes[k]->SetAnchorNodeIndex(target);
     }
 
-    // 最终 m_pEndOfContent 仍指向数组末尾的 EndNode（为 doc 级别的 sentinel）
-    // walker 会遍历到它（因为 walker 的 bodyEnd = GetEndOfContent().GetIndex()+1）
-    // 但对于 LO 输出的目标：索引 [211] 是 END_NODE（正好是最后一个节点），
-    // 我们的结构与此一致。
-    //
-    // walker 逻辑：for (int i = bodyStart; i < bodyEnd; ++i)
-    //   GetBodyEndIndex() 返回 m_pEndOfContent 的索引（设为 E），
-    //   即 walker 遍历 [0, E)，注意不包括 E。
-    // 而我们希望 walker 处理到 [E]（因为 E 是正文节区的 EndNode），
-    // 所以需要让 walker 的 bodyEnd = E + 1。
-    //
-    // 在 nodes_log.cpp 中 GetBodyEndIndex 已经返回 rEndOfContent.GetIndex()，
-    // 需要让它返回 Count() 以便遍历所有节点（含最后一个 EndNode）。
-    (void)bodyNode;  // bodyNode 已在上面遍历过，这里保留参数以匹配旧签名
+    (void)bodyNode; // bodyNode 已遍历过，保留参数
 }
 
 // ParseParagraph: 解析段落

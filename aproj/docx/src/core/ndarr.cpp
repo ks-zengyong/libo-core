@@ -369,6 +369,77 @@ SwStartNode* SwNodes::AppendNormalSection()
     return pStt;
 }
 
+SwStartNode* SwNodes::AppendFlyStartNode(int nAnchorNodeIndex)
+{
+    // 在数组末尾插入一个 Fly StartNode（type=2）
+    // 不自动插入 EndNode，调用者在内容插入后需调用 MakeEndNode
+    SwNodeOffset nPos = BigPtrArray::Count();
+    auto* pPrev = (*this)[nPos - SwNodeOffset(1)];
+    auto* pFlyStt = new SwStartNode(*pPrev, SwFlyStartNode);
+    pFlyStt->SetAnchorNodeIndex(nAnchorNodeIndex);
+    BigPtrArray::Insert(pFlyStt, nPos);
+    return pFlyStt;
+}
+
+SwTableNode* SwNodes::AppendTableFly(int nRows, int nCols,
+                                      const std::vector<std::vector<std::string>>& boxContents,
+                                      SwTextFormatColl* pColl)
+{
+    // 1. 先创建 Fly StartNode (type=2)
+    SwNodeOffset nFlySttPos = BigPtrArray::Count();
+    SwNode* pPrev = (*this)[nFlySttPos - SwNodeOffset(1)];
+    auto* pFlyStt = new SwStartNode(*pPrev, SwFlyStartNode);
+    BigPtrArray::Insert(pFlyStt, nFlySttPos);
+
+    // 2. 创建 SwTableNode
+    SwNodeOffset nTablePos = BigPtrArray::Count();
+    auto* pTable = new SwTableNode(*pFlyStt);
+    BigPtrArray::Insert(pTable, nTablePos);
+
+    // 3. 初始化 tableData
+    SwTableNode::TableData tableData(nRows);
+    for (int r = 0; r < nRows; ++r)
+        tableData[r].cells.resize(nCols);
+    pTable->SetTableData(tableData);
+
+    // 4. 创建单元格 (按行优先顺序)
+    int totalBoxes = nRows * nCols;
+    for (int boxIdx = 0; boxIdx < totalBoxes; ++boxIdx)
+    {
+        // Box StartNode (type=1)
+        SwNodeOffset nBoxSttPos = BigPtrArray::Count();
+        SwNode* pBoxPrev = (*this)[nBoxSttPos - SwNodeOffset(1)];
+        auto* pBoxStt = new SwStartNode(*pBoxPrev, SwTableBoxStartNode);
+        BigPtrArray::Insert(pBoxStt, nBoxSttPos);
+
+        // Box 内的文本节点（可能 1 个或 2 个）
+        const auto& cellTexts = boxContents[boxIdx];
+        for (const auto& text : cellTexts)
+        {
+            SwNodeOffset nTextPos = BigPtrArray::Count();
+            SwNode* pTextPrev = (*this)[nTextPos - SwNodeOffset(1)];
+            auto* pText = new SwTextNode(*pTextPrev, pColl);
+            pText->SetText(text);
+            BigPtrArray::Insert(pText, nTextPos);
+        }
+
+        // Box EndNode
+        SwNodeOffset nBoxEndPos = BigPtrArray::Count();
+        SwNode* pBoxEndPrev = (*this)[nBoxEndPos - SwNodeOffset(1)];
+        auto* pBoxEnd = new SwEndNode(*pBoxEndPrev, *pBoxStt);
+        BigPtrArray::Insert(pBoxEnd, nBoxEndPos);
+    }
+
+    // 5. 创建 Fly EndNode（关闭整个 table fly）
+    SwNodeOffset nFlyEndPos = BigPtrArray::Count();
+    SwNode* pFlyEndPrev = (*this)[nFlyEndPos - SwNodeOffset(1)];
+    auto* pFlyEnd = new SwEndNode(*pFlyEndPrev, *pFlyStt);
+    BigPtrArray::Insert(pFlyEnd, nFlyEndPos);
+
+    pFlyStt->SetEndOfSection(pFlyEnd);
+    return pTable;
+}
+
 void SwNodes::Delete(const SwNodeIndex& rPos, SwNodeOffset nNodes)
 {
     SwNodeOffset nStart = rPos.GetIndex();
