@@ -45,13 +45,22 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
             BuildTableStartInstruction(rSink, pNode->GetIndex(), nestLevel, pNode->GetTableRows(),
                                        pNode->GetTableCols());
 
+            // 防御：endIdx 无效（<= i）时跳过递归，避免 i = -1 导致崩溃
             if (endIdx > i + 1)
             {
                 WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1, pAnchorMap);
             }
 
-            BuildTableEndInstruction(rSink, endIdx, nestLevel);
-            i = endIdx;
+            if (endIdx > i)
+            {
+                BuildTableEndInstruction(rSink, endIdx, nestLevel);
+                i = endIdx;
+            }
+            else
+            {
+                // endIdx 无效，跳过此 TableNode
+                i = i + 1;
+            }
         }
         else if (pNode->IsSectionNode())
         {
@@ -59,13 +68,22 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
             int endIdx = pNode->GetEndNodeIndex();
             BuildSectionStartInstruction(rSink, pNode->GetIndex(), nestLevel);
 
+            // 防御：endIdx 无效时跳过递归
             if (endIdx > i + 1)
             {
                 WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1, pAnchorMap);
             }
 
-            BuildSectionEndInstruction(rSink, endIdx, nestLevel);
-            i = endIdx;
+            if (endIdx > i)
+            {
+                BuildSectionEndInstruction(rSink, endIdx, nestLevel);
+                i = endIdx;
+            }
+            else
+            {
+                // endIdx 无效，跳过此 SectionNode
+                i = i + 1;
+            }
         }
         else if (pNode->IsStartNode())
         {
@@ -81,15 +99,22 @@ void WalkNodeRange(const INodesArray* pNodes, int startIndex, int endIndex,
                 WalkNodeRange(pNodes, i + 1, endIdx, rSink, nestLevel + 1, pAnchorMap);
             }
 
-            // 输出 EndNode
-            INode* pEndNode = pNodes->GetNode(endIdx);
-            if (pEndNode)
+            // 输出 EndNode（仅当 endIdx 有效时）
+            if (endIdx > i)
             {
-                BuildEndNodeInstruction(rSink, pEndNode->GetIndex(), nestLevel);
+                INode* pEndNode = pNodes->GetNode(endIdx);
+                if (pEndNode)
+                {
+                    BuildEndNodeInstruction(rSink, pEndNode->GetIndex(), nestLevel);
+                }
+                // 跳过已处理的子节点和 EndNode
+                i = endIdx;
             }
-
-            // 跳过已处理的子节点和 EndNode
-            i = endIdx;
+            else
+            {
+                // endIdx 无效，跳过此 StartNode
+                i = i + 1;
+            }
         }
         else if (pNode->IsTextNode())
         {

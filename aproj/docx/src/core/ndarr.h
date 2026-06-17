@@ -120,12 +120,6 @@ public:
     // 图片节点创建：在 rWhere 之后插入
     SwGrfNode* InsertGrfNode(const SwNode& rWhere);
 
-    // 在 Fly 节区内部插入内容节点（GRF_NODE）：在 rFlyEnd 之前插入
-    SwGrfNode* InsertGrfIntoFly(const SwNode& rFlyStt);
-
-    // 在 Fly 节区内部插入文本节点
-    SwTextNode* InsertTextIntoFly(const SwNode& rFlyStt, SwTextFormatColl* pColl);
-
     // 节点删除
     void Delete(const SwNodeIndex& rPos, SwNodeOffset nNodes = SwNodeOffset(1));
 
@@ -136,7 +130,13 @@ public:
     // 是否是文档节点数组（而非 Undo 等）
     bool IsDocNodes() const;
 
+    // 内部方法：用于重建 3 节区结构的辅助方法
+    SwStartNode* InsertEmptyNormalSection();           // 在 m_pEndOfInserts 之后插入空 Normal 节区
+    SwStartNode* InsertBodyStartNode();                // 在空节区之后插入正文节区 StartNode
+    SwEndNode* InsertEndNodeAtContent(const SwStartNode& rSttNd); // 在正文 StartNode 后插入 EndNode
+
 private:
+
     // 内部插入方法
     void InsertNode(SwNode* pNode, SwNodeOffset nPos);
 

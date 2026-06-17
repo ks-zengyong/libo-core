@@ -307,63 +307,11 @@ SwGrfNode* SwNodes::InsertGrfNode(const SwNode& rWhere)
     return pGrfNode;
 }
 
-SwGrfNode* SwNodes::InsertGrfIntoFly(const SwNode& rFlyStt)
-{
-    // 在 Fly 节区内插入 GRF_NODE：找到 Fly 的 EndNode，在其之前插入
-    // Fly 结构：rFlyStt (StartNode) ... content ... Fly EndNode
-    // 新节点插入位置：Fly EndNode 的位置
-    SwNodeOffset nEndIdx = rFlyStt.GetIndex() + SwNodeOffset(1);
-    while (nEndIdx < Count())
-    {
-        SwNode* pNd = (*this)[nEndIdx];
-        if (pNd && pNd->IsEndNode())
-        {
-            SwEndNode* pEnd = static_cast<SwEndNode*>(pNd);
-            if (pEnd->StartOfSectionNode() == &rFlyStt)
-                break;
-        }
-        ++nEndIdx;
-    }
-    if (nEndIdx >= Count())
-        nEndIdx = rFlyStt.GetIndex() + SwNodeOffset(1);
-
-    SwNode* pPrev = (*this)[nEndIdx - SwNodeOffset(1)];
-    if (!pPrev) pPrev = &rFlyStt;
-    auto* pGrfNode = new SwGrfNode(*pPrev);
-    InsertNode(pGrfNode, nEndIdx);
-    return pGrfNode;
-}
-
-SwTextNode* SwNodes::InsertTextIntoFly(const SwNode& rFlyStt, SwTextFormatColl* pColl)
-{
-    // 在 Fly 节区内插入 TEXT_NODE：找到 Fly 的 EndNode，在其之前插入
-    SwNodeOffset nEndIdx = rFlyStt.GetIndex() + SwNodeOffset(1);
-    while (nEndIdx < Count())
-    {
-        SwNode* pNd = (*this)[nEndIdx];
-        if (pNd && pNd->IsEndNode())
-        {
-            SwEndNode* pEnd = static_cast<SwEndNode*>(pNd);
-            if (pEnd->StartOfSectionNode() == &rFlyStt)
-                break;
-        }
-        ++nEndIdx;
-    }
-    if (nEndIdx >= Count())
-        nEndIdx = rFlyStt.GetIndex() + SwNodeOffset(1);
-
-    SwNode* pPrev = (*this)[nEndIdx - SwNodeOffset(1)];
-    if (!pPrev) pPrev = &rFlyStt;
-    auto* pTextNode = new SwTextNode(*pPrev, pColl);
-    InsertNode(pTextNode, nEndIdx);
-    return pTextNode;
-}
-
-SwEndNode* SwNodes::InsertEndNodeAtContent(SwStartNode& rSttNd)
+SwEndNode* SwNodes::InsertEndNodeAtContent(const SwStartNode& rSttNd)
 {
     // 在当前末尾之后插入 EndNode，与 rSttNd 配对
     SwNodeOffset nPos = m_pEndOfContent->GetIndex() + SwNodeOffset(1);
-    auto* pEnd = new SwEndNode(*m_pEndOfContent, rSttNd);
+    auto* pEnd = new SwEndNode(*m_pEndOfContent.get(), const_cast<SwStartNode&>(rSttNd));
     InsertNode(pEnd, nPos);
     m_pEndOfContent.reset(pEnd);
     return pEnd;
@@ -373,7 +321,7 @@ SwStartNode* SwNodes::InsertEmptyNormalSection()
 {
     // 在当前末尾之后插入一个 Normal 节区（StartNode + EndNode）
     SwNodeOffset nPos = m_pEndOfContent->GetIndex() + SwNodeOffset(1);
-    auto* pStt = new SwStartNode(*m_pEndOfContent, SwNormalStartNode);
+    auto* pStt = new SwStartNode(*m_pEndOfContent.get(), SwNormalStartNode);
     InsertNode(pStt, nPos);
     SwNodeOffset nEndPos = pStt->GetIndex() + SwNodeOffset(1);
     auto* pEnd = new SwEndNode(*pStt, *pStt);
