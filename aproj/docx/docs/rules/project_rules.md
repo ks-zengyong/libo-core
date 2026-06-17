@@ -131,7 +131,7 @@ libo-core/                    # LibreOffice 源代码根目录（即 aproj 的�
 
 | 技能 | 路径 | 能力说明 |
 |------|------|----------|
-| **build_aproj_docx** | `skills/build_aproj_docx/SKILL.md` | 编译 aproj/docx 项目：CMake 生成 VS 工程、Debug/Release 编译，产物包括 `docx_core.lib`、`docx_e2e_test.exe`（生成 Nodes/Frame/VCL 产物，由 gen_aproj.py 调用）、`node_diff`、`render_diff.exe` 等 |
+| **build_aproj_docx** | `skills/build_aproj_docx/SKILL.md` | 编译 aproj/docx 项目：CMake 生成 VS 工程、Debug/Release 编译，产物包括 `docx_core.lib`、`docx_e2e_test.exe`（生成 Nodes/Frame/VCL 产物，由 gen_aproj.py 调用）、`node_diff`、`frame_diff`、`render_diff` 等 |
 | **build_lo** | `skills/build_lo/SKILL.md` | 编译 libo-core (LibreOffice)：增量编译（禁止 clean）、模块级编译（`make sw`）、进程自动清理、三条件构建成功判定、故障排除 |
 | **git_ops** | `skills/git_ops/SKILL.md` | Git 操作规范：commit 提交的文件范围（src/test/docs/sw 等）、排除目录（build/tools/debug）、提交/推送/拉取命令 |
 | **lo_docx_structure** | `skills/lo_docx_structure/SKILL.md` | LibreOffice DOCX 组件架构索引，完整参考手册位于 `docs/reference/lo_docx_structure.md`（含三层架构、导入/导出管线、SwDoc 模型、Frame 树排版引擎、浮动对象体系、关键文件索引） |

@@ -43,16 +43,27 @@ python test\gen_aproj.py
 
 调用 `aproj/docx/test/` 下的 bat 脚本执行对比，脚本自动引用同目录下的上述产物文件：
 
-| 脚本 | 对比内容 |
-|------|----------|
-| `.\test\diff_node.bat` | 对比 aproj 与 LO 的 Nodes 文档节点树结构差异 |
-| `.\test\diff_frame.bat` | 对比 aproj 与 LO 的 Frame 布局树结构差异 |
-| `.\test\diff_vcl.bat` | 对比 aproj 与 LO 的 VCL 渲染层绘制指令差异 |
+| 脚本 | 对比内容 | 底层工具 |
+|------|----------|----------|
+| `.\test\diff_node.bat` | 对比 aproj 与 LO 的 Nodes 文档节点树结构差异 | `node_diff_debug.exe` |
+| `.\test\diff_frame.bat` | 对比 aproj 与 LO 的 Frame 布局树结构差异 | `frame_diff_debug.exe` |
+| `.\test\diff_vcl.bat` | 对比 aproj 与 LO 的 VCL 渲染层绘制指令差异 | `render_diff_debug.exe` |
+
+`diff_frame.bat` 支持传参，可选择对齐算法：
+
+```powershell
+.\test\diff_frame.bat                        # 默认逐行对比
+.\test\diff_frame.bat --algo=lcs             # LCS 算法
+.\test\diff_frame.bat --algo=myers           # Myers Diff 算法
+.\test\diff_frame.bat --algo=needleman       # Needleman-Wunsch 算法
+.\test\diff_frame.bat --all                  # 输出所有算法结果
+.\test\diff_frame.bat --verbose              # 同时显示匹配项
+```
 
 ## 注意事项
 
 - **不要自己调用** `docx_e2e_test.exe` 或 LibreOffice `soffice` 来生成产物文件，使用 `gen_*.py` 脚本
-- **不要自己调用** `render_diff.exe` 并手动拼接路径参数，使用 `diff_*.bat` 脚本
+- **不要自己调用** `frame_diff.exe`、`render_diff.exe` 或 `node_diff.exe` 并手动拼接路径参数，使用 `diff_*.bat` 脚本
 - **不要自己编写** 生成或对比脚本
 - **使用现有 `*.docx`**（`aproj/docx/samples/*.docx`），不要自己生成 docx 测试文件
 
@@ -99,8 +110,12 @@ Nodes 结构差异最先对比，因为解析阶段的节点树差异会影响�
 aproj/docx/
   ├── output/
   │   ├── docx_e2e_test_debug.exe      # Debug 编译产物
-  │   ├── render_diff_debug.exe        # Debug 编译产物
+  │   ├── frame_diff_debug.exe         # Debug 编译产物（Frame 对比工具，支持多算法）
+  │   ├── node_diff_debug.exe          # Debug 编译产物（Nodes 对比工具）
+  │   ├── render_diff_debug.exe        # Debug 编译产物（通用渲染指令对比工具）
   │   ├── docx_e2e_test.exe            # Release 编译产物
+  │   ├── frame_diff.exe               # Release 编译产物
+  │   ├── node_diff.exe                # Release 编译产物
   │   └── render_diff.exe              # Release 编译产物
   ├── test/
   │   ├── test_end_to_end.cpp          # 端到端测试（C++）
@@ -117,7 +132,9 @@ aproj/docx/
   │   ├── lo_vcl.txt                   # LO VCL 层产物
   │   └── known_diffs.txt              # 已知差异清单
   ├── tools/
-  │   └── render_diff.cpp              # 差异对比工具源码
+  │   ├── render_diff.cpp              # 通用渲染指令对比工具源码
+  │   ├── frame_diff.cpp               # Frame 专用对比工具源码（支持多算法）
+  │   └── node_diff.cpp                # Nodes 专用对比工具源码
   └── samples/
       └── *.docx                       # 测试样本文档
 ```
@@ -184,6 +201,7 @@ aproj/docx/
 | Step 3 | VCL 模块接入 aproj/docx | **待完成** — 当前为简化 RenderOutputDevice |
 | Step 3 | VCL 记录（LO 侧） | 已完成 |
 | - | render_diff 对比工具 | 已完成 |
+| - | frame_diff 对比工具（多算法） | 已完成 |
 | - | Python 生成脚本 | 已完成 |
 | 迭代修复 | 差异驱动修复工作流 | 进行中 |
 
@@ -197,7 +215,8 @@ aproj/docx/
 | `test/diff_node.bat` | Nodes 层差异比对 |
 | `test/diff_frame.bat` | Frame 层差异比对 |
 | `test/diff_vcl.bat` | VCL 层差异比对 |
-| `tools/render_diff.cpp` | 渲染指令逐行比对工具源码 |
+| `tools/render_diff.cpp` | 通用渲染指令逐行比对工具源码 |
+| `tools/frame_diff.cpp` | Frame 专用对比工具源码（支持 position/lcs/myers/needleman 四种算法） |
 | `src/render/render_log.cpp` | Frame 树遍历 + TSV 指令记录 |
 | `src/render/nodes_log.cpp` | Nodes 结构遍历 + 记录 |
 | `src/render/render_output_device.cpp` | 简化的 OutputDevice |

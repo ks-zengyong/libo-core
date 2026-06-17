@@ -1,6 +1,6 @@
 # 编译 aproj/docx 项目
 
-> 在需要编译 aproj/docx 项目时触发。生成 docx_core 静态库、docx_e2e_test（端到端测试，用于生成 Nodes/Frame/VCL 产物）、node_diff 和 render_diff 可执行文件。
+> 在需要编译 aproj/docx 项目时触发。生成 docx_core 静态库、docx_e2e_test（端到端测试，用于生成 Nodes/Frame/VCL 产物）、node_diff、frame_diff 和 render_diff 可执行文件。
 
 ## 前置条件
 
@@ -46,8 +46,9 @@ cmake --build build --config Release
 |------|------|------|
 | `docx_core` | 静态库 | DOCX 解析排版核心库 |
 | `docx_e2e_test` | 可执行文件 | 端到端测试：解析 docx → 排版 → 生成 Nodes 结构、Frame 树和 VCL 渲染指令记录（由 `gen_aproj.py` 调用，不要手动执行） |
-| `node_diff` | 可执行文件 | Nodes 结构差异对比工具 |
-| `render_diff` | 可执行文件 | Frame/VCL 渲染指令差异对比工具（由 `diff_*.bat` 调用） |
+| `node_diff` | 可执行文件 | Nodes 结构差异对比工具（支持 position/lcs/myers/needleman 四种算法） |
+| `frame_diff` | 可执行文件 | Frame 渲染指令差异对比工具（支持 position/lcs/myers/needleman 四种算法，由 `diff_frame.bat` 调用） |
+| `render_diff` | 可执行文件 | 通用渲染指令逐行对比工具（支持 `--known-diffs` 跳过已知差异） |
 | `miniz` | 静态库 | ZIP 解压库 |
 | `pugixml` | 静态库 | XML 解析库 |
 | `harfbuzz` | 静态库 | 字体 shaping 库 |
