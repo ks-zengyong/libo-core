@@ -1,6 +1,7 @@
 // 简化版 Frame 实现，对应 LibreOffice 的 sw/source/core/layout/
 
 #include "frame.h"
+#include "frmtree.h"
 #include "sortedobjs.h"
 #include "../core/node.h"
 #include "../core/format.h"
@@ -196,7 +197,7 @@ SwTwips SwFrame::Grow(SwTwips nDiff)
     SwRect aArea(getFrameArea());
     aArea.SetHeight(aArea.Height() + nDiff);
     setFrameArea(aArea);
-    return nDiff;  // 返回实际增长的量
+    return nDiff; // 返回实际增长的量
 }
 
 SwTwips SwFrame::Shrink(SwTwips nDiff)
@@ -205,7 +206,7 @@ SwTwips SwFrame::Shrink(SwTwips nDiff)
     SwTwips nActualShrink = std::min(nDiff, aArea.Height());
     aArea.SetHeight(std::max(SwTwips(0), aArea.Height() - nActualShrink));
     setFrameArea(aArea);
-    return nActualShrink;  // 返回实际收缩的量
+    return nActualShrink; // 返回实际收缩的量
 }
 
 void SwFrame::ChgSize(const SwRect& rNewSize) { setFrameArea(rNewSize); }
@@ -607,10 +608,7 @@ SwFrame* SwFrame::FindPrev()
     return nullptr;
 }
 
-const SwFrame* SwFrame::FindPrev() const
-{
-    return const_cast<SwFrame*>(this)->FindPrev();
-}
+const SwFrame* SwFrame::FindPrev() const { return const_cast<SwFrame*>(this)->FindPrev(); }
 
 SwFrame* SwFrame::FindNext()
 {
@@ -629,10 +627,7 @@ SwFrame* SwFrame::FindNext()
     return nullptr;
 }
 
-const SwFrame* SwFrame::FindNext() const
-{
-    return const_cast<SwFrame*>(this)->FindNext();
-}
+const SwFrame* SwFrame::FindNext() const { return const_cast<SwFrame*>(this)->FindNext(); }
 
 //===----------------------------------------------------------------------===//
 // SwLayoutFrame
@@ -878,7 +873,7 @@ void SwPageFrame::RegisterAnchoredFly(SwFlyFrame* pFly, SwFrame* pAnchor)
     // 使用 SwSortedObjs 存储
     if (!m_pSortedObjs)
         m_pSortedObjs = new SwSortedObjs();
-    
+
     m_pSortedObjs->Insert(pFly);
     size_t nPos = m_pSortedObjs->GetPos(pFly);
     m_pSortedObjs->SetAnchorFrame(nPos, pAnchor);
@@ -944,8 +939,7 @@ void SwPageFrame::PrepareHeader()
 
     // 设置页眉区域（页面顶部）
     SwRect aPageArea = getFrameArea();
-    SwRect aHeaderRect(aPageArea.Left(), aPageArea.Top(),
-                       aPageArea.Width(), nHeaderHeight);
+    SwRect aHeaderRect(aPageArea.Left(), aPageArea.Top(), aPageArea.Width(), nHeaderHeight);
     pHeader->setFrameArea(aHeaderRect);
     pHeader->setFramePrintArea(SwRect(0, 0, aPageArea.Width(), nHeaderHeight));
 
@@ -989,8 +983,7 @@ void SwPageFrame::PrepareFooter()
 
     // 设置页脚区域（页面底部）
     SwRect aPageArea = getFrameArea();
-    SwRect aFooterRect(aPageArea.Left(),
-                       aPageArea.Top() + aPageArea.Height() - nFooterHeight,
+    SwRect aFooterRect(aPageArea.Left(), aPageArea.Top() + aPageArea.Height() - nFooterHeight,
                        aPageArea.Width(), nFooterHeight);
     pFooter->setFrameArea(aFooterRect);
     pFooter->setFramePrintArea(SwRect(0, 0, aPageArea.Width(), nFooterHeight));
@@ -1158,7 +1151,8 @@ SwContentFrame* SwContentFrame::GetNextContentFrame() const
             if (pNext->IsLayoutFrame())
             {
                 // 在布局 Frame 中查找内容
-                SwContentFrame* pContent = static_cast<SwLayoutFrame*>(const_cast<SwFrame*>(pNext))->ContainsContent();
+                SwContentFrame* pContent
+                    = static_cast<SwLayoutFrame*>(const_cast<SwFrame*>(pNext))->ContainsContent();
                 if (pContent)
                     return pContent;
             }
@@ -1232,7 +1226,18 @@ SwTextFrame::~SwTextFrame() = default;
 
 void SwTextFrame::Format()
 {
-    // 文本格式化（将在 Phase 4 中实现）
+    SwTextNode* pTextNode = static_cast<SwTextNode*>(GetNode());
+    if (!pTextNode)
+        return;
+
+    SwTwips nWidth = getFrameArea().Width();
+    if (nWidth <= 0)
+        nWidth = getFramePrintArea().Width();
+    SwTwips nHeight = CalcTextNodeFrameHeight(pTextNode, nWidth);
+
+    SwRect aArea = getFrameArea();
+    aArea.SetHeight(nHeight);
+    setFrameArea(aArea);
 }
 
 void SwTextFrame::MakeAll() { Format(); }
@@ -1434,8 +1439,8 @@ void SwFlowFrame::CheckKeep()
 bool SwFlowFrame::IsPageBreak(bool bAct) const
 {
     // 迁移自 LO flowfrm.cxx: IsPageBreak (行 1304-1351)
-    if (!IsFollow() && m_rThis.IsInDocBody() &&
-        (!m_rThis.IsInTab() || (m_rThis.IsTabFrame() && !m_rThis.GetUpper()->IsInTab())))
+    if (!IsFollow() && m_rThis.IsInDocBody()
+        && (!m_rThis.IsInTab() || (m_rThis.IsTabFrame() && !m_rThis.GetUpper()->IsInTab())))
     {
         // 简化版：不检查浏览模式
         // 查找前驱
@@ -1458,8 +1463,7 @@ bool SwFlowFrame::IsPageBreak(bool bAct) const
 
             // 简化版：检查分隔属性
             auto eBreak = m_rThis.GetBreakItem().GetBreak();
-            if (eBreak == SwFrame::SvxBreak::PageBefore ||
-                eBreak == SwFrame::SvxBreak::PageBoth)
+            if (eBreak == SwFrame::SvxBreak::PageBefore || eBreak == SwFrame::SvxBreak::PageBoth)
                 return true;
         }
     }
@@ -1492,8 +1496,8 @@ bool SwFlowFrame::IsColBreak(bool bAct) const
                 }
 
                 auto eBreak = m_rThis.GetBreakItem().GetBreak();
-                if (eBreak == SwFrame::SvxBreak::ColumnBefore ||
-                    eBreak == SwFrame::SvxBreak::ColumnBoth)
+                if (eBreak == SwFrame::SvxBreak::ColumnBefore
+                    || eBreak == SwFrame::SvxBreak::ColumnBoth)
                     return true;
             }
         }
@@ -1509,9 +1513,8 @@ bool SwFlowFrame::IsKeep(bool bCheckIfLastRowShouldKeep) const
         return false;
 
     // Keep 属性在脚注和表格单元格中忽略
-    bool bKeep = bCheckIfLastRowShouldKeep ||
-                 (!m_rThis.IsInFootnote() &&
-                  (!m_rThis.IsInTab() || m_rThis.IsTabFrame()));
+    bool bKeep = bCheckIfLastRowShouldKeep
+                 || (!m_rThis.IsInFootnote() && (!m_rThis.IsInTab() || m_rThis.IsTabFrame()));
 
     // 简化版：不检查分隔属性
     return bKeep;
@@ -1537,7 +1540,8 @@ SwLayoutFrame* SwFlowFrame::CutTree(SwFrame* pStart)
     return pLay;
 }
 
-bool SwFlowFrame::PasteTree(SwFrame* pStart, SwLayoutFrame* pParent, SwFrame* pSibling, SwFrame* pOldParent)
+bool SwFlowFrame::PasteTree(SwFrame* pStart, SwLayoutFrame* pParent, SwFrame* pSibling,
+                            SwFrame* pOldParent)
 {
     // 迁移自 LO flowfrm.cxx: PasteTree (行 574-688)
     // 简化版：粘贴 Frame 链
@@ -1647,8 +1651,8 @@ bool SwFlowFrame::MoveFwd(bool bMakePage, bool bPageBreak, bool bMoveAlways)
     }
 
     // 获取目标 Leaf
-    SwLayoutFrame* pNewUpper = m_rThis.GetLeaf(
-        bMakePage ? SwFrame::MAKEPAGE_INSERT : SwFrame::MAKEPAGE_NONE, true);
+    SwLayoutFrame* pNewUpper
+        = m_rThis.GetLeaf(bMakePage ? SwFrame::MAKEPAGE_INSERT : SwFrame::MAKEPAGE_NONE, true);
 
     if (!pNewUpper)
         return true; // 同页
@@ -2069,10 +2073,7 @@ void SwRowFrame::Format()
     SwLayoutFrame::Format();
 }
 
-void SwRowFrame::MakeAll()
-{
-    Format();
-}
+void SwRowFrame::MakeAll() { Format(); }
 
 // === 行高度计算 ===
 SwTwips SwRowFrame::CalcHeight() const
@@ -2156,24 +2157,24 @@ void SwSectionFrame::Init()
     // 简化版：创建基本的 Column/Body 层级
     // 在 LO 中，Init() 会根据 Section 的属性创建列布局
     // 这里我们创建一个单列布局作为默认值
-    
+
     // 检查是否已有 Upper
     if (!GetUpper())
         return;
-    
+
     // 获取 Upper 的打印区域宽度
     SwTwips nWidth = GetUpper()->getFramePrintArea().Width();
-    
+
     // 设置节的初始尺寸
     SwRect aFrameRect(0, 0, nWidth, 0);
     setFrameArea(aFrameRect);
     setFramePrintArea(SwRect(0, 0, nWidth, 0));
-    
+
     // 创建单列布局（简化版，不处理多列）
     auto* pColFrame = new SwColumnFrame(this);
     pColFrame->InsertBehind(this, nullptr);
     pColFrame->SetColWidth(nWidth);
-    
+
     auto* pColBody = new SwBodyFrame(pColFrame);
     pColBody->InsertBehind(pColFrame, nullptr);
 }
@@ -2182,7 +2183,7 @@ void SwSectionFrame::Format()
 {
     // 节 Frame 排版：调整子 Frame 以适应节区域
     // 对应 LO SwSectionFrame::Format (行 1464-1729)
-    
+
     // 检查是否隐藏
     if (IsHidden())
     {
@@ -2190,23 +2191,23 @@ void SwSectionFrame::Format()
         setFramePrintAreaValid(true);
         return;
     }
-    
+
     // 检查打印区域有效性
     if (!isFramePrintAreaValid())
     {
         setFramePrintAreaValid(true);
         // 简化版：不处理 LRSpace
     }
-    
+
     // 检查尺寸有效性
     if (isFrameAreaSizeValid())
         return;
-    
+
     setFrameAreaSizeValid(true);
-    
+
     // 检查是否需要最大化
     bool bMaximize = ToMaximize(false);
-    
+
     // 获取 Upper 的宽度
     if (GetUpper())
     {
@@ -2214,15 +2215,15 @@ void SwSectionFrame::Format()
         SwRect aArea = getFrameArea();
         aArea.SetWidth(nWidth);
         setFrameArea(aArea);
-        
+
         SwRect aPrtArea = getFramePrintArea();
         aPrtArea.SetWidth(nWidth);
         setFramePrintArea(aPrtArea);
     }
-    
+
     // 检查剪切限制
     CheckClipping(false, bMaximize);
-    
+
     // 格式化子 Frame
     SwLayoutFrame::Format();
 }
@@ -2231,10 +2232,10 @@ void SwSectionFrame::MakeAll()
 {
     // 对应 LO SwSectionFrame::MakeAll (行 837-978)
     // 简化版：检查锁定状态后格式化
-    
+
     if (IsJoinLocked() || IsColLocked())
         return;
-    
+
     // 检查隐藏状态
     if (IsHidden())
     {
@@ -2243,19 +2244,19 @@ void SwSectionFrame::MakeAll()
         setFramePrintAreaValid(true);
         return;
     }
-    
+
     // 锁定 Join
     LockJoin();
-    
+
     // 合合相邻的 Follow
     while (GetNext() && GetNext() == GetFollow())
     {
         MergeNext(static_cast<SwSectionFrame*>(GetNext()));
     }
-    
+
     // 格式化
     Format();
-    
+
     // 解锁 Join
     UnlockJoin();
 }
@@ -2265,7 +2266,7 @@ SwSectionFrame* SwSectionFrame::SplitSect(SwFrame* pFrameStartAfter, SwFrame* pF
 {
     // 简化版节拆分实现
     // 在 LO 中，SplitSect 会保存内容、创建新节、恢复内容
-    
+
     // 确定拆分点
     SwFrame* pSav = nullptr;
     if (pFrameStartAfter)
@@ -2276,20 +2277,20 @@ SwSectionFrame* SwSectionFrame::SplitSect(SwFrame* pFrameStartAfter, SwFrame* pF
     {
         pSav = Lower();
     }
-    
+
     // 如果没有内容需要移动，返回 nullptr
     if (!pSav)
         return nullptr;
-    
+
     // 创建新节 Frame
     if (!pFramePutAfter)
         pFramePutAfter = this;
-    
+
     SwSectionFrame* pNew = new SwSectionFrame(pFramePutAfter->GetUpper());
     pNew->SetSection(m_pSection);
     pNew->InsertBehind(pFramePutAfter->GetUpper(), pFramePutAfter);
     pNew->Init();
-    
+
     // 移动内容到新节
     SwFrame* pLower = Lower();
     if (pLower && pLower->IsColumnFrame())
@@ -2320,17 +2321,17 @@ SwSectionFrame* SwSectionFrame::SplitSect(SwFrame* pFrameStartAfter, SwFrame* pF
             pSav = pNext;
         }
     }
-    
+
     // 设置 Follow 链
     if (HasFollow())
     {
         pNew->SetFollow(GetFollow());
         SetFollow(nullptr);
     }
-    
+
     SetSplit(true);
     InvalidateSize();
-    
+
     return pNew;
 }
 
@@ -2340,19 +2341,19 @@ void SwSectionFrame::MergeNext(SwSectionFrame* pNxt)
     // 简化版节合并实现
     if (!pNxt || IsJoinLocked())
         return;
-    
+
     // 检查是否属于同一节
     if (GetSection() != pNxt->GetSection())
         return;
-    
+
     // 移动内容
     SwFrame* pLower = pNxt->Lower();
     SwFrame* pLast = Lower();
-    
+
     // 找到最后一个子 Frame
     while (pLast && pLast->GetNext())
         pLast = pLast->GetNext();
-    
+
     // 如果是多列布局，找到 Body Frame
     if (pLast && pLast->IsColumnFrame())
     {
@@ -2364,7 +2365,7 @@ void SwSectionFrame::MergeNext(SwSectionFrame* pNxt)
             while (pLast->GetNext())
                 pLast = pLast->GetNext();
     }
-    
+
     // 移动 pNxt 的内容到当前节
     while (pLower)
     {
@@ -2374,15 +2375,15 @@ void SwSectionFrame::MergeNext(SwSectionFrame* pNxt)
         pLast = pLower;
         pLower = pNext;
     }
-    
+
     // 更新 Follow 链
     SetFollow(pNxt->GetFollow());
     pNxt->SetFollow(nullptr);
-    
+
     // 删除 pNxt
     pNxt->RemoveFromLayout();
     delete pNxt;
-    
+
     InvalidateSize();
 }
 
@@ -2392,7 +2393,7 @@ SwContentFrame* SwSectionFrame::FindLastContent()
     // 简化版：查找节中的最后一个内容 Frame
     SwFrame* pLower = Lower();
     SwContentFrame* pLastContent = nullptr;
-    
+
     while (pLower)
     {
         if (pLower->IsContentFrame())
@@ -2407,7 +2408,7 @@ SwContentFrame* SwSectionFrame::FindLastContent()
         }
         pLower = pLower->GetNext();
     }
-    
+
     // 如果有 Follow，继续查找
     if (!pLastContent && HasFollow())
     {
@@ -2415,7 +2416,7 @@ SwContentFrame* SwSectionFrame::FindLastContent()
         if (pFoll)
             pLastContent = pFoll->FindLastContent();
     }
-    
+
     return pLastContent;
 }
 
@@ -2430,14 +2431,14 @@ bool SwSectionFrame::Growable() const
     // 简化版：检查节是否还能增长
     if (!GetUpper())
         return false;
-    
+
     // 检查是否还有空间
     SwTwips nUpperHeight = GetUpper()->getFramePrintArea().Height();
     SwTwips nMyHeight = getFrameArea().Height();
-    
+
     if (nUpperHeight > nMyHeight)
         return true;
-    
+
     // 检查 Upper 是否能增长
     return GetUpper()->IsLayoutFrame();
 }
@@ -2474,7 +2475,7 @@ bool SwSectionFrame::IsSuperfluous() const
     // 简化版：检查节是否是多余的（空节）
     if (IsHidden())
         return true;
-    
+
     // 检查是否有内容
     return !ContainsContent() && !HasFollow();
 }
@@ -2485,9 +2486,9 @@ void SwSectionFrame::SimpleFormat()
     // 快速格式化节，不进行完整排版
     if (IsJoinLocked() || IsColLocked())
         return;
-    
+
     LockJoin();
-    
+
     // 设置位置
     if (!isFrameAreaPositionValid() && GetUpper())
     {
@@ -2498,7 +2499,7 @@ void SwSectionFrame::SimpleFormat()
         setFrameArea(aArea);
         setFrameAreaPositionValid(true);
     }
-    
+
     // 设置尺寸
     if (GetUpper())
     {
@@ -2506,12 +2507,12 @@ void SwSectionFrame::SimpleFormat()
         SwRect aArea = getFrameArea();
         aArea.SetWidth(nWidth);
         setFrameArea(aArea);
-        
+
         SwRect aPrtArea = getFramePrintArea();
         aPrtArea.SetWidth(nWidth);
         setFramePrintArea(aPrtArea);
     }
-    
+
     UnlockJoin();
 }
 
@@ -2521,9 +2522,9 @@ void SwSectionFrame::MoveContentAndDelete(SwSectionFrame* pDel, bool bSave)
     // 简化版：移动节内容并删除节 Frame
     if (!pDel)
         return;
-    
+
     SwLayoutFrame* pUp = pDel->GetUpper();
-    
+
     // 保存内容
     SwFrame* pSave = nullptr;
     if (bSave)
@@ -2538,11 +2539,11 @@ void SwSectionFrame::MoveContentAndDelete(SwSectionFrame* pDel, bool bSave)
             pLower = pNext;
         }
     }
-    
+
     // 删除节 Frame
     pDel->RemoveFromLayout();
     delete pDel;
-    
+
     // 恢复内容
     if (pSave && pUp)
     {
@@ -2562,11 +2563,11 @@ SwSectionFrame* SwSectionFrame::FindMaster()
     // 查找节的 Master（如果当前是 Follow）
     if (!IsFollow())
         return this;
-    
+
     SwFlowFrame* pPrecede = GetPrecede();
     if (pPrecede && pPrecede->GetFrame().IsSctFrame())
         return static_cast<SwSectionFrame*>(&pPrecede->GetFrame());
-    
+
     return nullptr;
 }
 
@@ -2585,12 +2586,12 @@ SwTwips SwSectionFrame::Grow_(SwTwips nDist, bool bTst)
     // 简化版：增长节高度
     if (IsColLocked() || IsHidden())
         return 0;
-    
+
     if (!bTst)
     {
         Grow(nDist);
     }
-    
+
     return nDist;
 }
 
@@ -2599,12 +2600,12 @@ SwTwips SwSectionFrame::Shrink_(SwTwips nDist, bool bTst)
     // 简化版：收缩节高度
     if (IsColLocked())
         return 0;
-    
+
     if (!bTst)
     {
         Shrink(nDist);
     }
-    
+
     return nDist;
 }
 
@@ -2615,7 +2616,7 @@ bool SwSectionFrame::HasMultiColumns() const
     SwFrame* pLower = Lower();
     if (!pLower || !pLower->IsColumnFrame())
         return false;
-    
+
     return pLower->GetNext() != nullptr;
 }
 
@@ -2627,15 +2628,15 @@ bool SwSectionFrame::ToMaximize(bool bCheckFollow) const
     {
         if (!bCheckFollow)
             return true;
-        
+
         // 检查 Follow 是否有内容
         SwSectionFrame* pFoll = GetFollow();
         if (pFoll && pFoll->IsSuperfluous())
             return false;
-        
+
         return true;
     }
-    
+
     return false;
 }
 
@@ -2645,7 +2646,7 @@ bool SwSectionFrame::HasToBreak(const SwFrame* pFrame) const
     // 简化版：检查是否需要打破另一个节
     if (!pFrame || !pFrame->IsSctFrame())
         return false;
-    
+
     // 简化版：不处理嵌套节
     return false;
 }
@@ -2655,17 +2656,17 @@ void SwSectionFrame::CheckClipping(bool bGrow, bool bMaximize)
     // 简化版：检查剪切限制
     if (!GetUpper())
         return;
-    
+
     SwTwips nUpperHeight = GetUpper()->getFramePrintArea().Height();
     SwTwips nMyHeight = getFrameArea().Height();
-    
+
     if (bMaximize && nUpperHeight > nMyHeight)
     {
         // 扩展到 Upper 的底部
         SwRect aArea = getFrameArea();
         aArea.SetHeight(nUpperHeight);
         setFrameArea(aArea);
-        
+
         SwRect aPrtArea = getFramePrintArea();
         aPrtArea.SetHeight(nUpperHeight);
         setFramePrintArea(aPrtArea);
@@ -2701,20 +2702,20 @@ void SwColumnFrame::Format()
 {
     // 列 Frame 的排版：调整子 BodyFrame 的尺寸以适应列宽
     // 对应 LO colfrm.cxx: SwColumnFrame::Format
-    
+
     // 检查打印区域有效性
     if (!isFramePrintAreaValid())
     {
         setFramePrintAreaValid(true);
         // 简化版：不处理列间距
     }
-    
+
     // 检查尺寸有效性
     if (isFrameAreaSizeValid())
         return;
-    
+
     setFrameAreaSizeValid(true);
-    
+
     // 设置列宽
     SwFrame* pLower = GetLower();
     if (pLower && pLower->IsBodyFrame())
@@ -2724,7 +2725,7 @@ void SwColumnFrame::Format()
         pLower->setFrameArea(aBodyRect);
         pLower->setFramePrintArea(aBodyRect);
     }
-    
+
     // 格式化子 Frame
     SwLayoutFrame::Format();
 }
@@ -2746,17 +2747,17 @@ void SwColumnFrame::SetColWidth(SwTwips nWidth)
 {
     // 设置列宽度
     m_nColWidth = nWidth;
-    
+
     // 更新 Frame 区域
     SwRect aArea = getFrameArea();
     aArea.SetWidth(nWidth);
     setFrameArea(aArea);
-    
+
     // 更新打印区域
     SwRect aPrtArea = getFramePrintArea();
     aPrtArea.SetWidth(nWidth - m_nLeftSpacing - m_nRightSpacing);
     setFramePrintArea(aPrtArea);
-    
+
     // 更新子 Body Frame
     SwFrame* pLower = GetLower();
     if (pLower && pLower->IsBodyFrame())
@@ -2811,12 +2812,12 @@ void SwColumnFrame::AdjustColWidth(SwTwips nAvailWidth)
     // 调整列宽以适应可用宽度
     if (nAvailWidth <= 0)
         return;
-    
+
     // 计算新宽度（减去间距）
     SwTwips nNewWidth = nAvailWidth - m_nLeftSpacing - m_nRightSpacing;
     if (nNewWidth < 0)
         nNewWidth = 0;
-    
+
     SetColWidth(nNewWidth);
 }
 
@@ -2905,7 +2906,8 @@ SwTwips SwHeadFootFrame::CalcMaxEatSpacing() const
     if (IsHeaderFrame())
     {
         // 页眉：从底部计算可吸收间距
-        nMaxEat = getFrameArea().Height() - getFramePrintArea().Top() - getFramePrintArea().Height();
+        nMaxEat
+            = getFrameArea().Height() - getFramePrintArea().Top() - getFramePrintArea().Height();
     }
     else
     {
@@ -3186,10 +3188,7 @@ SwTwips SwHeadFootFrame::ShrinkFrame(SwTwips nDist, bool bTst)
 }
 
 // === 高度计算 ===
-SwTwips SwHeadFootFrame::CalcHeight() const
-{
-    return getFrameArea().Height();
-}
+SwTwips SwHeadFootFrame::CalcHeight() const { return getFrameArea().Height(); }
 
 // === 动态检查 ===
 bool SwHeadFootFrame::IsDynamic() const
@@ -3207,10 +3206,7 @@ bool SwHeadFootFrame::GetEatSpacing() const
 }
 
 // === 获取格式 ===
-SwFrameFormat* SwHeadFootFrame::GetHeaderFooterFormat() const
-{
-    return GetFormat();
-}
+SwFrameFormat* SwHeadFootFrame::GetHeaderFooterFormat() const { return GetFormat(); }
 
 //===----------------------------------------------------------------------===//
 // SwHeaderFrame - 页眉 Frame
@@ -3229,15 +3225,9 @@ void SwHeaderFrame::Format()
     SwHeadFootFrame::Format();
 }
 
-SwFrameFormat* SwHeaderFrame::GetHeaderFormat() const
-{
-    return GetHeaderFooterFormat();
-}
+SwFrameFormat* SwHeaderFrame::GetHeaderFormat() const { return GetHeaderFooterFormat(); }
 
-bool SwHeaderFrame::IsDynamicHeader() const
-{
-    return IsDynamic();
-}
+bool SwHeaderFrame::IsDynamicHeader() const { return IsDynamic(); }
 
 //===----------------------------------------------------------------------===//
 // SwFooterFrame - 页脚 Frame
@@ -3256,15 +3246,9 @@ void SwFooterFrame::Format()
     SwHeadFootFrame::Format();
 }
 
-SwFrameFormat* SwFooterFrame::GetFooterFormat() const
-{
-    return GetHeaderFooterFormat();
-}
+SwFrameFormat* SwFooterFrame::GetFooterFormat() const { return GetHeaderFooterFormat(); }
 
-bool SwFooterFrame::IsDynamicFooter() const
-{
-    return IsDynamic();
-}
+bool SwFooterFrame::IsDynamicFooter() const { return IsDynamic(); }
 
 //===----------------------------------------------------------------------===//
 // SwFootnoteContFrame - 脚注容器 Frame
@@ -3417,7 +3401,8 @@ const SwFootnoteFrame* SwFootnoteContFrame::FindEndNote() const
 }
 
 // === 链式脚注管理 ===
-SwFootnoteFrame* SwFootnoteContFrame::AddChained(bool bAppend, SwFrame* pNewUpper, bool bDefaultFormat)
+SwFootnoteFrame* SwFootnoteContFrame::AddChained(bool bAppend, SwFrame* pNewUpper,
+                                                 bool bDefaultFormat)
 {
     // 对应 LO ftnfrm.cxx: AddChained (行 192-223)
     // 简化版：创建新的脚注 Frame
@@ -3515,7 +3500,8 @@ void SwFootnoteContFrame::PaintLine(const SwRect& rRect, const SwPageFrame* pPag
 // 迁移自 LibreOffice sw/source/core/layout/ftnfrm.cxx
 //===----------------------------------------------------------------------===//
 
-SwFootnoteFrame::SwFootnoteFrame(SwLayoutFrame* pParent, SwContentFrame* pRef, SwTextFootnote* pAttr)
+SwFootnoteFrame::SwFootnoteFrame(SwLayoutFrame* pParent, SwContentFrame* pRef,
+                                 SwTextFootnote* pAttr)
     : SwLayoutFrame(SwFrameType::Footnote, pParent)
     , m_pFollow(nullptr)
     , m_pMaster(nullptr)

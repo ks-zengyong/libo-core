@@ -179,3 +179,49 @@ aproj/docx 的 Frame 结构与 LibreOffice 存在差异。你的任务是逐一�
 - 如果 node diff > 0，立即报告劣化并停止
 - 如果有新增差异，报告为劣化
 ```
+
+本轮进展
+Node diff：0（PASS） | Frame diff：197（数量未变，但关键帧数值已大幅接近）
+
+已修复
+Section 1 页边距（docx_parser.cpp）
+pgMar=0 时固定为 720 twips，不再继承 ParseSectionProps 的 1440/1800。
+
+Page 2 首帧位置（frmtree.cpp）
+CalcBodyTextFrameHorz 改用 GetSectionMargins()。
+WPS AI-generated content：y=18126, width=10466 已与 LO 对齐。
+
+Run 直接格式（ParseBody 路径）
+实际走的是 ParseBody，不是 ParseParagraph。新增 ApplyFirstTextRunFromXml()，并调整属性应用顺序：
+ApplyParagraphMarkFromXml → ApplyFirstTextRunFromXml → ApplyStyleToTextNode（仅补缺失属性）。
+
+行高公式（frmtree.cpp）
+默认行距 240 时使用 LO auto 规则：lineH ≈ fontSize × 40 / 3。
+
+Frame 日志字体（render_log.cpp）
+非空段优先记录样式链字体（如 Calibri 20），与 LO frame log 一致。
+
+关键帧对比
+帧	LO	aproj	状态
+Welcome
+y=1615, h=958, Calibri 20
+y=1595, h=960, Calibri 20
+高度差 2
+WPS AI-generated
+y=18126, h=479, Calibri 20
+y=18126, h=480, Calibri 20
+高度差 1
+For all your…
+y=35248, h=639
+y=35248, h=640
+高度差 1
+剩余主要问题
+页数：LO 7 页 vs aproj 4 页（缺 20 个 TEXT_FRAME）
+SECTION/COLUMN 指令不匹配（5/4 vs 2/2）
+Page 1 行高/换行：Share、Poppins 段落等仍有偏差，Y 坐标级联偏移
+1–2 twip 舍入：479/958/639 等边界值
+下一步
+迁移 LO SwTextFormatter::CalcRealHeight 完整行距逻辑（含 spaceBefore、多行换行）
+修复分页/分栏，补齐 page 5–7 的 frame
+每轮：build.bat → gen_lo.py / gen_aproj.py → diff_node.bat → diff_frame.bat
+是否继续推进分页/分栏（页数 7 vs 4）？

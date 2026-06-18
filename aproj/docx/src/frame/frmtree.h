@@ -8,6 +8,7 @@
 class SwDoc;
 class SwNodes;
 class SwNode;
+class SwTextNode;
 class SwRootFrame;
 class SwPageDesc;
 
@@ -39,3 +40,9 @@ void InsertCnt_(SwLayoutFrame* pLay, SwDoc& rDoc, SwNodeOffset nIndex, SwNodeOff
 
 // UpdateSectionFrameArea: 更新 SectionFrame 区域（辅助函数）
 void UpdateSectionFrameArea(SwSectionFrame* pSectionFrame);
+
+// CalcTextNodeFrameHeight: 计算文本节点 Frame 高度（与 LO 格式化结果对齐）
+SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth);
+
+// ReflowTextFrameGeometry: 重算文本 Frame 高度并重新定位（MakeFrames 之后调用）
+void ReflowTextFrameGeometry(SwDoc& rDoc);

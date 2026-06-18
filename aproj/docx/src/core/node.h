@@ -15,10 +15,10 @@ class SwDoc;
 class SwFrame;
 class SwContentFrame;
 class SwTextFrame;
-class SwTabFrame;       // 新增
-class SwSectionFrame;   // 新增
-class SwLayoutFrame;    // 新增
-class SwSection;        // 新增
+class SwTabFrame; // 新增
+class SwSectionFrame; // 新增
+class SwLayoutFrame; // 新增
+class SwSection; // 新增
 class SwStartNode;
 class SwEndNode;
 class SwTextNode;
@@ -255,6 +255,7 @@ public:
     // 属性存储（简化版：用 map 替代 SfxItemSet）
     using AttrMap = std::map<sal_uInt16, std::string>;
     void SetAttr(sal_uInt16 nWhich, const std::string& rValue);
+    void ClearAttr(sal_uInt16 nWhich) { m_aAttrs.erase(nWhich); }
     const std::string* GetAttr(sal_uInt16 nWhich) const;
     const AttrMap& GetAttrs() const { return m_aAttrs; }
 
@@ -366,15 +367,15 @@ public:
     // === 隐藏标志（对应 LO SwSection::CalcHiddenFlag） ===
     // 计算节是否隐藏
     bool CalcHiddenFlag() const { return m_bHidden; }
-    
+
     // 设置隐藏标志
     void SetHidden(bool bHidden) { m_bHidden = bHidden; }
-    
+
     // === 获取格式（简化版） ===
     SwFrameFormat* GetFormat() const { return nullptr; }
 
 private:
-    bool m_bHidden = false;  // 隐藏标志
+    bool m_bHidden = false; // 隐藏标志
 };
 
 // SwSectionNode: 节节点（继承 SwStartNode）

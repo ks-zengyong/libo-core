@@ -48,8 +48,10 @@ private:
     void ParseSectionProps(pugi::xml_node sectPrNode, SwDoc& doc);
 
     void ApplySectPr(pugi::xml_node sectPrNode, SwTextNode* pNode);
+    void ApplySectPrCore(pugi::xml_node sectPrNode, SwDoc& doc, bool bPendingBreakOnNext);
     void ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleName, bool bHasTextContent);
     void ApplyParagraphMarkFromXml(pugi::xml_node pNode, SwTextNode* pTN);
+    void ApplyFirstTextRunFromXml(pugi::xml_node pNode, SwTextNode* pTN);
 
     // 段落/文本解析
     std::string ParseRunText(pugi::xml_node rNode);
@@ -134,4 +136,5 @@ private:
     SwTextNode* curTextNode_ = nullptr;
     SwTextFormatColl* curStyle_ = nullptr;
     int m_nCurrentSection_ = 0; // 当前正在解析的节索引
+    bool m_bPendingSectionBreak = false; // sectPr-only 段落下个 TEXT 需分页
 };

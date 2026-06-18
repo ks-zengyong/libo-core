@@ -95,6 +95,9 @@ public:
     // 测量行高（便捷方法）
     int MeasureTextHeight(const std::string& fontName, int fontSizeHalfPt);
 
+    // fontTable altName 映射（OOXML 嵌入/链接字体）
+    bool HasAltName(const std::string& fontName);
+
     // 找到换行位置（便捷方法）
     int FindLineBreak(const std::string& fontName, int fontSizeHalfPt, const std::string& text,
                       SwTwips maxWidth);
@@ -113,6 +116,8 @@ private:
 
     // 字体名 → 文件路径缓存
     std::map<std::string, std::string> m_pathCache;
+    // OOXML fontTable altName → substitute font for GDI measurement
+    std::map<std::string, std::string> m_altNameCache;
     bool m_pathCacheInitialized = false;
 
     void InitPathCache();

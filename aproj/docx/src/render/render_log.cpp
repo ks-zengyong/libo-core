@@ -173,7 +173,8 @@ public:
             {
                 SwFlyFrame* pFly = (*pSortedObjs)[i];
                 if (pFly)
-                    return new AprojFrameNode(pFly, m_pageNum, m_pPageFrame, i, m_pAnchorFrame, true);
+                    return new AprojFrameNode(pFly, m_pageNum, m_pPageFrame, i, m_pAnchorFrame,
+                                              true);
             }
         }
         return nullptr;
@@ -196,6 +197,16 @@ private:
         {
             pFont = pTextNode->GetAttr(RES_CHRATR_FONT_PARA_MARK);
             pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
+        }
+        else if (SwTextFormatColl* pColl = pTextNode->GetFormatColl())
+        {
+            // LO frame log 对非空段优先记录样式链字体（run 直接格式仅用于排版）
+            if (const std::string* pCollFont = pColl->ResolveAttr(RES_CHRATR_FONT))
+                if (!pCollFont->empty())
+                    pFont = pCollFont;
+            if (const std::string* pCollSize = pColl->ResolveAttr(RES_CHRATR_FONTSIZE))
+                if (!pCollSize->empty())
+                    pSize = pCollSize;
         }
         if (!pFont)
             pFont = pTextNode->GetAttr(RES_CHRATR_FONT);

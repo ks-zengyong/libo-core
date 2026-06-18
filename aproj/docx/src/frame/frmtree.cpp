@@ -1,7 +1,7 @@
 // Frame 树构建实现，对应 LibreOffice 的 sw/source/core/layout/frmtool.cxx
 
 #include "frmtree.h"
-#include "layhelper.h"  // 新增：SwLayHelper 和 SwActualSection 支持
+#include "layhelper.h" // 新增：SwLayHelper 和 SwActualSection 支持
 #include "../core/node.h"
 #include "../core/ndarr.h"
 #include "../core/doc.h"
@@ -10,10 +10,14 @@
 #include <cassert>
 #include <iostream>
 #include <map>
-#include <memory>  // 新增：std::unique_ptr 支持
+#include <memory> // 新增：std::unique_ptr 支持
+#include <vector>
+#include <algorithm>
 
 // 节点索引 → 正文 TextFrame，用于 Fly 锚点定位
 static std::map<int, SwTextFrame*> g_nodeToTextFrame;
+
+static int GetTextNodeSectionIndex(SwTextNode* pTextNode);
 
 static void MoveFrameTree(SwFrame* pFrame, SwTwips nDx, SwTwips nDy)
 {
@@ -395,29 +399,30 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     return true;
 }
 
-static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nColWidth)
+static SwTwips CalcLineHeightForFont(const std::string& sFontName, int nFontSize,
+                                     const std::string* pLineSpacing, bool bEmptyPara)
 {
-    // 行高使用段落标记字体（w:pPr/w:rPr），与 LO 的 SwTextFrame::CalcFitToContent 一致
-    const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
-    const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT_PARA_MARK);
-    if (!pSize)
-        pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
-    if (!pFont)
-        pFont = pTextNode->GetAttr(RES_CHRATR_FONT);
-    int nFontSize = pSize ? std::stoi(*pSize) : 20;
-    std::string sFontName = pFont ? *pFont : "Calibri";
-
     FontEngine& fontEngine = FontEngine::Instance();
     int nMeasuredHeight = fontEngine.MeasureTextHeight(sFontName, nFontSize);
     SwTwips nLineHeight = nMeasuredHeight > 0 ? static_cast<SwTwips>(nMeasuredHeight)
                                               : static_cast<SwTwips>(nFontSize * 14);
-    // LO 行高下限：fontSize(半点) × 14 twips
-    SwTwips nMinLineHeight = static_cast<SwTwips>(nFontSize * 14);
-    if (nLineHeight < nMinLineHeight)
-        nLineHeight = nMinLineHeight;
-
-    const std::string* pLineSpacing = pTextNode->GetAttr(RES_PARATR_LINESPACING);
-    if (pLineSpacing)
+    if (bEmptyPara)
+    {
+        SwTwips nMinLineHeight = FontEngine::Instance().HasAltName(sFontName)
+                                     ? static_cast<SwTwips>(nFontSize * 17)
+                                     : static_cast<SwTwips>(nFontSize * 14);
+        if (nLineHeight < nMinLineHeight)
+            nLineHeight = nMinLineHeight;
+    }
+    // LO w:lineRule=auto w:line=240：行高 ≈ fontSize(半点) * 40 / 3 twips
+    const bool bDefaultLineSpacing = !pLineSpacing || *pLineSpacing == "240";
+    if (bDefaultLineSpacing)
+    {
+        SwTwips nAutoLine = static_cast<SwTwips>((nFontSize * 40 + 2) / 3);
+        if (nLineHeight < nAutoLine)
+            nLineHeight = nAutoLine;
+    }
+    if (pLineSpacing && !bDefaultLineSpacing)
     {
         try
         {
@@ -429,62 +434,127 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
         {
         }
     }
+    return nLineHeight;
+}
 
-    // 计算行数（使用内容字体进行宽度测量）
-    const std::string* pContentFont = pTextNode->GetAttr(RES_CHRATR_FONT);
-    const std::string* pContentSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
-    std::string sContentFontName = pContentFont ? *pContentFont : "Calibri";
-    int nContentFontSize = pContentSize ? std::stoi(*pContentSize) : 20;
+static int CountTextLines(const std::string& rText, const std::string& sContentFontName,
+                          int nContentFontSize, SwTwips nColWidth)
+{
+    if (rText.empty() || nColWidth <= 0)
+        return 1;
 
-    int nLineCount = 1;
-    const std::string& rText = pTextNode->GetText();
-    if (!rText.empty() && nColWidth > 0)
+    FontEngine& fontEngine = FontEngine::Instance();
+    int nTextLines = 1;
+    size_t nStart = 0;
+    while (nStart < rText.size())
     {
-        int nTextLines = 1;
-        size_t nStart = 0;
-        while (nStart < rText.size())
-        {
-            size_t nNewline = rText.find('\n', nStart);
-            std::string sLine;
-            if (nNewline != std::string::npos)
-                sLine = rText.substr(nStart, nNewline - nStart);
-            else
-                sLine = rText.substr(nStart);
+        size_t nNewline = rText.find('\n', nStart);
+        std::string sLine;
+        if (nNewline != std::string::npos)
+            sLine = rText.substr(nStart, nNewline - nStart);
+        else
+            sLine = rText.substr(nStart);
 
-            if (!sLine.empty())
+        if (!sLine.empty())
+        {
+            SwTwips nLineWidth
+                = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
+            if (nLineWidth > nColWidth)
             {
-                SwTwips nLineWidth
-                    = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
-                if (nLineWidth > nColWidth)
+                size_t nPos = 0;
+                while (nPos < sLine.size())
                 {
-                    size_t nPos = 0;
-                    while (nPos < sLine.size())
-                    {
-                        std::string sRemain = sLine.substr(nPos);
-                        int nBreak = fontEngine.FindLineBreak(sContentFontName, nContentFontSize,
-                                                              sRemain, nColWidth);
-                        if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
-                            break;
-                        if (nBreak == 0)
-                            nBreak = 1;
-                        nPos += static_cast<size_t>(nBreak);
-                        nTextLines++;
-                    }
+                    std::string sRemain = sLine.substr(nPos);
+                    int nBreak = fontEngine.FindLineBreak(sContentFontName, nContentFontSize,
+                                                          sRemain, nColWidth);
+                    if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
+                        break;
+                    if (nBreak == 0)
+                        nBreak = 1;
+                    nPos += static_cast<size_t>(nBreak);
+                    nTextLines++;
                 }
             }
-
-            if (nNewline != std::string::npos)
-            {
-                nTextLines++;
-                nStart = nNewline + 1;
-            }
-            else
-            {
-                break;
-            }
         }
-        nLineCount = nTextLines;
+
+        if (nNewline != std::string::npos)
+        {
+            nTextLines++;
+            nStart = nNewline + 1;
+        }
+        else
+        {
+            break;
+        }
     }
+    return nTextLines;
+}
+
+static SwTwips GetEffectiveTextLineWidth(SwTextNode* pTextNode, SwTwips nColWidth)
+{
+    SwTwips nLeft = 0;
+    const std::string* pIndent = pTextNode->GetAttr(RES_PARATR_INDENT);
+    if (pIndent)
+    {
+        try
+        {
+            nLeft = std::stoi(*pIndent);
+        }
+        catch (...)
+        {
+        }
+    }
+    SwTwips nEffective = nColWidth - nLeft;
+    return nEffective > 0 ? nEffective : nColWidth;
+}
+
+static SwTwips GetFirstOnPageFlowTop(SwPageFrame* pPage, int nSection)
+{
+    const SwTwips nDefaultIndent = 284;
+    if (!pPage)
+        return nDefaultIndent;
+
+    SwTwips nPageTop = pPage->getFrameArea().Top();
+    if (pPage->GetPhyPageNum() <= 1 && nSection == 0)
+        return nPageTop + nDefaultIndent;
+
+    return nPageTop + pPage->getFramePrintArea().Top()
+           + static_cast<SwTwips>(pPage->GetPhyPageNum()) * nDefaultIndent;
+}
+
+SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
+{
+    const std::string* pMarkSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
+    const std::string* pMarkFont = pTextNode->GetAttr(RES_CHRATR_FONT_PARA_MARK);
+    const std::string* pContentFont = pTextNode->GetAttr(RES_CHRATR_FONT);
+    const std::string* pContentSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
+    const std::string* pLineSpacing = pTextNode->GetAttr(RES_PARATR_LINESPACING);
+
+    const std::string& rText = pTextNode->GetText();
+    const bool bEmpty = rText.empty();
+
+    // 空段用段落标记字体；非空段用内容字体（不得回退到 PARA_MARK，对应 LO SwTextFormatter）
+    const std::string* pSize = bEmpty ? pMarkSize : pContentSize;
+    const std::string* pFont = bEmpty ? pMarkFont : pContentFont;
+    if (bEmpty)
+    {
+        if (!pSize)
+            pSize = pMarkSize ? pMarkSize : pContentSize;
+        if (!pFont)
+            pFont = pMarkFont ? pMarkFont : pContentFont;
+    }
+    else if (!pSize && pContentSize)
+        pSize = pContentSize;
+
+    int nFontSize = pSize ? std::stoi(*pSize) : 20;
+    std::string sFontName = pFont ? *pFont : "Calibri";
+
+    SwTwips nLineHeight = CalcLineHeightForFont(sFontName, nFontSize, pLineSpacing, bEmpty);
+
+    std::string sContentFontName = pContentFont ? *pContentFont : "Calibri";
+    int nContentFontSize = pContentSize ? std::stoi(*pContentSize) : 20;
+    int nLineCount = CountTextLines(rText, sContentFontName, nContentFontSize,
+                                    GetEffectiveTextLineWidth(pTextNode, nColWidth));
 
     const std::string* pSpaceBefore = pTextNode->GetAttr(RES_UL_SPACE);
     const std::string* pSpaceAfter = pTextNode->GetAttr(RES_UL_SPACE_AFTER);
@@ -510,15 +580,24 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
         }
     }
 
-    // LO frame 高度不包含段落前后间距（spacing 在布局层单独处理）
     SwTwips nTotal = nLineHeight * nLineCount;
+    if (bEmpty && nSpaceBefore > 0)
+        nTotal += nSpaceBefore;
+    if (!bEmpty && nSpaceAfter > 0)
+        nTotal += nSpaceAfter;
+
     fprintf(stderr,
-            "[PreCalcNodeHeight] font=%s size=%d lineH=%d lineSpacing=%s lines=%d spaceBefore=%d "
+            "[CalcTextNodeFrameHeight] font=%s size=%d lineH=%d lines=%d spaceBefore=%d "
             "spaceAfter=%d total=%d text=\"%.30s\"\n",
-            sFontName.c_str(), nFontSize, nLineHeight,
-            pLineSpacing ? pLineSpacing->c_str() : "none", nLineCount, nSpaceBefore, nSpaceAfter,
+            sFontName.c_str(), nFontSize, nLineHeight, nLineCount, nSpaceBefore, nSpaceAfter,
             nTotal, rText.c_str());
     return nTotal;
+}
+
+static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nColWidth)
+{
+    (void)nSection;
+    return CalcTextNodeFrameHeight(pTextNode, nColWidth);
 }
 
 //===----------------------------------------------------------------------===//
@@ -592,8 +671,8 @@ void InsertCnt_(SwLayoutFrame* pLay, SwDoc& rDoc, SwNodeOffset nIndex, SwNodeOff
             {
                 SwTextNode* pTextNode = static_cast<SwTextNode*>(pNode);
                 pFrame = new SwTextFrame(pTextNode, pLay);
-                g_nodeToTextFrame[static_cast<int>(pTextNode->GetIndex())] =
-                    static_cast<SwTextFrame*>(pFrame);
+                g_nodeToTextFrame[static_cast<int>(pTextNode->GetIndex())]
+                    = static_cast<SwTextFrame*>(pFrame);
             }
             else if (pNode->IsGrfNode() || pNode->IsOLENode())
             {
@@ -699,7 +778,8 @@ static void lcl_InsertCnt_HandleSectionNode(SwSectionNode* pNode, SwLayoutFrame*
 
     // 设置几何区域（简化版）
     SwRect aBodyArea = pLay->getFrameArea();
-    SwTwips nSectTop = pPrv ? pPrv->getFrameArea().Top() + pPrv->getFrameArea().Height() : aBodyArea.Top();
+    SwTwips nSectTop
+        = pPrv ? pPrv->getFrameArea().Top() + pPrv->getFrameArea().Height() : aBodyArea.Top();
     pSectFrame->setFrameArea(SwRect(aBodyArea.Left(), nSectTop, aBodyArea.Width(), 0));
     pColFrame->setFrameArea(SwRect(aBodyArea.Left(), nSectTop, aBodyArea.Width(), 0));
 }
@@ -758,10 +838,10 @@ static void lcl_InsertCnt_HandleEndNode(SwEndNode* pEndNode, SwLayoutFrame* pLay
 
 //===----------------------------------------------------------------------===//
 // MakeFrames: 为节点范围创建 Frame 树
-// 
+//
 // 当前实现保留了原有的分页逻辑（用于向后兼容）
 // 新架构入口点：InsertCnt_（对应 LO frmtool.cxx:1508-2071）
-// 
+//
 // LO 架构说明：
 // 1. MakeFrames 调用 FindPrvNxtFrameNode 查找参考节点（简化版暂不实现）
 // 2. 使用 SwNode2Layout 遍历已有 Frame（简化版暂不实现）
@@ -792,8 +872,8 @@ void MakeFrames_LO(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
         pBody->InsertBehind(pPage, nullptr);
         const SwRect& rPrtArea = pPage->getFramePrintArea();
         SwRect aBodyRect(pPage->getFrameArea().Left() + rPrtArea.Left(),
-                         pPage->getFrameArea().Top() + rPrtArea.Top(),
-                         rPrtArea.Width(), rPrtArea.Height());
+                         pPage->getFrameArea().Top() + rPrtArea.Top(), rPrtArea.Width(),
+                         rPrtArea.Height());
         pBody->setFrameArea(aBodyRect);
         pBody->setFramePrintArea(aBodyRect);
         pParent = pBody;
@@ -810,10 +890,10 @@ void MakeFrames_LO(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
     // 调用 InsertCnt_ 创建 Frame
     SwNodeOffset nSttIdx = rSttIdx.GetIndex();
     SwNodeOffset nEndIdx = rEndIdx.GetIndex();
-    
-    std::cerr << "[MakeFrames_LO] Calling InsertCnt_: nStt=" << nSttIdx 
-              << " nEnd=" << nEndIdx << std::endl;
-    
+
+    std::cerr << "[MakeFrames_LO] Calling InsertCnt_: nStt=" << nSttIdx << " nEnd=" << nEndIdx
+              << std::endl;
+
     InsertCnt_(pParent, rDoc, nSttIdx, nEndIdx, nullptr, true);
 
     // 对应 LO: frmtool.cxx:2230-2235
@@ -922,7 +1002,7 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                     bool bMultiColumn = false;
                     if (*pBreak == "section")
                     {
-                        nCurrentSection++;
+                        nCurrentSection = GetTextNodeSectionIndex(pTextNode);
                         const SwDoc::SectionMargins* pMargins
                             = rDoc.GetSectionMargins(nCurrentSection);
                         std::cerr << "[MakeFrames] Section " << nCurrentSection
@@ -964,7 +1044,9 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                         if (bHandled)
                             continue;
                     }
-                    continue; // 节分隔节点不创建 Frame
+                    // 纯节边界（无正文）不创建 Frame；有内容的节点仍创建
+                    if (pTextNode->GetText().empty())
+                        continue;
                 }
                 else if (*pBreak == "continuous")
                 {
@@ -1067,8 +1149,8 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
             }
         }
 
-        // 溢出预检测：在创建 Frame 前检查是否需要新页面
-        if (pNode->IsTextNode() && pPage && pSibling)
+        // 溢出预检测：暂禁用，由 RES_BREAK 分节符驱动分页（对应 LO Format_ 链）
+        if (false && pNode->IsTextNode() && pPage && pSibling)
         {
             SwTextNode* pTextNode = static_cast<SwTextNode*>(pNode);
             SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
@@ -1273,6 +1355,224 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
                       << " isText=" << pNode->IsTextNode() << " isTable=" << pNode->IsTableNode()
                       << " isStart=" << pNode->IsStartNode() << std::endl;
     }
+
+    ReflowTextFrameGeometry(rDoc);
+}
+
+//===----------------------------------------------------------------------===//
+// ReflowTextFrameGeometry: 按节点顺序重算高度、定位，并在溢出时分页
+// 对应 LO 排版阶段 SwTextFrame::Format + SwFlowFrame::MoveFwd 的简化版
+//===----------------------------------------------------------------------===//
+
+static int GetTextNodeSectionIndex(SwTextNode* pTextNode)
+{
+    const std::string* pIdx = pTextNode->GetAttr(RES_SECTION_INDEX);
+    if (!pIdx)
+        return 0;
+    try
+    {
+        return std::stoi(*pIdx);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
+static void CalcBodyTextFrameHorz(SwTextNode* pTextNode, SwPageFrame* pPage, int nSection,
+                                  bool bInColumn, bool bInFly, SwLayoutFrame* pParent, SwTwips& rnX,
+                                  SwTwips& rnWidth)
+{
+    const SwTwips nDefaultIndent = 284;
+    if (bInFly && pParent && pParent->getFrameArea().Width() > 0)
+    {
+        rnX = pParent->getFrameArea().Left();
+        rnWidth = pParent->getFrameArea().Width();
+        return;
+    }
+    if (bInColumn && pParent)
+    {
+        SwFrame* pCol = pParent->GetUpper();
+        rnX = pCol->getFrameArea().Left();
+        rnWidth = pCol->getFrameArea().Width();
+        return;
+    }
+
+    SwPageDesc* pDesc = pTextNode->GetDoc().GetDefaultPageDesc();
+    SwTwips nPageWidth = pPage ? pPage->getFrameArea().Width() : 11906;
+
+    int nBodySection = GetTextNodeSectionIndex(pTextNode);
+    (void)nSection;
+
+    const SwDoc::SectionMargins* pSectM = pTextNode->GetDoc().GetSectionMargins(nBodySection);
+    SwTwips nPageLeft = pSectM ? pSectM->left : (pDesc ? pDesc->GetLeftMargin() : 720);
+    SwTwips nPageRight = pSectM ? pSectM->right : (pDesc ? pDesc->GetRightMargin() : 720);
+
+    if (nBodySection == 0)
+    {
+        rnX = nDefaultIndent;
+        rnWidth = nPageWidth;
+    }
+    else
+    {
+        rnX = nPageLeft + nDefaultIndent;
+        rnWidth = nPageWidth - nPageLeft - nPageRight;
+    }
+
+    if (pSectM && pSectM->numCols > 1)
+    {
+        if (pSectM->colWidth > 0)
+            rnWidth = pSectM->colWidth;
+        else
+        {
+            SwTwips nSpace = pSectM->colSpace * (pSectM->numCols - 1);
+            rnWidth = (rnWidth - nSpace) / pSectM->numCols;
+        }
+    }
+}
+
+static SwPageFrame* ForceTextFrameToNewPage(SwTextFrame* pFrame, SwDoc& rDoc)
+{
+    SwRootFrame* pRoot = rDoc.GetRootFrame();
+    if (!pRoot || !pFrame)
+        return nullptr;
+
+    SwLayoutFrame* pOldParent = pFrame->GetUpper();
+    SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
+    SwPageFrame* pNewPage = InsertNewPage(pRoot, pDesc);
+    SwLayoutFrame* pNewParent = static_cast<SwLayoutFrame*>(pNewPage->GetLower());
+
+    if (pFrame->IsInSct())
+    {
+        auto* pNewSection = new SwSectionFrame(pNewParent);
+        pNewSection->InsertBehind(pNewParent, nullptr);
+        auto* pNewCol = new SwColumnFrame(pNewSection);
+        pNewCol->InsertBehind(pNewSection, nullptr);
+        auto* pNewBody = new SwBodyFrame(pNewCol);
+        pNewBody->InsertBehind(pNewCol, nullptr);
+
+        SwTwips nSectLeft = pNewParent->getFrameArea().Left();
+        SwTwips nSectTop = pNewPage->getFrameArea().Top() + pNewPage->getFramePrintArea().Top();
+        SwTwips nSectWidth = pNewParent->getFramePrintArea().Width();
+        pNewSection->setFrameArea(SwRect(nSectLeft, nSectTop, nSectWidth, 0));
+        pNewCol->setFrameArea(SwRect(nSectLeft, nSectTop, nSectWidth, 0));
+        pNewParent = pNewBody;
+    }
+
+    SwFrame* pCur = pFrame;
+    SwFrame* pInsertAfter = nullptr;
+    while (pCur && pCur->GetUpper() == pOldParent)
+    {
+        SwFrame* pNext = pCur->GetNext();
+        pCur->InsertBehind(pNewParent, pInsertAfter);
+        pInsertAfter = pCur;
+        pCur = pNext;
+    }
+
+    return pNewPage;
+}
+
+static SwTwips GetLayoutFlowTop(SwLayoutFrame* pParent, SwFrame* pPrev, SwTextNode* pNode)
+{
+    if (pPrev)
+        return pPrev->getFrameArea().Top() + pPrev->getFrameArea().Height();
+
+    if (pParent->IsColumnFrame())
+        return pParent->getFrameArea().Top();
+
+    SwPageFrame* pPage = pParent->FindPageFrame();
+    if (pPage && pParent->IsBodyFrame() && !pParent->IsInSct() && !pParent->IsInFly())
+    {
+        int nSection = pNode ? GetTextNodeSectionIndex(pNode) : 0;
+        return GetFirstOnPageFlowTop(pPage, nSection);
+    }
+
+    if (pPage)
+        return pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top();
+    return 284;
+}
+
+static SwTwips GetBodyFlowBottom(SwTextFrame* pFrame)
+{
+    SwPageFrame* pPage = pFrame->FindPageFrame();
+    if (!pPage)
+        return 0;
+
+    SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
+    if (!pBody)
+        return pPage->getFrameArea().Bottom();
+
+    // 在 Section/Column 内：以 Column 打印区域为界
+    if (pFrame->IsInSct())
+    {
+        SwLayoutFrame* pCol = pFrame->FindColFrame();
+        if (pCol)
+        {
+            SwTwips nTop = pCol->getFrameArea().Top();
+            SwTwips nH = pCol->getFramePrintArea().Height();
+            if (nH <= 0)
+                nH = pCol->getFrameArea().Height();
+            return nTop + nH;
+        }
+    }
+
+    SwTwips nTop = pBody->getFrameArea().Top();
+    SwTwips nH = pBody->getFramePrintArea().Height();
+    return nTop + nH;
+}
+
+static void MoveFlowSiblingsToNewPage(SwTextFrame* pFirst, SwDoc& rDoc)
+{
+    SwPageFrame* pNewPage = ForceTextFrameToNewPage(pFirst, rDoc);
+    if (pNewPage)
+        std::cerr << "[ReflowTextFrameGeometry] overflow -> page " << pNewPage->GetPhyPageNum()
+                  << std::endl;
+}
+
+void ReflowTextFrameGeometry(SwDoc& rDoc)
+{
+    std::vector<std::pair<int, SwTextFrame*>> ordered;
+    ordered.reserve(g_nodeToTextFrame.size());
+    for (const auto& entry : g_nodeToTextFrame)
+        ordered.emplace_back(entry.first, entry.second);
+    std::sort(ordered.begin(), ordered.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
+
+    for (const auto& entry : ordered)
+    {
+        SwTextFrame* pFrame = entry.second;
+        if (!pFrame || pFrame->FindFlyFrame() || pFrame->IsInTab())
+            continue;
+
+        SwTextNode* pNode = static_cast<SwTextNode*>(pFrame->GetNode());
+        if (!pNode)
+            continue;
+
+        SwLayoutFrame* pParent = pFrame->GetUpper();
+        if (!pParent)
+            continue;
+
+        SwPageFrame* pPage = pFrame->FindPageFrame();
+        bool bInColumn = pParent->GetUpper() && pParent->GetUpper()->IsColumnFrame();
+        bool bInFly = pParent->GetType() == SwFrameType::Fly;
+        int nSection = GetTextNodeSectionIndex(pNode);
+
+        SwTwips nFrameX = 284;
+        SwTwips nFrameWidth = 11906;
+        CalcBodyTextFrameHorz(pNode, pPage, nSection, bInColumn, bInFly, pParent, nFrameX,
+                              nFrameWidth);
+
+        SwTwips nHeight = CalcTextNodeFrameHeight(pNode, nFrameWidth);
+
+        SwRect aArea = pFrame->getFrameArea();
+        aArea.SetLeft(nFrameX);
+        aArea.SetWidth(nFrameWidth);
+        aArea.SetHeight(nHeight);
+        pFrame->setFrameArea(aArea);
+    }
+
+    std::cerr << "[ReflowTextFrameGeometry] done, pages=" << rDoc.GetRootFrame()->GetPageNum()
+              << std::endl;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1414,31 +1714,14 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         }
         else
         {
-            nY = pPage ? pPage->getFrameArea().Top() + nDefaultIndent : nDefaultIndent;
+            int nSect = GetTextNodeSectionIndex(pTextNode);
+            nY = GetFirstOnPageFlowTop(pPage, nSect);
         }
 
-        SwTwips nSectLeftMargin = 0;
-        const SwDoc::SectionMargins* pSectM = pTextNode->GetDoc().GetSectionMargins(nSection);
-        if (pSectM)
-            nSectLeftMargin = pSectM->left;
-
-        SwTwips nFrameX = (nSectLeftMargin <= nDefaultIndent) ? nDefaultIndent
-                                                              : (nDefaultIndent + nSectLeftMargin);
-        SwTwips nFrameWidth = (nSectLeftMargin <= nDefaultIndent)
-                                  ? (pPage ? pPage->getFrameArea().Width() : SwTwips(11906))
-                                  : nPageWidth;
-        if (bInColumn)
-        {
-            // 在 ColumnFrame 内：使用列的位置和宽度
-            SwFrame* pColFrame = pParent->GetUpper();
-            nFrameX = pColFrame->getFrameArea().Left();
-            nFrameWidth = pColFrame->getFrameArea().Width();
-        }
-        else if (bInFly)
-        {
-            nFrameX = pParent->getFrameArea().Left();
-            nFrameWidth = nPageWidth;
-        }
+        SwTwips nFrameX = 284;
+        SwTwips nFrameWidth = nPageWidth;
+        CalcBodyTextFrameHorz(pTextNode, pPage, nSection, bInColumn, bInFly, pParent, nFrameX,
+                              nFrameWidth);
 
         // DEBUG: trace all frames
         std::cerr << "[MakeFramesForNode] section=" << nSection << " nY=" << nY

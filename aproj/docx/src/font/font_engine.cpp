@@ -16,6 +16,7 @@
 #include <cstdio>
 #include <cmath>
 #include <map>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <windows.h>
@@ -279,6 +280,57 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
     return -1; // 整个文本都能放下
 }
 
+static int GdiMeasureLineHeightTwips(const std::string& fontName, int fontSizeHalfPt)
+{
+#ifdef _WIN32
+    if (fontName.empty())
+        return 0;
+
+    float pixelHeight = static_cast<float>(fontSizeHalfPt) * 2.0f / 3.0f;
+    HDC hdc = CreateCompatibleDC(NULL);
+    if (!hdc)
+        return 0;
+
+    int nHeight = -static_cast<int>(pixelHeight * 72.0 / 96.0 + 0.5);
+    int fw = FW_NORMAL;
+    if (fontName.find("Semibold") != std::string::npos
+        || fontName.find("SemiBold") != std::string::npos)
+        fw = FW_SEMIBOLD;
+    else if (fontName.find("Bold") != std::string::npos)
+        fw = FW_BOLD;
+    HFONT hFont = CreateFontA(nHeight, 0, 0, 0, fw, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                              OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                              DEFAULT_PITCH | FF_DONTCARE, fontName.c_str());
+    if (!hFont)
+    {
+        DeleteDC(hdc);
+        return 0;
+    }
+
+    HFONT hOld = (HFONT)SelectObject(hdc, hFont);
+    TEXTMETRICA tm{};
+    int result = 0;
+    if (GetTextMetricsA(hdc, &tm))
+    {
+        // Match VCL/GDI line spacing: ascent + descent + external leading
+        result = (tm.tmAscent + tm.tmDescent + tm.tmExternalLeading) * 15;
+        fprintf(stderr,
+                "[FontEngine] GDI lineHeight: font=%s halfPt=%d tmH=%d ext=%d asc=%d desc=%d "
+                "result=%d min=%d\n",
+                fontName.c_str(), fontSizeHalfPt, tm.tmHeight, tm.tmExternalLeading, tm.tmAscent,
+                tm.tmDescent, result, fontSizeHalfPt * 14);
+    }
+    SelectObject(hdc, hOld);
+    DeleteObject(hFont);
+    DeleteDC(hdc);
+    return result;
+#else
+    (void)fontName;
+    (void)fontSizeHalfPt;
+    return 0;
+#endif
+}
+
 int FontInstance::GetTextHeight(int fontSizeHalfPt) const
 {
     if (!m_valid || !m_info)
@@ -286,6 +338,16 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
 
     // 半点 → 像素: halfPt / 2 = pt, pt * 96/72 = px → halfPt * 2/3
     float pixelHeight = static_cast<float>(fontSizeHalfPt) * 2.0f / 3.0f;
+
+#ifdef _WIN32
+    // Prefer GDI metrics on Windows (matches LO VCL OutputDevice)
+    if (!m_fontName.empty())
+    {
+        int nGdi = GdiMeasureLineHeightTwips(m_fontName, fontSizeHalfPt);
+        if (nGdi > 0)
+            return nGdi;
+    }
+#endif
 
     // 使用 HarfBuzz 获取字体度量（与 LO 一致）
     // 参考 LibreOffice 的 vcl/source/font/fontmetric.cxx: ImplCalcLineSpacing
@@ -418,8 +480,8 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                             fprintf(stderr,
                                     "[FontEngine] OS2: font=%s typoAsc=%d typoDesc=%d "
                                     "typoLineGap=%d fsSelection=0x%04x useTypo=%d\n",
-                                    m_fontName.c_str(), nTypoAscent, nTypoDescent,
-                                    nTypoLineGap, fsSelectionVal, bUseTypoMetrics ? 1 : 0);
+                                    m_fontName.c_str(), nTypoAscent, nTypoDescent, nTypoLineGap,
+                                    fsSelectionVal, bUseTypoMetrics ? 1 : 0);
 
                             if (bUseTypoMetrics && nTypoAscent >= 0 && nTypoDescent <= 0)
                             {
@@ -502,6 +564,7 @@ void FontEngine::InitPathCache()
     m_pathCache["Segoe UI Semibold"] = "seguisb.ttf";
     m_pathCache["Segoe UI Light"] = "segoeuisl.ttf";
     m_pathCache["Segoe UI Emoji"] = "seguiemj.ttf";
+    m_pathCache["Segoe Print"] = "segoepr.ttf";
     m_pathCache["Arial"] = "arial.ttf";
     m_pathCache["Arial Bold"] = "arialbd.ttf";
     m_pathCache["Times New Roman"] = "times.ttf";
@@ -520,6 +583,13 @@ void FontEngine::InitPathCache()
     m_pathCache["Poppins Medium"] = "Poppins-Medium.ttf";
     m_pathCache["Poppins SemiBold"] = "Poppins-SemiBold.ttf";
     m_pathCache["Poppins Light"] = "Poppins-Light.ttf";
+
+    // OOXML fontTable altName fallbacks (word/fontTable.xml)
+    m_altNameCache["fony family"] = "Segoe Print";
+    m_altNameCache["Poppins"] = "Segoe Print";
+    m_altNameCache["Poppins Medium"] = "Segoe Print";
+    m_altNameCache["Poppins SemiBold"] = "Segoe Print";
+    m_altNameCache["Poppins Light"] = "Segoe Print";
 }
 
 std::string FontEngine::ResolveFontPath(const std::string& fontName)
@@ -566,16 +636,26 @@ FontInstance* FontEngine::GetFont(const std::string& fontName)
     if (it != m_cache.end())
         return it->second.get();
 
+    InitPathCache();
+
+    std::string gdiName = fontName;
+    auto altIt = m_altNameCache.find(fontName);
+    if (altIt != m_altNameCache.end())
+        gdiName = altIt->second;
+
     std::string path = ResolveFontPath(fontName);
     auto font = std::make_unique<FontInstance>();
     if (!font->LoadFromFile(path))
     {
-        // 加载失败，尝试 Calibri
-        if (path.find("calibri") == std::string::npos)
+        if (gdiName != fontName)
         {
-            font->LoadFromFile("C:/Windows/Fonts/calibri.ttf");
+            path = ResolveFontPath(gdiName);
+            font->LoadFromFile(path);
         }
+        if (!font->IsValid() && path.find("calibri") == std::string::npos)
+            font->LoadFromFile("C:/Windows/Fonts/calibri.ttf");
     }
+    // GDI 使用逻辑字体名（Windows font linking 解析 altName）
     font->SetFontName(fontName);
     FontInstance* ptr = font.get();
     m_cache[fontName] = std::move(font);
@@ -593,10 +673,26 @@ SwTwips FontEngine::MeasureTextWidth(const std::string& fontName, int fontSizeHa
 
 int FontEngine::MeasureTextHeight(const std::string& fontName, int fontSizeHalfPt)
 {
+    InitPathCache();
+    int nHeight = 0;
     FontInstance* font = GetFont(fontName);
-    if (!font || !font->IsValid())
-        return 0;
-    return font->GetTextHeight(fontSizeHalfPt);
+    if (font && font->IsValid())
+        nHeight = font->GetTextHeight(fontSizeHalfPt);
+
+    auto altIt = m_altNameCache.find(fontName);
+    if (altIt != m_altNameCache.end() && altIt->second != fontName)
+    {
+        int nAlt = GdiMeasureLineHeightTwips(altIt->second, fontSizeHalfPt);
+        if (nAlt > nHeight)
+            nHeight = nAlt;
+    }
+    return nHeight;
+}
+
+bool FontEngine::HasAltName(const std::string& fontName)
+{
+    InitPathCache();
+    return m_altNameCache.find(fontName) != m_altNameCache.end();
 }
 
 int FontEngine::FindLineBreak(const std::string& fontName, int fontSizeHalfPt,
