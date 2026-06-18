@@ -33,6 +33,12 @@ SwPageFrame* InsertNewPage(SwRootFrame* pRoot, SwPageDesc* pDesc = nullptr);
 // MakeFlyFrames: 为 Fly 容器中的浮动对象创建 Frame 并注册锚点
 void MakeFlyFrames(SwDoc& rDoc);
 
+// RepositionFlyFrames: Reflow 后按锚点/FlyLayoutInfo 重算 fly 位置
+void RepositionFlyFrames(SwDoc& rDoc);
+
+// FinalizeSectionLayout: Reflow/LayAction 后修正相邻 Section 位置与迷你节高度
+void FinalizeSectionLayout(SwDoc& rDoc);
+
 // InsertCnt_: 插入内容节点到布局（对应 LO frmtool.cxx:1508-2071）
 // 使用 SwLayHelper 进行分页预计算，使用 SwActualSection 管理嵌套 Section
 void InsertCnt_(SwLayoutFrame* pLay, SwDoc& rDoc, SwNodeOffset nIndex, SwNodeOffset nEndIndex,

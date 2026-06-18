@@ -366,6 +366,9 @@ void DocxParser::ParseStyles(SwDoc& doc)
                     def.spacingAfter = attrAfterLines.as_int(0) * 240 / 100;
 
                 def.spacingLine = spacing.attribute("w:line").as_int(240);
+                pugi::xml_attribute attrLineRule = spacing.attribute("w:lineRule");
+                if (attrLineRule)
+                    def.spacingLineRule = attrLineRule.as_string();
             }
 
             auto ind = pPr.child("w:ind");
@@ -475,6 +478,8 @@ void DocxParser::ParseStyles(SwDoc& doc)
                 pColl->SetAttr(RES_UL_SPACE_AFTER, std::to_string(def.spacingAfter));
             if (def.spacingLine != 240)
                 pColl->SetAttr(RES_PARATR_LINESPACING, std::to_string(def.spacingLine));
+            if (def.spacingLineRule != "auto")
+                pColl->SetAttr(RES_PARATR_LINE_RULE, def.spacingLineRule);
         }
     }
 
@@ -508,6 +513,8 @@ void DocxParser::ParseStyles(SwDoc& doc)
             def.spacingAfter = parent.spacingAfter;
         if (def.spacingLine == 240 && parent.spacingLine != 240)
             def.spacingLine = parent.spacingLine;
+        if (def.spacingLineRule == "auto" && parent.spacingLineRule != "auto")
+            def.spacingLineRule = parent.spacingLineRule;
         if (def.indentLeft == 0 && parent.indentLeft != 0)
             def.indentLeft = parent.indentLeft;
         if (def.indentRight == 0 && parent.indentRight != 0)
@@ -766,6 +773,36 @@ struct ParagraphFlyInfo
 };
 
 static SwTwips EmuToTwips(long long nEmu) { return static_cast<SwTwips>(nEmu * 1440 / 914400); }
+
+// 解析段落内 wp:inline 绘图高度（对应 LO 段内行高预留）
+static SwTwips ParseInlineDrawingHeight(pugi::xml_node pNode)
+{
+    if (!pNode)
+        return 0;
+    SwTwips nMaxH = 0;
+    std::function<void(pugi::xml_node)> scan;
+    scan = [&](pugi::xml_node n) {
+        for (auto& c : n.children())
+        {
+            std::string cn = c.name();
+            if (cn == "wp:inline" || cn == "inline")
+            {
+                auto ext = c.child("wp:extent");
+                if (!ext)
+                    ext = c.child("extent");
+                if (ext)
+                {
+                    SwTwips h = EmuToTwips(ext.attribute("cy").as_llong(0));
+                    if (h > nMaxH)
+                        nMaxH = h;
+                }
+            }
+            scan(c);
+        }
+    };
+    scan(pNode);
+    return nMaxH;
+}
 
 static void ParseFlyAnchorLayout(pugi::xml_node anchorNode, SwDoc::FlyLayoutInfo& out)
 {
@@ -1485,6 +1522,16 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             pCurSect = rNodes.MakeSectionNode(*pInsertAfter);
             pInsertAfter = pCurSect;
             inSection = true;
+            if (paras[i].hasSectPr && i < bodyParaNodes.size())
+            {
+                auto pPr = bodyParaNodes[i].child("w:pPr");
+                if (pPr)
+                {
+                    auto sectPr = pPr.child("w:sectPr");
+                    if (sectPr)
+                        ApplySectPrCore(sectPr, doc, false);
+                }
+            }
             continue;
         }
 
@@ -1526,10 +1573,10 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 pTN->SetStyleName("Default Paragraph Style");
 
             pTN->SetAttr(RES_SECTION_INDEX, std::to_string(m_nCurrentSection_));
-            if (m_bPendingSectionBreak)
+            if (!m_pendingBreakType.empty())
             {
-                pTN->SetAttr(RES_BREAK, "section");
-                m_bPendingSectionBreak = false;
+                pTN->SetAttr(RES_BREAK, m_pendingBreakType);
+                m_pendingBreakType.clear();
             }
             ApplyParagraphMarkFromXml(bodyParaNodes[i], pTN);
             ApplyFirstTextRunFromXml(bodyParaNodes[i], pTN);
@@ -1539,6 +1586,29 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 auto pPr = bodyParaNodes[i].child("w:pPr");
                 if (pPr)
                     ParseParagraphProps(pPr, pTN);
+                if (paras[i].hasDrawing)
+                {
+                    bool bOnlyWs = nodeText.empty();
+                    if (!bOnlyWs)
+                    {
+                        bOnlyWs = true;
+                        for (char c : nodeText)
+                        {
+                            if (c != ' ' && c != '\t' && c != '\n' && c != '\r')
+                            {
+                                bOnlyWs = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (bOnlyWs)
+                    {
+                        SwTwips nInlineH = ParseInlineDrawingHeight(bodyParaNodes[i]);
+                        // LO 段内 inline 预留高度通常 < 5000 twips（过大的是 anchor 绘图）
+                        if (nInlineH > 0 && nInlineH <= 5000)
+                            pTN->SetAttr(RES_IMAGE_HEIGHT, std::to_string(nInlineH));
+                    }
+                }
             }
 
             if (i < paraFollowedByTable.size() && paraFollowedByTable[i])
@@ -1567,6 +1637,16 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 pCurSect = rNodes.MakeSectionNode(*pInsertAfter);
                 pInsertAfter = pCurSect;
                 inSection = true;
+            }
+            if (paras[i].hasSectPr && paras[i].isSectPrOnly && i < bodyParaNodes.size())
+            {
+                auto pPr = bodyParaNodes[i].child("w:pPr");
+                if (pPr)
+                {
+                    auto sectPr = pPr.child("w:sectPr");
+                    if (sectPr)
+                        ApplySectPrCore(sectPr, doc, true);
+                }
             }
             continue;
         }
@@ -1896,6 +1976,8 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             pTextNode->SetAttr(RES_UL_SPACE_AFTER, std::to_string(pStyleDef->spacingAfter));
         if (pStyleDef->spacingLine != 240 && !pTextNode->GetAttr(RES_PARATR_LINESPACING))
             pTextNode->SetAttr(RES_PARATR_LINESPACING, std::to_string(pStyleDef->spacingLine));
+        if (pStyleDef->spacingLineRule != "auto" && !pTextNode->GetAttr(RES_PARATR_LINE_RULE))
+            pTextNode->SetAttr(RES_PARATR_LINE_RULE, pStyleDef->spacingLineRule);
     }
 
     pTextNode->SetText(text);
@@ -2088,9 +2170,16 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
     {
         int line = spacing.attribute("w:line").as_int(240);
         // 只在行间距不是默认值 240 时才设置，否则让样式继承链处理
-        // 否则会阻止样式中的行间距被继承
         if (line != 240)
             pNode->SetAttr(RES_PARATR_LINESPACING, std::to_string(line));
+
+        pugi::xml_attribute attrLineRule = spacing.attribute("w:lineRule");
+        if (attrLineRule)
+        {
+            std::string sRule = attrLineRule.as_string();
+            if (!sRule.empty() && sRule != "auto")
+                pNode->SetAttr(RES_PARATR_LINE_RULE, sRule);
+        }
 
         // before / beforeLines / after / afterLines
         // LO: before 优先于 beforeLines，after 优先于 afterLines
@@ -2166,23 +2255,34 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
         ApplySectPr(sectPr, pNode);
 }
 
+static std::string GetSectPrBreakType(pugi::xml_node sectPr)
+{
+    if (!sectPr)
+        return "nextPage";
+    auto typeNode = sectPr.child("w:type");
+    if (!typeNode)
+        return "nextPage";
+    std::string breakType = typeNode.attribute("w:val").as_string("nextPage");
+    return breakType.empty() ? "nextPage" : breakType;
+}
+
+static std::string BreakTypeToResBreak(const std::string& breakType)
+{
+    if (breakType == "continuous")
+        return "continuous";
+    if (breakType == "nextPage" || breakType == "evenPage" || breakType == "oddPage")
+        return "section";
+    return "section";
+}
+
 void DocxParser::ApplySectPrCore(pugi::xml_node sectPr, SwDoc& doc, bool bPendingBreakOnNext)
 {
     if (!sectPr)
         return;
 
-    int nextSection = m_nCurrentSection_ + 1;
-    auto it = sectionBreakTypes_.find(nextSection);
-    std::string breakType = (it != sectionBreakTypes_.end()) ? it->second : "nextPage";
-    std::cerr << "[Parser] sectPr currentSection=" << m_nCurrentSection_
-              << " nextSection=" << nextSection << " breakType=" << breakType << std::endl;
-    m_nCurrentSection_++;
-
-    if (bPendingBreakOnNext)
-    {
-        if (breakType == "nextPage" || breakType == "evenPage" || breakType == "oddPage")
-            m_bPendingSectionBreak = true;
-    }
+    std::string breakType = GetSectPrBreakType(sectPr);
+    std::cerr << "[Parser] sectPr endingSection=" << m_nCurrentSection_
+              << " breakType=" << breakType << std::endl;
 
     SwPageDesc* pDesc = doc.GetDefaultPageDesc();
     if (pDesc)
@@ -2227,9 +2327,16 @@ void DocxParser::ApplySectPrCore(pugi::xml_node sectPr, SwDoc& doc, bool bPendin
                 if (col)
                     sectMargins.colWidth = col.attribute("w:w").as_int(0);
             }
+            // OOXML sectPr 定义当前结束节的属性（对应 LO DomainMapper）
             doc.SetSectionMargins(m_nCurrentSection_, sectMargins);
         }
     }
+
+    sectionBreakTypes_[m_nCurrentSection_ + 1] = breakType;
+    m_nCurrentSection_++;
+
+    if (bPendingBreakOnNext)
+        m_pendingBreakType = BreakTypeToResBreak(breakType);
 }
 
 void DocxParser::ApplySectPr(pugi::xml_node sectPr, SwTextNode* pNode)
@@ -2237,16 +2344,9 @@ void DocxParser::ApplySectPr(pugi::xml_node sectPr, SwTextNode* pNode)
     if (!sectPr || !pNode)
         return;
 
-    int nextSection = m_nCurrentSection_ + 1;
-    auto it = sectionBreakTypes_.find(nextSection);
-    std::string breakType = (it != sectionBreakTypes_.end()) ? it->second : "nextPage";
-
+    std::string breakType = GetSectPrBreakType(sectPr);
     ApplySectPrCore(sectPr, pNode->GetDoc(), false);
-
-    if (breakType == "nextPage" || breakType == "evenPage" || breakType == "oddPage")
-        pNode->SetAttr(RES_BREAK, "section");
-    else if (breakType == "continuous")
-        pNode->SetAttr(RES_BREAK, "continuous");
+    pNode->SetAttr(RES_BREAK, BreakTypeToResBreak(breakType));
 }
 
 void DocxParser::ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleName,
@@ -2274,12 +2374,38 @@ void DocxParser::ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleN
 
         if (!def.fontName.empty())
         {
-            if (!bHasTextContent || !hasDirect(RES_CHRATR_FONT))
+            bool bUseStyleFont = !bHasTextContent || !hasDirect(RES_CHRATR_FONT);
+            const std::string* pDirectFont = pTN->GetAttr(RES_CHRATR_FONT);
+            // 首 run 可能是 Segoe UI Emoji/Semibold 等装饰字体，布局应使用段落样式字体
+            if (!bUseStyleFont && pDirectFont && def.fontName != *pDirectFont)
+            {
+                if (*pDirectFont == "Segoe UI Emoji" || *pDirectFont == "Segoe UI Semibold")
+                    bUseStyleFont = true;
+            }
+            if (bUseStyleFont)
                 pTN->SetAttr(RES_CHRATR_FONT, def.fontName);
         }
         if (def.fontSize > 0)
         {
-            if (!bHasTextContent || !hasDirect(RES_CHRATR_FONTSIZE))
+            bool bUseStyleSize = !bHasTextContent || !hasDirect(RES_CHRATR_FONTSIZE);
+            const std::string* pDirectFont = pTN->GetAttr(RES_CHRATR_FONT);
+            const std::string* pDirectSize = pTN->GetAttr(RES_CHRATR_FONTSIZE);
+            if (!bUseStyleSize && pDirectFont
+                && (*pDirectFont == "Segoe UI Emoji" || *pDirectFont == "Segoe UI Semibold"))
+                bUseStyleSize = true;
+            // 装饰字体常带错误字号（36），样式字号更可靠
+            if (!bUseStyleSize && pDirectSize && def.fontSize > 0)
+            {
+                try
+                {
+                    if (std::stoi(*pDirectSize) > def.fontSize + 4)
+                        bUseStyleSize = true;
+                }
+                catch (...)
+                {
+                }
+            }
+            if (bUseStyleSize)
                 pTN->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(def.fontSize));
         }
         if (def.bold && (!bHasTextContent || !hasDirect(RES_CHRATR_WEIGHT)))
@@ -2292,6 +2418,8 @@ void DocxParser::ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleN
             pTN->SetAttr(RES_UL_SPACE_AFTER, std::to_string(def.spacingAfter));
         if (def.spacingLine != 240)
             pTN->SetAttr(RES_PARATR_LINESPACING, std::to_string(def.spacingLine));
+        if (def.spacingLineRule != "auto")
+            pTN->SetAttr(RES_PARATR_LINE_RULE, def.spacingLineRule);
         break;
     }
 }

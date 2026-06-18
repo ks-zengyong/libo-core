@@ -283,7 +283,6 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     std::cerr << "[TEST] About to call MakeFrames, body range " << nBodyStt << ".." << nBodyEnd
               << std::endl;
     MakeFrames(doc, *rNodes[nBodyStt], *rNodes[nBodyEnd]);
-    MakeFlyFrames(doc);
     std::cerr << "[TEST] MakeFrames done" << std::endl;
 
     // 4. 验证 Frame 树
@@ -315,6 +314,10 @@ void test_swdoc_layout_and_render(const std::string& filePath)
     std::cerr << "[TEST] SwLayAction::Action..." << std::endl;
     SwLayAction layAction(*pRoot);
     layAction.Action();
+    ReflowTextFrameGeometry(doc);
+    MakeFlyFrames(doc);
+    RepositionFlyFrames(doc);
+    FinalizeSectionLayout(doc);
     std::cerr << "[TEST] SwLayAction done" << std::endl;
 
     // 6. 渲染指令输出 (分层)

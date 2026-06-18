@@ -2192,6 +2192,21 @@ void SwSectionFrame::Format()
         return;
     }
 
+    // 508 twips 迷你双栏节：固定高度，不参与 ToMaximize/CheckClipping
+    for (SwFrame* pC = GetLower(); pC; pC = pC->GetNext())
+    {
+        if (pC->IsColumnFrame())
+        {
+            SwTwips nColH = pC->getFrameArea().Height();
+            if (nColH > 0 && nColH <= 520)
+            {
+                setFrameAreaSizeValid(true);
+                setFramePrintAreaValid(true);
+                return;
+            }
+        }
+    }
+
     // 检查打印区域有效性
     if (!isFramePrintAreaValid())
     {

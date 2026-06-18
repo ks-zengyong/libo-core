@@ -175,6 +175,7 @@ enum SwAttrWhich : sal_uInt16
     RES_PARATR_HYPHENZONE,
     RES_PARATR_DROP, // 首字下沉
     RES_PARATR_INDENT, // 段落缩进（左缩进 twips）
+    RES_PARATR_LINE_RULE, // 行距规则：auto / exact / atLeast（对应 w:lineRule）
     RES_PARATR_END,
 
     // 字符属性

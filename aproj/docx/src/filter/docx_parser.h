@@ -82,6 +82,7 @@ private:
         int spacingBefore = 0;
         int spacingAfter = 0;
         int spacingLine = 240;
+        std::string spacingLineRule = "auto"; // w:lineRule: auto / exact / atLeast
         int indentLeft = 0;
         int indentRight = 0;
         int indentFirstLine = 0;
@@ -136,5 +137,5 @@ private:
     SwTextNode* curTextNode_ = nullptr;
     SwTextFormatColl* curStyle_ = nullptr;
     int m_nCurrentSection_ = 0; // 当前正在解析的节索引
-    bool m_bPendingSectionBreak = false; // sectPr-only 段落下个 TEXT 需分页
+    std::string m_pendingBreakType; // sectPr-only 段落后下个 TEXT 的分节类型
 };
