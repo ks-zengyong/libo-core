@@ -30,15 +30,58 @@ static void MoveFrameTree(SwFrame* pFrame, SwTwips nDx, SwTwips nDy)
     }
 }
 
+static void UpdateLayoutFrameArea(SwLayoutFrame* pFrame)
+{
+    if (!pFrame)
+        return;
+    SwRect aUnion;
+    for (SwFrame* pChild = pFrame->GetLower(); pChild; pChild = pChild->GetNext())
+        aUnion = aUnion.Union(pChild->getFrameArea());
+    if (!aUnion.IsEmpty())
+        pFrame->setFrameArea(aUnion);
+}
+
 static void UpdateSectionFrameArea(SwSectionFrame* pSectionFrame)
 {
     if (!pSectionFrame)
         return;
-    SwRect aUnion;
+    std::cerr << "[UpdateSectionFrameArea] SectionFrame=" << pSectionFrame
+              << " lower=" << pSectionFrame->GetLower() << std::endl;
+    // 自底向上更新：先更新 Column 内的 BodyFrame，再更新 ColumnFrame，最后 SectionFrame
     for (SwFrame* pChild = pSectionFrame->GetLower(); pChild; pChild = pChild->GetNext())
-        aUnion = aUnion.Union(pChild->getFrameArea());
-    if (!aUnion.IsEmpty())
-        pSectionFrame->setFrameArea(aUnion);
+    {
+        std::cerr << "[UpdateSectionFrameArea] child=" << pChild
+                  << " type=" << static_cast<int>(pChild->GetType())
+                  << " area=" << pChild->getFrameArea().Left() << ","
+                  << pChild->getFrameArea().Top() << "," << pChild->getFrameArea().Width() << ","
+                  << pChild->getFrameArea().Height() << std::endl;
+        if (pChild->IsLayoutFrame())
+        {
+            auto* pCol = static_cast<SwLayoutFrame*>(pChild);
+            for (SwFrame* pGrandChild = pCol->GetLower(); pGrandChild;
+                 pGrandChild = pGrandChild->GetNext())
+            {
+                std::cerr << "[UpdateSectionFrameArea] grandchild=" << pGrandChild
+                          << " type=" << static_cast<int>(pGrandChild->GetType())
+                          << " area=" << pGrandChild->getFrameArea().Left() << ","
+                          << pGrandChild->getFrameArea().Top() << ","
+                          << pGrandChild->getFrameArea().Width() << ","
+                          << pGrandChild->getFrameArea().Height() << std::endl;
+                if (pGrandChild->IsLayoutFrame())
+                    UpdateLayoutFrameArea(static_cast<SwLayoutFrame*>(pGrandChild));
+            }
+            UpdateLayoutFrameArea(pCol);
+            std::cerr << "[UpdateSectionFrameArea] col after update: area="
+                      << pCol->getFrameArea().Left() << "," << pCol->getFrameArea().Top() << ","
+                      << pCol->getFrameArea().Width() << "," << pCol->getFrameArea().Height()
+                      << std::endl;
+        }
+    }
+    UpdateLayoutFrameArea(pSectionFrame);
+    std::cerr << "[UpdateSectionFrameArea] section after update: area="
+              << pSectionFrame->getFrameArea().Left() << "," << pSectionFrame->getFrameArea().Top()
+              << "," << pSectionFrame->getFrameArea().Width() << ","
+              << pSectionFrame->getFrameArea().Height() << std::endl;
 }
 
 // Forward declaration
@@ -352,7 +395,7 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
 
 static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nColWidth)
 {
-    // 行高应使用段落标记字体（w:pPr/w:rPr），而非内容字体
+    // 行高使用段落标记字体（w:pPr/w:rPr），与 LO 的 SwTextFrame::CalcFitToContent 一致
     const std::string* pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
     const std::string* pFont = pTextNode->GetAttr(RES_CHRATR_FONT_PARA_MARK);
     if (!pSize)
@@ -365,9 +408,9 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
     FontEngine& fontEngine = FontEngine::Instance();
     int nMeasuredHeight = fontEngine.MeasureTextHeight(sFontName, nFontSize);
     SwTwips nLineHeight = nMeasuredHeight > 0 ? static_cast<SwTwips>(nMeasuredHeight)
-                                              : static_cast<SwTwips>(nFontSize * 14.1);
-    // LO 行高下限：fontSize(半点) × 14.1 twips
-    SwTwips nMinLineHeight = static_cast<SwTwips>(nFontSize * 141 / 10);
+                                              : static_cast<SwTwips>(nFontSize * 14);
+    // LO 行高下限：fontSize(半点) × 14 twips
+    SwTwips nMinLineHeight = static_cast<SwTwips>(nFontSize * 14);
     if (nLineHeight < nMinLineHeight)
         nLineHeight = nMinLineHeight;
 
@@ -465,7 +508,8 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
         }
     }
 
-    SwTwips nTotal = nSpaceBefore + nLineHeight * nLineCount + nSpaceAfter;
+    // LO frame 高度不包含段落前后间距（spacing 在布局层单独处理）
+    SwTwips nTotal = nLineHeight * nLineCount;
     fprintf(stderr,
             "[PreCalcNodeHeight] font=%s size=%d lineH=%d lineSpacing=%s lines=%d spaceBefore=%d "
             "spaceAfter=%d total=%d text=\"%.30s\"\n",
@@ -753,11 +797,41 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
             {
                 std::cerr << "[MakeFrames] OVERFLOW: nFrameBottom=" << nFrameBottom
                           << " nBodyBottom=" << nBodyBottom << " nMargin=" << nMargin
-                          << " pPage=" << pPage->GetPhyPageNum() << std::endl;
+                          << " pPage=" << pPage->GetPhyPageNum()
+                          << " inSection=" << (pOpenSectionFrame ? "yes" : "no") << std::endl;
                 SwPageDesc* pDesc = rDoc.GetDefaultPageDesc();
                 pPage = InsertNewPage(pRoot, pDesc);
-                pBodyLayout = pActiveLayout = static_cast<SwLayoutFrame*>(pPage->GetLower());
-                pSibling = nullptr;
+                pBodyLayout = static_cast<SwLayoutFrame*>(pPage->GetLower());
+
+                if (pOpenSectionFrame)
+                {
+                    // 在 Section 内溢出：在新页面重建 Section → Column → Body 层级
+                    auto* pNewSection = new SwSectionFrame(pBodyLayout);
+                    pNewSection->InsertBehind(pBodyLayout, nullptr);
+                    auto* pNewCol = new SwColumnFrame(pNewSection);
+                    pNewCol->InsertBehind(pNewSection, nullptr);
+                    auto* pNewBody = new SwBodyFrame(pNewCol);
+                    pNewBody->InsertBehind(pNewCol, nullptr);
+
+                    SwTwips nSectLeft = pBodyLayout->getFrameArea().Left();
+                    SwTwips nSectTop
+                        = pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top();
+                    SwTwips nSectWidth = pBodyLayout->getFramePrintArea().Width();
+                    pNewSection->setFrameArea(SwRect(nSectLeft, nSectTop, nSectWidth, 0));
+                    pNewCol->setFrameArea(SwRect(nSectLeft, nSectTop, nSectWidth, 0));
+
+                    pActiveLayout = pNewBody;
+                    pOpenSectionFrame = pNewSection;
+                    pSibling = nullptr;
+
+                    std::cerr << "[MakeFrames] OVERFLOW in section -> rebuilt hierarchy on page "
+                              << pPage->GetPhyPageNum() << std::endl;
+                }
+                else
+                {
+                    pActiveLayout = pBodyLayout;
+                    pSibling = nullptr;
+                }
             }
         }
 
@@ -824,26 +898,46 @@ void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
             }
         }
 
-        std::cerr << "[MakeFrames] Calling MakeFramesForNode i=" << i
-                  << " pPage=" << (pPage ? pPage->GetPhyPageNum() : 0)
-                  << " pParent=" << (pActiveLayout ? "yes" : "no")
-                  << " pSibling=" << (pSibling ? "yes" : "no") << std::endl;
-        MakeFramesForNode(*pNode, pActiveLayout, pSibling, nCurrentSection, nCurrentCol);
-
         if (pNode->IsSectionNode())
         {
-            SwFrame* pSectFrame = pSibling ? pSibling->GetNext() : pActiveLayout->GetLower();
-            if (!pSectFrame && pActiveLayout->GetLower())
-                pSectFrame = pActiveLayout->GetLower();
-            while (pSectFrame && pSectFrame->GetNext())
-                pSectFrame = pSectFrame->GetNext();
-            if (pSectFrame && pSectFrame->IsLayoutFrame())
-            {
-                pActiveLayout = static_cast<SwLayoutFrame*>(pSectFrame);
-                pSibling = nullptr;
-                if (pSectFrame->IsSctFrame())
-                    pOpenSectionFrame = static_cast<SwSectionFrame*>(pSectFrame);
-            }
+            // 单列 Section：创建 SectionFrame → ColumnFrame → BodyFrame 完整层级
+            // 对应 LO: InsertCnt_ 中 SwSectionFrame 含 SwColumnFrame 子节点
+            auto* pSectionFrame = new SwSectionFrame(pActiveLayout);
+            pSectionFrame->InsertBehind(pActiveLayout, pSibling);
+
+            // 创建列 Frame（即使是单列也要创建，与 LO 一致）
+            auto* pColFrame = new SwColumnFrame(pSectionFrame);
+            pColFrame->InsertBehind(pSectionFrame, nullptr);
+
+            // 在列 Frame 内创建 BodyFrame
+            auto* pColBody = new SwBodyFrame(pColFrame);
+            pColBody->InsertBehind(pColFrame, nullptr);
+
+            // 设置 Section 和 Column 的几何区域（从 Body 继承）
+            SwRect aBodyArea = pActiveLayout->getFrameArea();
+            SwTwips nSectLeft = aBodyArea.Left();
+            SwTwips nSectTop
+                = pSibling ? pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height()
+                           : aBodyArea.Top();
+            SwTwips nSectWidth = aBodyArea.Width();
+            pSectionFrame->setFrameArea(SwRect(nSectLeft, nSectTop, nSectWidth, 0));
+            pColFrame->setFrameArea(SwRect(nSectLeft, nSectTop, nSectWidth, 0));
+
+            // pActiveLayout 切换到列内的 BodyFrame，后续内容节点成为其子节点
+            pActiveLayout = pColBody;
+            pSibling = nullptr;
+            pOpenSectionFrame = pSectionFrame;
+
+            std::cerr << "[MakeFrames] Section node " << i
+                      << " -> created SectionFrame + ColumnFrame + BodyFrame" << std::endl;
+        }
+        else
+        {
+            std::cerr << "[MakeFrames] Calling MakeFramesForNode i=" << i
+                      << " pPage=" << (pPage ? pPage->GetPhyPageNum() : 0)
+                      << " pParent=" << (pActiveLayout ? "yes" : "no")
+                      << " pSibling=" << (pSibling ? "yes" : "no") << std::endl;
+            MakeFramesForNode(*pNode, pActiveLayout, pSibling, nCurrentSection, nCurrentCol);
         }
 
         // 如果是表格节点，跳过其所有子节点（行、单元格、文本等）
@@ -953,24 +1047,36 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         SwTwips nPageWidth = 11906;
         const SwTwips nDefaultIndent = 284;
         bool bInFly = pParent && pParent->GetType() == SwFrameType::Fly;
+        bool bInColumn = false; // 是否在 ColumnFrame 内的 BodyFrame 中
+
         if (bInFly && pParent->getFrameArea().Width() > 0)
             nPageWidth = pParent->getFrameArea().Width();
         else
         {
-            SwFrame* pF = pParent;
-            while (pF && !pF->IsPageFrame())
-                pF = pF->GetUpper();
-            if (pF)
+            // 检查父级是否是 ColumnFrame 内的 BodyFrame
+            SwFrame* pColCheck = pParent ? pParent->GetUpper() : nullptr;
+            if (pColCheck && pColCheck->IsColumnFrame())
             {
-                pPage = static_cast<SwPageFrame*>(pF);
-                SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
-                if (pBody)
-                    nPageWidth = pBody->getFramePrintArea().Width();
-                else
-                    nPageWidth = pPage->getFrameArea().Width();
+                bInColumn = true;
+                nPageWidth = pColCheck->getFrameArea().Width();
+            }
+            else
+            {
+                SwFrame* pF = pParent;
+                while (pF && !pF->IsPageFrame())
+                    pF = pF->GetUpper();
+                if (pF)
+                {
+                    pPage = static_cast<SwPageFrame*>(pF);
+                    SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
+                    if (pBody)
+                        nPageWidth = pBody->getFramePrintArea().Width();
+                    else
+                        nPageWidth = pPage->getFrameArea().Width();
+                }
             }
         }
-        if (!bInFly)
+        if (!bInFly && !bInColumn)
         {
             const SwDoc::SectionMargins* pSectMargins
                 = pTextNode->GetDoc().GetSectionMargins(nSection);
@@ -995,12 +1101,19 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         {
             nY = pSibling->getFrameArea().Top() + pSibling->getFrameArea().Height();
         }
+        else if (bInColumn)
+        {
+            // 在 ColumnFrame 内：从 Column 的顶部开始
+            SwFrame* pColFrame = pParent->GetUpper();
+            nY = pColFrame->getFrameArea().Top();
+        }
+        else if (bInFly)
+        {
+            nY = pParent->getFrameArea().Top();
+        }
         else
         {
-            if (bInFly)
-                nY = pParent->getFrameArea().Top();
-            else
-                nY = pPage ? pPage->getFrameArea().Top() + nDefaultIndent : nDefaultIndent;
+            nY = pPage ? pPage->getFrameArea().Top() + nDefaultIndent : nDefaultIndent;
         }
 
         SwTwips nSectLeftMargin = 0;
@@ -1013,7 +1126,14 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         SwTwips nFrameWidth = (nSectLeftMargin <= nDefaultIndent)
                                   ? (pPage ? pPage->getFrameArea().Width() : SwTwips(11906))
                                   : nPageWidth;
-        if (bInFly)
+        if (bInColumn)
+        {
+            // 在 ColumnFrame 内：使用列的位置和宽度
+            SwFrame* pColFrame = pParent->GetUpper();
+            nFrameX = pColFrame->getFrameArea().Left();
+            nFrameWidth = pColFrame->getFrameArea().Width();
+        }
+        else if (bInFly)
         {
             nFrameX = pParent->getFrameArea().Left();
             nFrameWidth = nPageWidth;
@@ -1453,14 +1573,24 @@ void MakeFlyFrames(SwDoc& rDoc)
             if (!pContent)
                 continue;
 
+            if (pContent->IsEndNode())
+                continue;
+            // 表格节点：先创建 Frame，再跳过子节点
             if (pContent->IsTableNode())
             {
+                MakeFramesForNode(*pContent, pFlyFrame, pFlySibling, 0, 0);
                 SwEndNode* pTEnd = static_cast<SwTableNode*>(pContent)->GetEndOfSection();
                 if (pTEnd)
                     j = pTEnd->GetIndex();
+                if (pFlyFrame->GetLower())
+                {
+                    pFlySibling = pFlyFrame->GetLower();
+                    while (pFlySibling->GetNext())
+                        pFlySibling = pFlySibling->GetNext();
+                }
                 continue;
             }
-            if (pContent->IsEndNode() || pContent->IsStartNode())
+            if (pContent->IsStartNode())
                 continue;
 
             MakeFramesForNode(*pContent, pFlyFrame, pFlySibling, 0, 0);
