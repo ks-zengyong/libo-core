@@ -15,6 +15,10 @@ class SwDoc;
 class SwFrame;
 class SwContentFrame;
 class SwTextFrame;
+class SwTabFrame;       // 新增
+class SwSectionFrame;   // 新增
+class SwLayoutFrame;    // 新增
+class SwSection;        // 新增
 class SwStartNode;
 class SwEndNode;
 class SwTextNode;
@@ -336,6 +340,12 @@ public:
     void SetAttr(sal_uInt16 nWhich, const std::string& rValue);
     const std::string* GetAttr(sal_uInt16 nWhich) const;
 
+    // 新增：创建表格 Frame（对应 LO SwTableNode::MakeFrame）
+    SwTabFrame* MakeFrame(SwLayoutFrame* pLay);
+
+    // 新增：获取 EndNode 索引（对应 LO EndOfSectionIndex）
+    SwNodeOffset EndOfSectionIndex() const;
+
 private:
     SwTableNode(const SwNode& rWhere);
     SwTableNode(SwNodes& rNodes, SwNodeOffset nPos);
@@ -345,6 +355,28 @@ private:
     AttrMap m_aAttrs;
 };
 
+// SwSection: 节对象（简化版）
+// 对应 LO sw/inc/section.hxx
+class SwSection
+{
+public:
+    SwSection() = default;
+    virtual ~SwSection() = default;
+
+    // === 隐藏标志（对应 LO SwSection::CalcHiddenFlag） ===
+    // 计算节是否隐藏
+    bool CalcHiddenFlag() const { return m_bHidden; }
+    
+    // 设置隐藏标志
+    void SetHidden(bool bHidden) { m_bHidden = bHidden; }
+    
+    // === 获取格式（简化版） ===
+    SwFrameFormat* GetFormat() const { return nullptr; }
+
+private:
+    bool m_bHidden = false;  // 隐藏标志
+};
+
 // SwSectionNode: 节节点（继承 SwStartNode）
 class SwSectionNode : public SwStartNode
 {
@@ -352,6 +384,15 @@ class SwSectionNode : public SwStartNode
 
 public:
     virtual ~SwSectionNode() override;
+
+    // 新增：创建 Section Frame（对应 LO SwSectionNode::MakeFrame）
+    SwSectionFrame* MakeFrame(SwLayoutFrame* pLay, bool bHidden = false);
+
+    // 新增：获取关联的 Section 格式（简化版）
+    SwSection* GetSection() const { return nullptr; }
+
+    // 新增：获取 EndNode 索引（对应 LO EndOfSectionIndex）
+    SwNodeOffset EndOfSectionIndex() const;
 
 private:
     SwSectionNode(const SwNode& rWhere);

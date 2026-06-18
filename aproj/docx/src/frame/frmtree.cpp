@@ -1,6 +1,7 @@
 // Frame 树构建实现，对应 LibreOffice 的 sw/source/core/layout/frmtool.cxx
 
 #include "frmtree.h"
+#include "layhelper.h"  // 新增：SwLayHelper 和 SwActualSection 支持
 #include "../core/node.h"
 #include "../core/ndarr.h"
 #include "../core/doc.h"
@@ -9,6 +10,7 @@
 #include <cassert>
 #include <iostream>
 #include <map>
+#include <memory>  // 新增：std::unique_ptr 支持
 
 // 节点索引 → 正文 TextFrame，用于 Fly 锚点定位
 static std::map<int, SwTextFrame*> g_nodeToTextFrame;
@@ -520,9 +522,308 @@ static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nC
 }
 
 //===----------------------------------------------------------------------===//
-// MakeFrames: 为节点范围创建 Frame 树
+// InsertCnt_: 插入内容节点到布局（对应 LO frmtool.cxx:1508-2071）
+// 使用 SwLayHelper 进行分页预计算，使用 SwActualSection 管理嵌套 Section
 //===----------------------------------------------------------------------===//
 
+// 前向声明辅助函数
+static void lcl_InsertCnt_HandleSectionNode(SwSectionNode* pNode, SwLayoutFrame* pLay,
+                                            SwFrame* pPrv,
+                                            std::unique_ptr<SwActualSection>& pActualSection,
+                                            SwFrame*& pFrame);
+
+static void lcl_InsertCnt_HandleEndNode(SwEndNode* pEndNode, SwLayoutFrame* pLay,
+                                        std::unique_ptr<SwActualSection>& pActualSection,
+                                        SwFrame*& pPrv, SwPageFrame* pPage);
+
+// InsertCnt_ 主函数（简化版，保留 LO 架构）
+// 对应 LO: frmtool.cxx:1508-2071
+void InsertCnt_(SwLayoutFrame* pLay, SwDoc& rDoc, SwNodeOffset nIndex, SwNodeOffset nEndIndex,
+                SwFrame* pPrv, bool bPages)
+{
+    SwRootFrame* pLayout = rDoc.GetRootFrame();
+    if (!pLayout)
+        return;
+
+    SwPageFrame* pPage = pLay->FindPageFrame();
+    SwFrame* pFrame = nullptr;
+    std::unique_ptr<SwActualSection> pActualSection;
+    std::unique_ptr<SwLayHelper> pPageMaker;
+
+    // 对应 LO: frmtool.cxx:1543-1555
+    // 如果是创建布局（bPages == true），使用 SwLayHelper 进行分页预计算
+    if (bPages)
+    {
+        // 注意：SwLayHelper 使用引用，可能会修改 pFrame, pPrv, pPage, pLay
+        pPageMaker.reset(new SwLayHelper(rDoc, pFrame, pPrv, pPage, pLay, pActualSection, nIndex,
+                                         SwNodeOffset(0) == nEndIndex));
+        // 可选：计算页面数量（简化版暂不使用）
+        // sal_uLong nPageCount = pPageMaker->CalcPageCount();
+    }
+
+    // 对应 LO: frmtool.cxx:1557-1593
+    // 如果在 Section 内，初始化 pActualSection
+    if (pLay->IsInSct() && (pLay->IsSctFrame() || pLay->GetUpper()))
+    {
+        SwSectionFrame* pSct = pLay->FindSctFrame();
+        if (pSct)
+        {
+            // 简化版：创建 SwActualSection（LO 版本会查找嵌套 Section）
+            // 注意：这里传入 nullptr 作为 SwSectionNode，因为简化版暂不实现完整 Section 管理
+            pActualSection.reset(new SwActualSection(nullptr, pSct, nullptr));
+        }
+    }
+
+    // 对应 LO: frmtool.cxx:1605-2071
+    // 主循环：遍历节点并创建 Frame
+    for (; nEndIndex == SwNodeOffset(0) || nIndex < nEndIndex; ++nIndex)
+    {
+        SwNode* pNd = rDoc.GetNodes()[nIndex];
+        if (!pNd)
+            continue;
+
+        // 对应 LO: frmtool.cxx:1609-1680 - ContentNode 处理
+        if (pNd->IsContentNode())
+        {
+            SwContentNode* pNode = static_cast<SwContentNode*>(pNd);
+
+            // 创建 Frame（对应 LO: frmtool.cxx:1621-1623）
+            if (pNode->IsTextNode())
+            {
+                SwTextNode* pTextNode = static_cast<SwTextNode*>(pNode);
+                pFrame = new SwTextFrame(pTextNode, pLay);
+                g_nodeToTextFrame[static_cast<int>(pTextNode->GetIndex())] =
+                    static_cast<SwTextFrame*>(pFrame);
+            }
+            else if (pNode->IsGrfNode() || pNode->IsOLENode())
+            {
+                pFrame = new SwNoTextFrame(pNode, pLay);
+            }
+            else
+            {
+                pFrame = pNode->MakeFrame(pLay);
+            }
+
+            // 对应 LO: frmtool.cxx:1624-1625 - 检查分页
+            if (pPageMaker && !pLay->IsHiddenNow())
+                pPageMaker->CheckInsert(nIndex);
+
+            // 对应 LO: frmtool.cxx:1627 - 插入 Frame
+            pFrame->InsertBehind(pLay, pPrv);
+
+            // 对应 LO: frmtool.cxx:1671 - 更新前驱指针
+            pPrv = pFrame;
+
+            // 简化版：设置 Frame 位置（对应 LO: lcl_SetPos）
+            // 这里调用 MakeFramesForNode 的几何计算逻辑
+            // 注意：完整版需要处理更多情况
+        }
+        // 对应 LO: frmtool.cxx:1681-1779 - TableNode 处理
+        else if (pNd->IsTableNode())
+        {
+            SwTableNode* pTableNode = static_cast<SwTableNode*>(pNd);
+
+            // 创建表格 Frame（对应 LO: frmtool.cxx:1716）
+            pFrame = pTableNode->MakeFrame(pLay);
+            pFrame->InvalidateInfFlags();
+
+            // 检查分页（对应 LO: frmtool.cxx:1732-1733）
+            if (pPageMaker)
+                pPageMaker->CheckInsert(nIndex);
+
+            // 插入 Frame（对应 LO: frmtool.cxx:1735）
+            pFrame->InsertBehind(pLay, pPrv);
+
+            // 更新前驱指针（对应 LO: frmtool.cxx:1768）
+            pPrv = pFrame;
+
+            // 设置索引到表格 EndNode（对应 LO: frmtool.cxx:1770）
+            nIndex = pTableNode->EndOfSectionIndex();
+        }
+        // 对应 LO: frmtool.cxx:1780-1943 - SectionNode 处理
+        else if (pNd->IsSectionNode())
+        {
+            SwSectionNode* pNode = static_cast<SwSectionNode*>(pNd);
+            lcl_InsertCnt_HandleSectionNode(pNode, pLay, pPrv, pActualSection, pFrame);
+            pPrv = nullptr; // Section 内的内容从新位置开始
+        }
+        // 对应 LO: frmtool.cxx:1944-2069 - EndNode 处理
+        else if (pNd->IsEndNode())
+        {
+            SwEndNode* pEndNode = static_cast<SwEndNode*>(pNd);
+            lcl_InsertCnt_HandleEndNode(pEndNode, pLay, pActualSection, pPrv, pPage);
+        }
+        // 其他节点类型（StartNode 等）暂不处理
+    }
+}
+
+// 辅助函数：处理 SectionNode（对应 LO: frmtool.cxx:1780-1943）
+static void lcl_InsertCnt_HandleSectionNode(SwSectionNode* pNode, SwLayoutFrame* pLay,
+                                            SwFrame* pPrv,
+                                            std::unique_ptr<SwActualSection>& pActualSection,
+                                            SwFrame*& pFrame)
+{
+    // 对应 LO: frmtool.cxx:1789-1790
+    if (pActualSection)
+        pActualSection->SetLastPos(pPrv);
+
+    // 创建 SectionFrame（对应 LO: frmtool.cxx:1792）
+    pFrame = pNode->MakeFrame(pLay, false); // 简化版：假设不隐藏
+
+    // 创建新的 SwActualSection（对应 LO: frmtool.cxx:1793-1794）
+    pActualSection.reset(
+        new SwActualSection(pActualSection.release(), static_cast<SwSectionFrame*>(pFrame), pNode));
+
+    // 对应 LO: frmtool.cxx:1795-1807
+    if (pActualSection->GetUpper())
+    {
+        // 插入到 Upper 的后面（对应 LO: frmtool.cxx:1799-1800）
+        SwSectionFrame* pTmp = pActualSection->GetUpper()->GetSectionFrame();
+        pFrame->InsertBehind(pTmp->GetUpper(), pTmp);
+        // 初始化 Section（对应 LO: frmtool.cxx:1803）
+        static_cast<SwSectionFrame*>(pFrame)->Init();
+    }
+    else
+    {
+        // 插入到当前布局（对应 LO: frmtool.cxx:1806-1807）
+        pFrame->InsertBehind(pLay, pPrv);
+    }
+
+    // 简化版：创建 ColumnFrame 和 BodyFrame 层级
+    // 对应 LO: SwSectionFrame::Init() 内部逻辑
+    SwSectionFrame* pSectFrame = static_cast<SwSectionFrame*>(pFrame);
+    auto* pColFrame = new SwColumnFrame(pSectFrame);
+    pColFrame->InsertBehind(pSectFrame, nullptr);
+    auto* pColBody = new SwBodyFrame(pColFrame);
+    pColBody->InsertBehind(pColFrame, nullptr);
+
+    // 设置几何区域（简化版）
+    SwRect aBodyArea = pLay->getFrameArea();
+    SwTwips nSectTop = pPrv ? pPrv->getFrameArea().Top() + pPrv->getFrameArea().Height() : aBodyArea.Top();
+    pSectFrame->setFrameArea(SwRect(aBodyArea.Left(), nSectTop, aBodyArea.Width(), 0));
+    pColFrame->setFrameArea(SwRect(aBodyArea.Left(), nSectTop, aBodyArea.Width(), 0));
+}
+
+// 辅助函数：处理 EndNode（对应 LO: frmtool.cxx:1944-2069）
+static void lcl_InsertCnt_HandleEndNode(SwEndNode* pEndNode, SwLayoutFrame* pLay,
+                                        std::unique_ptr<SwActualSection>& pActualSection,
+                                        SwFrame*& pPrv, SwPageFrame* pPage)
+{
+    SwStartNode* pSttNd = pEndNode->GetStartNode();
+    if (!pSttNd)
+        return;
+
+    // 对应 LO: frmtool.cxx:1945-1947
+    if (!pSttNd->IsSectionNode())
+        return;
+
+    // 对应 LO: frmtool.cxx:1948-1953
+    if (!pActualSection)
+        return;
+
+    // 对应 LO: frmtool.cxx:1954-1966 - 结束当前 Section
+    SwSectionFrame* pSect = pActualSection->GetSectionFrame();
+    if (pSect)
+    {
+        // 更新 SectionFrame 区域（简化版）
+        UpdateSectionFrameArea(pSect);
+    }
+
+    // 对应 LO: frmtool.cxx:1967-1986 - 处理嵌套 Section
+    if (pActualSection->GetUpper())
+    {
+        // 返回到上层 Section（对应 LO: frmtool.cxx:1970-1986）
+        pActualSection.reset(pActualSection->GetUpper());
+        pSect = pActualSection->GetSectionFrame();
+        if (pSect)
+        {
+            // 在上层 Section 内继续（对应 LO: frmtool.cxx:1984-1986）
+            pLay = pSect->GetUpper();
+            pPrv = pActualSection->GetLastPos();
+        }
+    }
+    else
+    {
+        // 结束最外层 Section（对应 LO: frmtool.cxx:1987-1991）
+        pActualSection.reset();
+        pPrv = nullptr;
+        if (pLay->GetLower())
+        {
+            pPrv = pLay->GetLower();
+            while (pPrv->GetNext())
+                pPrv = pPrv->GetNext();
+        }
+    }
+}
+
+//===----------------------------------------------------------------------===//
+// MakeFrames: 为节点范围创建 Frame 树
+// 
+// 当前实现保留了原有的分页逻辑（用于向后兼容）
+// 新架构入口点：InsertCnt_（对应 LO frmtool.cxx:1508-2071）
+// 
+// LO 架构说明：
+// 1. MakeFrames 调用 FindPrvNxtFrameNode 查找参考节点（简化版暂不实现）
+// 2. 使用 SwNode2Layout 遍历已有 Frame（简化版暂不实现）
+// 3. 调用 InsertCnt_ 创建新 Frame
+// 4. 处理 Fly (MakeFlyFrames)
+//===----------------------------------------------------------------------===//
+
+// 新增：使用 LO 架构的 MakeFrames 入口（简化版）
+// 对应 LO: frmtool.cxx:2073-2264
+void MakeFrames_LO(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
+{
+    SwRootFrame* pRoot = rDoc.GetRootFrame();
+    if (!pRoot)
+    {
+        pRoot = InitLayout(rDoc);
+    }
+    if (!pRoot)
+        return;
+
+    SwPageFrame* pPage = pRoot->GetLastPage();
+    if (!pPage)
+        return;
+
+    SwLayoutFrame* pParent = static_cast<SwLayoutFrame*>(pPage->GetLower());
+    if (!pParent)
+    {
+        auto* pBody = new SwBodyFrame(pPage);
+        pBody->InsertBehind(pPage, nullptr);
+        const SwRect& rPrtArea = pPage->getFramePrintArea();
+        SwRect aBodyRect(pPage->getFrameArea().Left() + rPrtArea.Left(),
+                         pPage->getFrameArea().Top() + rPrtArea.Top(),
+                         rPrtArea.Width(), rPrtArea.Height());
+        pBody->setFrameArea(aBodyRect);
+        pBody->setFramePrintArea(aBodyRect);
+        pParent = pBody;
+    }
+
+    // 清空节点到 Frame 的映射
+    g_nodeToTextFrame.clear();
+
+    // 对应 LO: frmtool.cxx:2079-2081
+    // 简化版：不实现 FindPrvNxtFrameNode，直接使用当前页面
+    // 在 LO 中，这会查找已有的参考 Frame 来确定插入位置
+
+    // 对应 LO: frmtool.cxx:2219-2220 或 2226-2227
+    // 调用 InsertCnt_ 创建 Frame
+    SwNodeOffset nSttIdx = rSttIdx.GetIndex();
+    SwNodeOffset nEndIdx = rEndIdx.GetIndex();
+    
+    std::cerr << "[MakeFrames_LO] Calling InsertCnt_: nStt=" << nSttIdx 
+              << " nEnd=" << nEndIdx << std::endl;
+    
+    InsertCnt_(pParent, rDoc, nSttIdx, nEndIdx, nullptr, true);
+
+    // 对应 LO: frmtool.cxx:2230-2235
+    // 处理 Fly（调用 MakeFlyFrames）
+    MakeFlyFrames(rDoc);
+
+    std::cerr << "[MakeFrames_LO] Done" << std::endl;
+}
+
+// 原有 MakeFrames 实现（保留向后兼容）
 void MakeFrames(SwDoc& rDoc, SwNode& rSttIdx, SwNode& rEndIdx)
 {
     SwNodes& rNodes = rDoc.GetNodes();

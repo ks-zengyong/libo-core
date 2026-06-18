@@ -3,6 +3,7 @@
 #include "node.h"
 #include "format.h"
 #include "ndarr.h"
+#include "../frame/frame.h"  // 新增：SwTabFrame, SwSectionFrame, SwLayoutFrame
 #include <cassert>
 #include <algorithm>
 
@@ -263,6 +264,12 @@ const std::string* SwTableNode::GetAttr(sal_uInt16 nWhich) const
     return it != m_aAttrs.end() ? &it->second : nullptr;
 }
 
+// 新增：创建表格 Frame（对应 LO SwTableNode::MakeFrame）
+SwTabFrame* SwTableNode::MakeFrame(SwLayoutFrame* pLay)
+{
+    return new SwTabFrame(pLay);
+}
+
 //===----------------------------------------------------------------------===//
 // SwSectionNode
 //===----------------------------------------------------------------------===//
@@ -280,3 +287,24 @@ SwSectionNode::SwSectionNode(SwNodes& rNodes, SwNodeOffset nPos)
 }
 
 SwSectionNode::~SwSectionNode() = default;
+
+// 新增：创建 Section Frame（对应 LO SwSectionNode::MakeFrame）
+SwSectionFrame* SwSectionNode::MakeFrame(SwLayoutFrame* pLay, bool bHidden)
+{
+    // 简化版：忽略 bHidden 参数
+    return new SwSectionFrame(pLay);
+}
+
+// 新增：获取 EndNode 索引（对应 LO EndOfSectionIndex）
+SwNodeOffset SwSectionNode::EndOfSectionIndex() const
+{
+    const SwEndNode* pEnd = GetEndOfSection();
+    return pEnd ? pEnd->GetIndex() : SwNodeOffset(0);
+}
+
+// 新增：SwTableNode::EndOfSectionIndex（用于 InsertCnt_）
+SwNodeOffset SwTableNode::EndOfSectionIndex() const
+{
+    const SwEndNode* pEnd = GetEndOfSection();
+    return pEnd ? pEnd->GetIndex() : SwNodeOffset(0);
+}

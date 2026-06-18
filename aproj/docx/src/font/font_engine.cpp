@@ -395,6 +395,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                             // 检查 USE_TYPO_METRICS 标志
                             // 对应 LO 的 ShouldUseWinMetrics + fsSelection bit 7
                             bool bUseTypoMetrics = false;
+                            int fsSelectionVal = 0;
                             {
                                 // 读取 OS/2 表的 fsSelection 字段
                                 hb_blob_t* os2Blob = hb_face_reference_table(
@@ -407,12 +408,18 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                                             hb_blob_get_data(os2Blob, &length));
                                     if (os2Data && length >= 64)
                                     {
-                                        int fsSelection = (os2Data[62] << 8) | os2Data[63];
-                                        bUseTypoMetrics = (fsSelection & (1 << 7)) != 0;
+                                        fsSelectionVal = (os2Data[62] << 8) | os2Data[63];
+                                        bUseTypoMetrics = (fsSelectionVal & (1 << 7)) != 0;
                                     }
                                 }
                                 hb_blob_destroy(os2Blob);
                             }
+
+                            fprintf(stderr,
+                                    "[FontEngine] OS2: font=%s typoAsc=%d typoDesc=%d "
+                                    "typoLineGap=%d fsSelection=0x%04x useTypo=%d\n",
+                                    m_fontName.c_str(), nTypoAscent, nTypoDescent,
+                                    nTypoLineGap, fsSelectionVal, bUseTypoMetrics ? 1 : 0);
 
                             if (bUseTypoMetrics && nTypoAscent >= 0 && nTypoDescent <= 0)
                             {

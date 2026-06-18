@@ -8,6 +8,7 @@
 #include "../core/doc.h"
 #include "../core/format.h"
 #include "../frame/frame.h"
+#include "../frame/sortedobjs.h"
 #include "instruction_builder.h"
 #include "../../../../render_common/render_format.h"
 #include "../../../../render_common/frame_tree_walker.h"
@@ -131,7 +132,7 @@ public:
     }
 
     // 浮动对象链: 对应 LO paint_listener.cxx LoFrameNode::GetFirstFly
-    // 从页面 RegisterAnchoredFly 列表中查找锚定到当前帧的 Fly
+    // 使用 SwSortedObjs 接口查找锚定到当前帧的 Fly
     IFrameNode* GetFirstFly() const override
     {
         if (!m_pFrame)
@@ -141,12 +142,17 @@ public:
         if (!pPageFrame)
             return nullptr;
 
-        const auto& rFlies = pPageFrame->GetAnchoredFlies();
-        for (size_t i = 0; i < rFlies.size(); ++i)
+        // 使用 SwSortedObjs 接口
+        const SwSortedObjs* pSortedObjs = pPageFrame->GetSortedObjs();
+        if (!pSortedObjs)
+            return nullptr;
+
+        for (size_t i = 0; i < pSortedObjs->size(); ++i)
         {
-            if (rFlies[i].second == m_pFrame)
-                return new AprojFrameNode(rFlies[i].first, m_pageNum, pPageFrame, i, m_pFrame,
-                                          true);
+            SwFlyFrame* pFly = (*pSortedObjs)[i];
+            SwFrame* pAnchor = pSortedObjs->GetAnchorFrame(i);
+            if (pAnchor == m_pFrame && pFly)
+                return new AprojFrameNode(pFly, m_pageNum, pPageFrame, i, m_pFrame, true);
         }
         return nullptr;
     }
@@ -156,12 +162,19 @@ public:
         if (!m_bIsFlySibling || !m_pPageFrame || !m_pAnchorFrame)
             return nullptr;
 
-        const auto& rFlies = m_pPageFrame->GetAnchoredFlies();
-        for (size_t i = m_flyIndex + 1; i < rFlies.size(); ++i)
+        const SwSortedObjs* pSortedObjs = m_pPageFrame->GetSortedObjs();
+        if (!pSortedObjs)
+            return nullptr;
+
+        for (size_t i = m_flyIndex + 1; i < pSortedObjs->size(); ++i)
         {
-            if (rFlies[i].second == m_pAnchorFrame)
-                return new AprojFrameNode(rFlies[i].first, m_pageNum, m_pPageFrame, i,
-                                          m_pAnchorFrame, true);
+            SwFrame* pAnchor = pSortedObjs->GetAnchorFrame(i);
+            if (pAnchor == m_pAnchorFrame)
+            {
+                SwFlyFrame* pFly = (*pSortedObjs)[i];
+                if (pFly)
+                    return new AprojFrameNode(pFly, m_pageNum, m_pPageFrame, i, m_pAnchorFrame, true);
+            }
         }
         return nullptr;
     }

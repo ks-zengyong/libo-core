@@ -65,6 +65,9 @@ add_library(docx_core STATIC
     src/core/doc.cpp
     src/frame/frame.cpp
     src/frame/frmtree.cpp
+    src/frame/layhelper.cpp   # 新增：SwLayHelper 和 SwActualSection 实现
+    src/frame/sortedobjs.cpp  # 新增：SwSortedObjs 浮动对象管理
+    src/frame/objectformatter.cpp  # 新增：SwObjectFormatter 浮动对象格式化
     src/filter/docx_parser.cpp
     src/font/font_engine.cpp
     src/layout/layact.cpp

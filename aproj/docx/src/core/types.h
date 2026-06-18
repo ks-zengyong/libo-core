@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <climits>  // 用于 LONG_MAX 等常量
 
 // 对应 sal_Int32 / sal_uInt32 等
 using sal_Int8 = int8_t;
@@ -14,6 +15,9 @@ using sal_Int32 = int32_t;
 using sal_uInt32 = uint32_t;
 using sal_Int64 = int64_t;
 using sal_uInt64 = uint64_t;
+
+// LibreOffice 遗留类型别名
+using sal_uLong = sal_uInt32;  // 新增：用于 SwFlyCache 等类
 
 // LibreOffice 中 SwTwips 是 tools/Long 的别名，表示 twip 单位（1/20 点，1/1440 英寸）
 using SwTwips = sal_Int32;
