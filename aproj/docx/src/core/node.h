@@ -316,9 +316,16 @@ public:
     virtual ~SwTableNode() override;
 
     // 表格数据（简化版）
+    struct ParagraphInfo
+    {
+        std::string text;
+        std::string fontName = "Calibri";
+        int fontSizeHalfPt = 20; // 半磅（对应 w:sz w:val）
+    };
     struct CellData
     {
         std::string text;
+        std::vector<ParagraphInfo> paragraphs; // 单元格内所有段落（每段一个 TextFrame）
         sal_Int32 gridSpan = 1;
         sal_Int32 width = 0; // twips
     };

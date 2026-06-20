@@ -591,6 +591,64 @@ bool SwFrame::WrongPageDesc(SwPageFrame* pNew)
     return false;
 }
 
+void SwFrame::CheckPageDescs(SwPageFrame* pStart, bool bNotifyFields,
+                              SwPageFrame** ppPrev)
+{
+    // 对应 LO SwFrame::CheckPageDescs (pagechg.cxx:1274-1514)
+    // LO 逻辑:
+    //   1. 遍历页面链
+    //   2. 检查页面描述符/格式/奇偶页是否匹配
+    //   3. 6 种不匹配情况处理（空页删除/插入、描述符变更、格式变更）
+    //   4. 删除不必要的空页
+    //   5. AssertPageFlys 确保浮动对象在正确页面
+    //
+    // aproj 适配:
+    //   - 无空页概念（IsEmptyPage 不存在）
+    //   - 无奇偶页/首页区分（OnRightPage/WannaRightPage/OnFirstPage 不存在）
+    //   - 无完整 PageDesc 系统（GetRightFormat/GetLeftFormat 不存在）
+    //   - 当前实现：验证页码连续性，为后续功能预留接口
+
+    if (!pStart)
+        return;
+
+    // 对应 LO: 遍历页面链
+    SwPageFrame* pPage = pStart;
+    sal_uInt16 nExpectedPageNum = pStart->GetPhyPageNum();
+
+    while (pPage)
+    {
+        // 对应 LO: 检查页码连续性
+        // aproj: 确保页码从 pStart 开始连续递增
+        if (pPage->GetPhyPageNum() != nExpectedPageNum)
+        {
+            pPage->SetPhyPageNum(nExpectedPageNum);
+        }
+        ++nExpectedPageNum;
+
+        // TODO: 迁移 LO 的 6 种页面不匹配情况处理
+        // Case 1: 空页应变为正常页 → 删除空页（aproj 无空页）
+        // Case 2: 空页应换描述符 → 变更（aproj 无空页）
+        // Case 3: 正常页应变空页 → 插入空页（aproj 无空页）
+        // Case 4: 正常页描述符不匹配 → 变更（aproj 无 PageDesc 系统）
+        // Case 5: 正常页格式不匹配 → 变更（aproj 无 Right/LeftFormat）
+        // Case 6: 无期望格式 → 取反向格式（aproj 无 Right/LeftFormat）
+
+        // TODO: 迁移 LO AssertPageFlys - 确保浮动对象在正确页面
+
+        // 更新 ppPrev 指针（对应 LO: bUpdatePrev 逻辑）
+        if (ppPrev && *ppPrev == pPage)
+        {
+            // ppPrev 已指向当前页，无需更新
+        }
+
+        pPage = pPage->GetNextPage();
+    }
+
+    // 对应 LO: 更新页码字段（bNotifyFields）
+    // aproj: 暂不实现字段更新
+    (void)bNotifyFields;
+}
+
 SwFrame* SwFrame::FindPrev()
 {
     // 迁移自 LO frame.hxx: FindPrev
@@ -1635,22 +1693,49 @@ void SwFlowFrame::MoveSubTree(SwLayoutFrame* pParent, SwFrame* pSibling)
 
 bool SwFlowFrame::MoveFwd(bool bMakePage, bool bPageBreak, bool bMoveAlways)
 {
-    // 迁移自 LO flowfrm.cxx: MoveFwd (行 2101-2306)
-    // 简化版：向前移动 Frame
+    // 对应 LO SwFlowFrame::MoveFwd (flowfrm.cxx:2101-2306)
+    // LO 逻辑:
+    //   1. 脚注处理 (MoveFootnoteCntFwd) - aproj 暂不实现
+    //   2. 检查 IsFwdMoveAllowed
+    //   3. 获取目标 Leaf (GetLeaf)
+    //   4. Section ColLock 防重入 (Calc 时不递归)
+    //   5. 移动子树 (MoveSubTree)
+    //   6. 脚注 Boss 变化处理 - aproj 暂不实现
+    //   7. CheckPageDescs 调用（页码变化时）
 
-    // 检查是否允许移动
+    // Step 1: 脚注处理（aproj 暂不实现 MoveFootnoteCntFwd）
+    // LO: if (m_rThis.IsInFootnote()) return MoveFootnoteCntFwd(...)
+
+    // Step 2: 检查是否允许移动 (对应 LO flowfrm.cxx:2116-2146)
     if (!IsFwdMoveAllowed() && !bMoveAlways)
     {
-        // 简化版：不处理表格/节特殊情况
-        if (!bPageBreak)
-            return false;
+        bool bNoFwd = true;
+        // 对应 LO: Section 内的特殊处理
+        if (m_rThis.IsInSct())
+        {
+            SwLayoutFrame* pBoss = m_rThis.FindFootnoteBossFrame();
+            bNoFwd = !pBoss || !pBoss->IsInSct() ||
+                     (!pBoss->Lower()->GetNext() && !pBoss->GetPrev());
+        }
 
-        const SwFrame* pCol = m_rThis.FindColFrame();
-        if (!pCol || !pCol->GetPrev())
-            return false;
+        // 对应 LO: 表格内允许通过 GetNextCellLeaf 移动
+        // aproj: GetNextCellLeaf 未实现，暂跳过此优化
+        // if (m_rThis.IsInTab() &&
+        //     (!m_rThis.IsTabFrame() || m_rThis.GetUpper()->IsInTab()) &&
+        //     nullptr != m_rThis.GetNextCellLeaf())
+        //     bNoFwd = false;
+
+        if (bNoFwd)
+        {
+            if (!bPageBreak)
+                return false;
+            const SwFrame* pCol = m_rThis.FindColFrame();
+            if (!pCol || !pCol->GetPrev())
+                return false;
+        }
     }
 
-    // 获取目标 Leaf
+    // Step 3: 获取目标 Leaf (对应 LO flowfrm.cxx:2161-2162)
     SwLayoutFrame* pNewUpper
         = m_rThis.GetLeaf(bMakePage ? SwFrame::MAKEPAGE_INSERT : SwFrame::MAKEPAGE_NONE, true);
 
@@ -1659,15 +1744,40 @@ bool SwFlowFrame::MoveFwd(bool bMakePage, bool bPageBreak, bool bMoveAlways)
 
     bool bSamePage = true;
     SwPageFrame* pOldPage = m_rThis.FindPageFrame();
-    SwPageFrame* pNewPage = pNewUpper->FindPageFrame();
 
+    // Step 4: Section ColLock 防重入 (对应 LO flowfrm.cxx:2173-2187)
+    // LO: 若 pNewUpper 在 SectionFrame 内，ColLock 防止 Calc 时递归
+    SwSectionFrame* pSect = pNewUpper->FindSctFrame();
+    if (pSect)
+    {
+        // 若仅在同一 Section 内切换列，不调用 Calc（避免递归）
+        if (pSect != m_rThis.FindSctFrame())
+        {
+            bool bUnlock = !pSect->IsColLocked();
+            pSect->ColLock();
+            // LO: pNewUpper->Calc(...); aproj: 暂跳过 Calc
+            if (bUnlock)
+                pSect->ColUnlock();
+        }
+    }
+
+    SwPageFrame* pNewPage = pNewUpper->FindPageFrame();
     if (pNewPage != pOldPage)
         bSamePage = false;
 
-    // 移动子树
+    // Step 5: 移动子树 (对应 LO flowfrm.cxx:2236-2260)
     if (pNewUpper != m_rThis.GetUpper())
     {
         MoveSubTree(pNewUpper, pNewUpper->Lower());
+    }
+
+    // Step 6: 脚注 Boss 变化处理（aproj 暂不实现 MoveLowerFootnotes/Prepare）
+
+    // Step 7: CheckPageDescs 调用 (对应 LO flowfrm.cxx:2290-2303)
+    // LO: 页面变化时检查页面描述符
+    if (!bSamePage)
+    {
+        SwFrame::CheckPageDescs(pNewPage, false);
     }
 
     return bSamePage;

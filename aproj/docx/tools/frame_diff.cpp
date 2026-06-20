@@ -4,12 +4,19 @@
 // 支持多种对齐算法，解决逐行对比无法处理插入/删除的问题。
 // 精确对比，不支持容差。
 //
+// 改进（严格比对，不设容差）:
+//   - StructurallySimilar 用于 Myers/LCS 对齐，识别"同条目不同几何"为 CHANGE
+//   - FrameEntriesEqual 保持不变，最终验证仍为严格 0 差异
+//   - --by-page 按页分组对比，避免跨页污染
+//   - 差异分类（结构性/几何/内容/样式）+ 根因统计报告
+//
 // 用法:
 //   frame_diff <ref.txt> <test.txt>                    逐行对比（默认）
 //   frame_diff <ref.txt> <test.txt> --algo=lcs         LCS 算法对比
 //   frame_diff <ref.txt> <test.txt> --algo=myers       Myers Diff 算法对比
 //   frame_diff <ref.txt> <test.txt> --algo=needleman   Needleman-Wunsch 算法对比
 //   frame_diff <ref.txt> <test.txt> --all              输出所有算法结果
+//   frame_diff <ref.txt> <test.txt> --by-page          按页分组对比
 //   frame_diff <ref.txt> <test.txt> --verbose          同时显示匹配项
 //
 //   frame_diff frame                   快捷: 对比 test/lo_frame.txt vs test/aproj_frame.txt
@@ -26,6 +33,8 @@
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
+#include <map>
+#include <set>
 
 #include "../../../render_common/render_instruction.h"
 
@@ -459,6 +468,36 @@ static bool FrameEntriesEqual(const FrameEntry& a, const FrameEntry& b)
     return a.x == b.x && a.y == b.y && a.width == b.width && a.height == b.height;
 }
 
+// ── 结构相似性判定（用于 Myers/LCS 对齐，非容差）──
+// 判断是否为"同一条目但几何/数值不同"，用于算法对齐路径。
+// 对齐后仍用 FrameEntriesEqual 判断 EQUAL/CHANGE，差异不减少。
+static bool StructurallySimilar(const FrameEntry& a, const FrameEntry& b)
+{
+    if (a.type != b.type)
+        return false;
+    if (a.pageNum != b.pageNum)
+        return false;
+    if (a.indent != b.indent)
+        return false;
+
+    // TEXT_FRAME / TEXT_LINE / TEXT_RUN: 文本+字体相同即视为同一条目
+    // （几何差异 y/height 等会在对齐后报告为 CHANGE）
+    if (a.type == RenderCmdType::TEXT_FRAME || a.type == RenderCmdType::TEXT_LINE
+        || a.type == RenderCmdType::TEXT_RUN)
+    {
+        return a.text == b.text && a.fontName == b.fontName && a.fontSize == b.fontSize;
+    }
+
+    // SET_FONT: 字体名+大小相同即视为同一条目
+    if (a.type == RenderCmdType::SET_FONT)
+    {
+        return a.fontName == b.fontName && a.fontSize == b.fontSize;
+    }
+
+    // 其他类型: 类型+页码+缩进相同即视为同一条目
+    return true;
+}
+
 // ── 差异描述 ──
 
 struct DiffMessage
@@ -631,6 +670,96 @@ enum class DiffOp
     OP_CHANGE // 字段修改
 };
 
+// ── 差异分类（严格比对下的分类，非容差）──
+
+enum class DiffCategory
+{
+    NONE,                     // 无差异（EQUAL）
+    STRUCTURAL_MISSING,       // ref 有 test 无（真正的缺失）
+    STRUCTURAL_EXTRA,         // test 有 ref 无（真正的多余）
+    STRUCTURAL_TYPE_MISMATCH, // 同位置但类型不同
+    GEOMETRIC_X,
+    GEOMETRIC_Y,
+    GEOMETRIC_WIDTH,
+    GEOMETRIC_HEIGHT,
+    GEOMETRIC_Y_CUMULATIVE, // y 累积偏移标记（非容差，仅分类）
+    CONTENT_TEXT,           // 文本内容不同
+    STYLE_FONT_NAME,
+    STYLE_FONT_SIZE,
+    STYLE_FONT_COLOR,
+    STYLE_FONT_WEIGHT,
+    STYLE_STYLE_NAME,
+    OTHER // 其他字段差异
+};
+
+static const char* DiffCategoryName(DiffCategory c)
+{
+    switch (c)
+    {
+        case DiffCategory::NONE:
+            return "NONE";
+        case DiffCategory::STRUCTURAL_MISSING:
+            return "STRUCTURAL_MISSING";
+        case DiffCategory::STRUCTURAL_EXTRA:
+            return "STRUCTURAL_EXTRA";
+        case DiffCategory::STRUCTURAL_TYPE_MISMATCH:
+            return "STRUCTURAL_TYPE_MISMATCH";
+        case DiffCategory::GEOMETRIC_X:
+            return "GEOMETRIC_X";
+        case DiffCategory::GEOMETRIC_Y:
+            return "GEOMETRIC_Y";
+        case DiffCategory::GEOMETRIC_WIDTH:
+            return "GEOMETRIC_WIDTH";
+        case DiffCategory::GEOMETRIC_HEIGHT:
+            return "GEOMETRIC_HEIGHT";
+        case DiffCategory::GEOMETRIC_Y_CUMULATIVE:
+            return "GEOMETRIC_Y_CUMULATIVE";
+        case DiffCategory::CONTENT_TEXT:
+            return "CONTENT_TEXT";
+        case DiffCategory::STYLE_FONT_NAME:
+            return "STYLE_FONT_NAME";
+        case DiffCategory::STYLE_FONT_SIZE:
+            return "STYLE_FONT_SIZE";
+        case DiffCategory::STYLE_FONT_COLOR:
+            return "STYLE_FONT_COLOR";
+        case DiffCategory::STYLE_FONT_WEIGHT:
+            return "STYLE_FONT_WEIGHT";
+        case DiffCategory::STYLE_STYLE_NAME:
+            return "STYLE_STYLE_NAME";
+        case DiffCategory::OTHER:
+            return "OTHER";
+        default:
+            return "UNKNOWN";
+    }
+}
+
+static const char* DiffCategoryGroup(DiffCategory c)
+{
+    switch (c)
+    {
+        case DiffCategory::STRUCTURAL_MISSING:
+        case DiffCategory::STRUCTURAL_EXTRA:
+        case DiffCategory::STRUCTURAL_TYPE_MISMATCH:
+            return "结构性";
+        case DiffCategory::GEOMETRIC_X:
+        case DiffCategory::GEOMETRIC_Y:
+        case DiffCategory::GEOMETRIC_WIDTH:
+        case DiffCategory::GEOMETRIC_HEIGHT:
+        case DiffCategory::GEOMETRIC_Y_CUMULATIVE:
+            return "几何";
+        case DiffCategory::CONTENT_TEXT:
+            return "内容";
+        case DiffCategory::STYLE_FONT_NAME:
+        case DiffCategory::STYLE_FONT_SIZE:
+        case DiffCategory::STYLE_FONT_COLOR:
+        case DiffCategory::STYLE_FONT_WEIGHT:
+        case DiffCategory::STYLE_STYLE_NAME:
+            return "样式";
+        default:
+            return "其他";
+    }
+}
+
 struct DiffResult
 {
     DiffOp op;
@@ -639,6 +768,8 @@ struct DiffResult
     int refIdx;
     int testIdx;
     std::string description;
+    DiffCategory category = DiffCategory::NONE;
+    std::vector<DiffCategory> subCategories;
 };
 
 static const char* DiffOpName(DiffOp op)
@@ -658,7 +789,104 @@ static const char* DiffOpName(DiffOp op)
     }
 }
 
+// ── 差异分类（严格比对下的分类，非容差）──
+// 对 CHANGE 操作，根据字段差异确定主类别和子类别
+static void ClassifyDiff(DiffResult& r)
+{
+    if (r.op == DiffOp::OP_EQUAL)
+    {
+        r.category = DiffCategory::NONE;
+        return;
+    }
+    if (r.op == DiffOp::OP_DELETE)
+    {
+        r.category = DiffCategory::STRUCTURAL_MISSING;
+        return;
+    }
+    if (r.op == DiffOp::OP_INSERT)
+    {
+        r.category = DiffCategory::STRUCTURAL_EXTRA;
+        return;
+    }
+
+    // OP_CHANGE: 根据字段差异分类
+    const FrameEntry& ref = *r.refEntry;
+    const FrameEntry& test = *r.testEntry;
+
+    if (ref.type != test.type)
+    {
+        r.category = DiffCategory::STRUCTURAL_TYPE_MISMATCH;
+        return;
+    }
+
+    // 收集所有子类别
+    std::vector<DiffCategory> subs;
+
+    // 文本内容
+    if (ref.type == RenderCmdType::TEXT_FRAME || ref.type == RenderCmdType::TEXT_LINE
+        || ref.type == RenderCmdType::TEXT_RUN)
+    {
+        if (ref.text != test.text)
+            subs.push_back(DiffCategory::CONTENT_TEXT);
+        if (ref.fontName != test.fontName)
+            subs.push_back(DiffCategory::STYLE_FONT_NAME);
+        if (ref.fontSize != test.fontSize)
+            subs.push_back(DiffCategory::STYLE_FONT_SIZE);
+        if (ref.fontColor != test.fontColor)
+            subs.push_back(DiffCategory::STYLE_FONT_COLOR);
+        if (ref.fontWeight != test.fontWeight)
+            subs.push_back(DiffCategory::STYLE_FONT_WEIGHT);
+        if (ref.styleName != test.styleName)
+            subs.push_back(DiffCategory::STYLE_STYLE_NAME);
+    }
+
+    // 几何字段（适用于大多数类型）
+    if (ref.type != RenderCmdType::PAGE_END && ref.type != RenderCmdType::SET_CLIP_REGION
+        && ref.type != RenderCmdType::PUSH && ref.type != RenderCmdType::POP
+        && ref.type != RenderCmdType::SET_TEXT_COLOR && ref.type != RenderCmdType::SET_FILL_COLOR
+        && ref.type != RenderCmdType::SET_LINE_COLOR)
+    {
+        if (ref.x != test.x)
+            subs.push_back(DiffCategory::GEOMETRIC_X);
+        if (ref.y != test.y)
+            subs.push_back(DiffCategory::GEOMETRIC_Y);
+        if (ref.width != test.width)
+            subs.push_back(DiffCategory::GEOMETRIC_WIDTH);
+        if (ref.height != test.height)
+            subs.push_back(DiffCategory::GEOMETRIC_HEIGHT);
+    }
+
+    r.subCategories = subs;
+
+    // 主类别优先级: 内容 > 几何 > 样式 > 其他
+    for (auto c : subs)
+        if (c == DiffCategory::CONTENT_TEXT)
+        {
+            r.category = c;
+            return;
+        }
+    for (auto c : subs)
+        if (c == DiffCategory::GEOMETRIC_Y || c == DiffCategory::GEOMETRIC_HEIGHT
+            || c == DiffCategory::GEOMETRIC_X || c == DiffCategory::GEOMETRIC_WIDTH)
+        {
+            r.category = c;
+            return;
+        }
+    for (auto c : subs)
+        if (c == DiffCategory::STYLE_FONT_NAME || c == DiffCategory::STYLE_FONT_SIZE
+            || c == DiffCategory::STYLE_FONT_COLOR || c == DiffCategory::STYLE_FONT_WEIGHT
+            || c == DiffCategory::STYLE_STYLE_NAME)
+        {
+            r.category = c;
+            return;
+        }
+
+    r.category = DiffCategory::OTHER;
+}
+
 // ── 算法 1: LCS (最长公共子序列) ──
+// 改进: 使用 StructurallySimilar 进行对齐，FrameEntriesEqual 判断 EQUAL/CHANGE
+// 这样"同文本框 y 不同"会被报告为 CHANGE 而非 INSERT+DELETE
 
 static std::vector<DiffResult> ComputeLcsDiff(const std::vector<FrameEntry>& ref,
                                               const std::vector<FrameEntry>& test)
@@ -666,13 +894,14 @@ static std::vector<DiffResult> ComputeLcsDiff(const std::vector<FrameEntry>& ref
     size_t m = ref.size();
     size_t n = test.size();
 
+    // DP 使用 StructurallySimilar 判断对齐（识别"同条目不同几何"）
     std::vector<std::vector<size_t>> dp(m + 1, std::vector<size_t>(n + 1, 0));
 
     for (size_t i = 1; i <= m; ++i)
     {
         for (size_t j = 1; j <= n; ++j)
         {
-            if (FrameEntriesEqual(ref[i - 1], test[j - 1]))
+            if (StructurallySimilar(ref[i - 1], test[j - 1]))
                 dp[i][j] = dp[i - 1][j - 1] + 1;
             else
                 dp[i][j] = std::max(dp[i - 1][j], dp[i][j - 1]);
@@ -684,15 +913,26 @@ static std::vector<DiffResult> ComputeLcsDiff(const std::vector<FrameEntry>& ref
 
     while (i > 0 || j > 0)
     {
-        if (i > 0 && j > 0 && FrameEntriesEqual(ref[i - 1], test[j - 1]))
+        if (i > 0 && j > 0 && StructurallySimilar(ref[i - 1], test[j - 1])
+            && dp[i][j] == dp[i - 1][j - 1] + 1)
         {
+            // 对齐成功: 用 FrameEntriesEqual 判断 EQUAL 还是 CHANGE
             DiffResult r;
-            r.op = DiffOp::OP_EQUAL;
             r.refEntry = &ref[i - 1];
             r.testEntry = &test[j - 1];
             r.refIdx = i - 1;
             r.testIdx = j - 1;
-            r.description = "";
+            if (FrameEntriesEqual(ref[i - 1], test[j - 1]))
+            {
+                r.op = DiffOp::OP_EQUAL;
+                r.description = "";
+            }
+            else
+            {
+                r.op = DiffOp::OP_CHANGE;
+                r.description = CollectFieldDiffs(ref[i - 1], test[j - 1]);
+            }
+            ClassifyDiff(r);
             results.push_back(r);
             --i;
             --j;
@@ -708,6 +948,7 @@ static std::vector<DiffResult> ComputeLcsDiff(const std::vector<FrameEntry>& ref
             std::ostringstream oss;
             oss << "缺失: " << EntryToShortDesc(ref[i - 1]);
             r.description = oss.str();
+            ClassifyDiff(r);
             results.push_back(r);
             --i;
         }
@@ -722,6 +963,7 @@ static std::vector<DiffResult> ComputeLcsDiff(const std::vector<FrameEntry>& ref
             std::ostringstream oss;
             oss << "额外: " << EntryToShortDesc(test[j - 1]);
             r.description = oss.str();
+            ClassifyDiff(r);
             results.push_back(r);
             --j;
         }
@@ -732,6 +974,8 @@ static std::vector<DiffResult> ComputeLcsDiff(const std::vector<FrameEntry>& ref
 }
 
 // ── 算法 2: Myers Diff (O(ND)) ──
+// 改进: 使用 StructurallySimilar 进行对齐，FrameEntriesEqual 判断 EQUAL/CHANGE
+// 这样"同文本框 y 不同"会被报告为 CHANGE 而非 INSERT+DELETE
 
 static std::vector<DiffResult> ComputeMyersDiff(const std::vector<FrameEntry>& ref,
                                                 const std::vector<FrameEntry>& test)
@@ -753,6 +997,7 @@ static std::vector<DiffResult> ComputeMyersDiff(const std::vector<FrameEntry>& r
             std::ostringstream oss;
             oss << "额外: " << EntryToShortDesc(test[j]);
             r.description = oss.str();
+            ClassifyDiff(r);
             results.push_back(r);
         }
         return results;
@@ -771,6 +1016,7 @@ static std::vector<DiffResult> ComputeMyersDiff(const std::vector<FrameEntry>& r
             std::ostringstream oss;
             oss << "缺失: " << EntryToShortDesc(ref[i]);
             r.description = oss.str();
+            ClassifyDiff(r);
             results.push_back(r);
         }
         return results;
@@ -786,6 +1032,7 @@ static std::vector<DiffResult> ComputeMyersDiff(const std::vector<FrameEntry>& r
     std::vector<std::vector<int>> trace;
     trace.reserve(static_cast<size_t>(maxD + 1));
 
+    // 前向传递: 使用 StructurallySimilar 扩展对角线（识别"同条目不同几何"）
     int endD = maxD;
     for (int d = 0; d <= maxD; ++d)
     {
@@ -800,7 +1047,8 @@ static std::vector<DiffResult> ComputeMyersDiff(const std::vector<FrameEntry>& r
 
             int y = x - k;
             while (x < N && y < M
-                   && FrameEntriesEqual(ref[static_cast<size_t>(x)], test[static_cast<size_t>(y)]))
+                   && StructurallySimilar(ref[static_cast<size_t>(x)],
+                                          test[static_cast<size_t>(y)]))
             {
                 ++x;
                 ++y;
@@ -820,6 +1068,7 @@ found_path:
     int x = N;
     int y = M;
 
+    // 回溯: 对角线移动时用 FrameEntriesEqual 判断 EQUAL 还是 CHANGE
     for (int d = endD; d >= 0; --d)
     {
         int k = x - y;
@@ -844,12 +1093,23 @@ found_path:
             --x;
             --y;
             DiffResult r;
-            r.op = DiffOp::OP_EQUAL;
             r.refEntry = &ref[static_cast<size_t>(x)];
             r.testEntry = &test[static_cast<size_t>(y)];
             r.refIdx = x;
             r.testIdx = y;
-            r.description = "";
+            // 用 FrameEntriesEqual 判断 EQUAL 还是 CHANGE
+            if (FrameEntriesEqual(ref[static_cast<size_t>(x)], test[static_cast<size_t>(y)]))
+            {
+                r.op = DiffOp::OP_EQUAL;
+                r.description = "";
+            }
+            else
+            {
+                r.op = DiffOp::OP_CHANGE;
+                r.description = CollectFieldDiffs(ref[static_cast<size_t>(x)],
+                                                  test[static_cast<size_t>(y)]);
+            }
+            ClassifyDiff(r);
             results.push_back(r);
         }
 
@@ -867,6 +1127,7 @@ found_path:
                 std::ostringstream oss;
                 oss << "缺失: " << EntryToShortDesc(ref[static_cast<size_t>(x)]);
                 r.description = oss.str();
+                ClassifyDiff(r);
                 results.push_back(r);
             }
             else if (y > prevY)
@@ -881,6 +1142,7 @@ found_path:
                 std::ostringstream oss;
                 oss << "额外: " << EntryToShortDesc(test[static_cast<size_t>(y)]);
                 r.description = oss.str();
+                ClassifyDiff(r);
                 results.push_back(r);
             }
         }
@@ -891,6 +1153,7 @@ found_path:
 }
 
 // ── 算法 3: Needleman-Wunsch (全局序列对齐) ──
+// 改进: 使用 StructurallySimilar 进行对齐评分，FrameEntriesEqual 判断 EQUAL/CHANGE
 
 static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<FrameEntry>& ref,
                                                           const std::vector<FrameEntry>& test)
@@ -899,8 +1162,8 @@ static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<Fram
     size_t n = test.size();
 
     const int GAP_PENALTY = -1;
-    const int MATCH_SCORE = 2;
-    const int MISMATCH_PENALTY = -1;
+    const int MATCH_SCORE = 2;       // 结构相似（对齐）
+    const int MISMATCH_PENALTY = -1; // 结构不同
 
     std::vector<std::vector<int>> dp(m + 1, std::vector<int>(n + 1, 0));
 
@@ -909,11 +1172,13 @@ static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<Fram
     for (size_t j = 1; j <= n; ++j)
         dp[0][j] = dp[0][j - 1] + GAP_PENALTY;
 
+    // DP 使用 StructurallySimilar 评分（识别"同条目不同几何"）
     for (size_t i = 1; i <= m; ++i)
     {
         for (size_t j = 1; j <= n; ++j)
         {
-            int match = FrameEntriesEqual(ref[i - 1], test[j - 1]) ? MATCH_SCORE : MISMATCH_PENALTY;
+            int match
+                = StructurallySimilar(ref[i - 1], test[j - 1]) ? MATCH_SCORE : MISMATCH_PENALTY;
             int scoreDiag = dp[i - 1][j - 1] + match;
             int scoreUp = dp[i - 1][j] + GAP_PENALTY;
             int scoreLeft = dp[i][j - 1] + GAP_PENALTY;
@@ -928,12 +1193,17 @@ static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<Fram
     {
         if (i > 0 && j > 0)
         {
-            int diagScore
-                = dp[i - 1][j - 1]
-                  + (FrameEntriesEqual(ref[i - 1], test[j - 1]) ? MATCH_SCORE : MISMATCH_PENALTY);
+            int diagScore = dp[i - 1][j - 1]
+                            + (StructurallySimilar(ref[i - 1], test[j - 1]) ? MATCH_SCORE
+                                                                             : MISMATCH_PENALTY);
             if (dp[i][j] == diagScore)
             {
+                // 对齐成功: 用 FrameEntriesEqual 判断 EQUAL 还是 CHANGE
                 DiffResult r;
+                r.refEntry = &ref[i - 1];
+                r.testEntry = &test[j - 1];
+                r.refIdx = i - 1;
+                r.testIdx = j - 1;
                 if (FrameEntriesEqual(ref[i - 1], test[j - 1]))
                 {
                     r.op = DiffOp::OP_EQUAL;
@@ -944,10 +1214,7 @@ static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<Fram
                     r.op = DiffOp::OP_CHANGE;
                     r.description = CollectFieldDiffs(ref[i - 1], test[j - 1]);
                 }
-                r.refEntry = &ref[i - 1];
-                r.testEntry = &test[j - 1];
-                r.refIdx = i - 1;
-                r.testIdx = j - 1;
+                ClassifyDiff(r);
                 results.push_back(r);
                 --i;
                 --j;
@@ -965,6 +1232,7 @@ static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<Fram
             std::ostringstream oss;
             oss << "缺失: " << EntryToShortDesc(ref[i - 1]);
             r.description = oss.str();
+            ClassifyDiff(r);
             results.push_back(r);
             --i;
         }
@@ -979,6 +1247,7 @@ static std::vector<DiffResult> ComputeNeedlemanWunschDiff(const std::vector<Fram
             std::ostringstream oss;
             oss << "额外: " << EntryToShortDesc(test[j - 1]);
             r.description = oss.str();
+            ClassifyDiff(r);
             results.push_back(r);
             --j;
         }
@@ -1040,6 +1309,9 @@ static void PrintAlignedDiff(const std::string& algorithm, const std::vector<Dif
         }
 
         std::cout << "  [" << DiffOpName(r.op) << "]";
+        // 显示分类（非 EQUAL 时）
+        if (r.category != DiffCategory::NONE)
+            std::cout << "[" << DiffCategoryName(r.category) << "]";
         if (r.refIdx >= 0)
             std::cout << " ref@" << r.refEntry->lineNum << "(idx=" << r.refIdx << ")";
         if (r.testIdx >= 0)
@@ -1053,6 +1325,386 @@ static void PrintAlignedDiff(const std::string& algorithm, const std::vector<Dif
         std::cout << "\nResult: PASS — 无差异\n";
     else
         std::cout << "\nResult: FAIL — " << diffCount << " 处差异\n";
+    std::cout.flush();
+}
+
+// ── y 累积偏移检测（分析工具，非容差）──
+// 检测 y 偏移是否单调累积，找到根因候选
+
+struct CumulativeOffset
+{
+    bool detected = false;
+    int startPage = 0;
+    int startRefLineNum = 0;
+    int startTestLineNum = 0;
+    std::string startText;
+    std::string startFontName;
+    int startFontSize = 0;
+    int initialHeightDelta = 0; // 根因候选（如 height 差 +28）
+    int initialRefHeight = 0;
+    int initialTestHeight = 0;
+    int offsetAtEnd = 0; // 累积到的偏移量
+    int endPage = 0;
+    std::string likelyRootCause;
+};
+
+static CumulativeOffset DetectCumulativeYOffset(const std::vector<DiffResult>& results)
+{
+    CumulativeOffset co;
+
+    // 找到第一个有 y 差异的 CHANGE 操作
+    int firstYDiff = -1;
+    int firstYDelta = 0;
+    int firstHeightDelta = 0;
+    for (size_t i = 0; i < results.size(); ++i)
+    {
+        const auto& r = results[i];
+        if (r.op != DiffOp::OP_CHANGE || !r.refEntry || !r.testEntry)
+            continue;
+
+        const FrameEntry& ref = *r.refEntry;
+        const FrameEntry& test = *r.testEntry;
+
+        // 检查是否有 y 差异
+        bool hasYDiff = false;
+        bool hasHeightDiff = false;
+        for (auto c : r.subCategories)
+        {
+            if (c == DiffCategory::GEOMETRIC_Y)
+                hasYDiff = true;
+            if (c == DiffCategory::GEOMETRIC_HEIGHT)
+                hasHeightDiff = true;
+        }
+
+        if (hasYDiff && firstYDiff < 0)
+        {
+            firstYDiff = static_cast<int>(i);
+            firstYDelta = test.y - ref.y;
+            if (hasHeightDiff)
+                firstHeightDelta = test.height - ref.height;
+            co.startPage = ref.pageNum;
+            co.startRefLineNum = ref.lineNum;
+            co.startTestLineNum = test.lineNum;
+            co.startText = ref.text;
+            co.startFontName = ref.fontName;
+            co.startFontSize = ref.fontSize;
+            co.initialHeightDelta = firstHeightDelta;
+            co.initialRefHeight = ref.height;
+            co.initialTestHeight = test.height;
+        }
+
+        if (firstYDiff >= 0)
+        {
+            // 记录最后一个 y 偏移
+            if (hasYDiff)
+            {
+                co.offsetAtEnd = test.y - ref.y;
+                co.endPage = ref.pageNum;
+            }
+        }
+    }
+
+    if (firstYDiff < 0)
+        return co; // 没有 y 差异
+
+    // 判断是否单调累积（偏移方向一致）
+    // 简单判断: 如果有多个 y 差异且方向一致，认为是累积偏移
+    int posCount = 0, negCount = 0;
+    for (const auto& r : results)
+    {
+        if (r.op != DiffOp::OP_CHANGE || !r.refEntry || !r.testEntry)
+            continue;
+        for (auto c : r.subCategories)
+        {
+            if (c == DiffCategory::GEOMETRIC_Y)
+            {
+                int delta = r.testEntry->y - r.refEntry->y;
+                if (delta > 0)
+                    ++posCount;
+                else if (delta < 0)
+                    ++negCount;
+            }
+        }
+    }
+
+    // 如果同方向的 y 偏移 >= 3 个，认为是累积偏移
+    if (posCount >= 3 || negCount >= 3)
+    {
+        co.detected = true;
+        std::ostringstream oss;
+        oss << "page " << co.startPage << " 第一个 TEXT_FRAME 的 height 计算偏差";
+        if (co.initialHeightDelta != 0)
+        {
+            oss << " (height 差 " << (co.initialHeightDelta > 0 ? "+" : "")
+                << co.initialHeightDelta << " twips, ref=" << co.initialRefHeight << " test="
+                << co.initialTestHeight << ")";
+        }
+        co.likelyRootCause = oss.str();
+    }
+
+    return co;
+}
+
+// ── 根因统计报告 ──
+
+struct DiffStatistics
+{
+    int equalCount = 0, insertCount = 0, deleteCount = 0, modifyCount = 0;
+    int diffCount = 0;
+
+    // 按类别统计
+    std::map<DiffCategory, int> countByCategory;
+
+    // 几何字段统计
+    struct GeometricStats
+    {
+        int count = 0;
+        int minDelta = 0;
+        int maxDelta = 0;
+        long long sumDelta = 0;
+        double meanDelta = 0;
+    };
+    GeometricStats xDelta, yDelta, widthDelta, heightDelta;
+
+    // 按页分布
+    std::map<int, int> diffsPerPage;
+
+    // y 累积偏移
+    CumulativeOffset yCumulative;
+};
+
+static DiffStatistics ComputeStatistics(const std::vector<DiffResult>& results)
+{
+    DiffStatistics stats;
+
+    auto updateGeoStats = [](DiffStatistics::GeometricStats& gs, int delta) {
+        gs.count++;
+        if (gs.count == 1)
+        {
+            gs.minDelta = gs.maxDelta = delta;
+        }
+        else
+        {
+            gs.minDelta = std::min(gs.minDelta, delta);
+            gs.maxDelta = std::max(gs.maxDelta, delta);
+        }
+        gs.sumDelta += delta;
+    };
+
+    for (const auto& r : results)
+    {
+        switch (r.op)
+        {
+            case DiffOp::OP_EQUAL:
+                ++stats.equalCount;
+                continue;
+            case DiffOp::OP_INSERT:
+                ++stats.insertCount;
+                break;
+            case DiffOp::OP_DELETE:
+                ++stats.deleteCount;
+                break;
+            case DiffOp::OP_CHANGE:
+                ++stats.modifyCount;
+                break;
+        }
+
+        stats.diffCount++;
+        stats.countByCategory[r.category]++;
+
+        // 按页统计
+        int pageNum = 0;
+        if (r.refEntry)
+            pageNum = r.refEntry->pageNum;
+        else if (r.testEntry)
+            pageNum = r.testEntry->pageNum;
+        stats.diffsPerPage[pageNum]++;
+
+        // 几何字段统计
+        if (r.op == DiffOp::OP_CHANGE && r.refEntry && r.testEntry)
+        {
+            for (auto c : r.subCategories)
+            {
+                switch (c)
+                {
+                    case DiffCategory::GEOMETRIC_X:
+                        updateGeoStats(stats.xDelta, r.testEntry->x - r.refEntry->x);
+                        break;
+                    case DiffCategory::GEOMETRIC_Y:
+                        updateGeoStats(stats.yDelta, r.testEntry->y - r.refEntry->y);
+                        break;
+                    case DiffCategory::GEOMETRIC_WIDTH:
+                        updateGeoStats(stats.widthDelta, r.testEntry->width - r.refEntry->width);
+                        break;
+                    case DiffCategory::GEOMETRIC_HEIGHT:
+                        updateGeoStats(stats.heightDelta, r.testEntry->height - r.refEntry->height);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
+    // 计算平均值
+    if (stats.xDelta.count > 0)
+        stats.xDelta.meanDelta = static_cast<double>(stats.xDelta.sumDelta) / stats.xDelta.count;
+    if (stats.yDelta.count > 0)
+        stats.yDelta.meanDelta = static_cast<double>(stats.yDelta.sumDelta) / stats.yDelta.count;
+    if (stats.widthDelta.count > 0)
+        stats.widthDelta.meanDelta
+            = static_cast<double>(stats.widthDelta.sumDelta) / stats.widthDelta.count;
+    if (stats.heightDelta.count > 0)
+        stats.heightDelta.meanDelta
+            = static_cast<double>(stats.heightDelta.sumDelta) / stats.heightDelta.count;
+
+    // y 累积偏移检测
+    stats.yCumulative = DetectCumulativeYOffset(results);
+
+    return stats;
+}
+
+static void PrintRootCauseReport(const std::vector<DiffResult>& results)
+{
+    auto stats = ComputeStatistics(results);
+
+    std::cout << "\n========================================\n";
+    std::cout << " 根因分析报告（严格比对，差异总数不变）\n";
+    std::cout << "========================================\n";
+
+    // [1] 差异总览
+    std::cout << "\n[1] 差异总览\n";
+    std::cout << "  匹配: " << stats.equalCount << "  插入: " << stats.insertCount
+              << "  删除: " << stats.deleteCount << "  修改: " << stats.modifyCount << "\n";
+    std::cout << "  差异总数: " << stats.diffCount << "\n";
+
+    // [2] 按类别分布
+    std::cout << "\n[2] 按类别分布\n";
+    std::cout << "  结构性:\n";
+    std::cout << "    缺失节点: " << stats.countByCategory[DiffCategory::STRUCTURAL_MISSING] << "\n";
+    std::cout << "    多余节点: " << stats.countByCategory[DiffCategory::STRUCTURAL_EXTRA] << "\n";
+    std::cout << "    类型不匹配: " << stats.countByCategory[DiffCategory::STRUCTURAL_TYPE_MISMATCH]
+              << "\n";
+    std::cout << "  几何:\n";
+    std::cout << "    x 偏移: " << stats.countByCategory[DiffCategory::GEOMETRIC_X];
+    if (stats.xDelta.count > 0)
+        std::cout << " (平均 " << (stats.xDelta.meanDelta > 0 ? "+" : "")
+                  << stats.xDelta.meanDelta << " twips, 范围 [" << stats.xDelta.minDelta << ", "
+                  << stats.xDelta.maxDelta << "])";
+    std::cout << "\n";
+    std::cout << "    y 偏移: " << stats.countByCategory[DiffCategory::GEOMETRIC_Y];
+    if (stats.yDelta.count > 0)
+        std::cout << " (平均 " << (stats.yDelta.meanDelta > 0 ? "+" : "")
+                  << stats.yDelta.meanDelta << " twips, 范围 [" << stats.yDelta.minDelta << ", "
+                  << stats.yDelta.maxDelta << "])";
+    std::cout << "\n";
+    std::cout << "    width 差异: " << stats.countByCategory[DiffCategory::GEOMETRIC_WIDTH];
+    if (stats.widthDelta.count > 0)
+        std::cout << " (平均 " << (stats.widthDelta.meanDelta > 0 ? "+" : "")
+                  << stats.widthDelta.meanDelta << " twips)";
+    std::cout << "\n";
+    std::cout << "    height 差异: " << stats.countByCategory[DiffCategory::GEOMETRIC_HEIGHT];
+    if (stats.heightDelta.count > 0)
+        std::cout << " (平均 " << (stats.heightDelta.meanDelta > 0 ? "+" : "")
+                  << stats.heightDelta.meanDelta << " twips)";
+    std::cout << "\n";
+    std::cout << "  内容:\n";
+    std::cout << "    文本不同: " << stats.countByCategory[DiffCategory::CONTENT_TEXT] << "\n";
+    std::cout << "  样式:\n";
+    std::cout << "    fontName 不同: " << stats.countByCategory[DiffCategory::STYLE_FONT_NAME]
+              << "\n";
+    std::cout << "    fontSize 不同: " << stats.countByCategory[DiffCategory::STYLE_FONT_SIZE]
+              << "\n";
+    std::cout << "    fontColor 不同: " << stats.countByCategory[DiffCategory::STYLE_FONT_COLOR]
+              << "\n";
+    std::cout << "    fontWeight 不同: " << stats.countByCategory[DiffCategory::STYLE_FONT_WEIGHT]
+              << "\n";
+    std::cout << "    styleName 不同: " << stats.countByCategory[DiffCategory::STYLE_STYLE_NAME]
+              << "\n";
+
+    // [3] y 累积偏移检测
+    std::cout << "\n[3] y 累积偏移检测\n";
+    if (stats.yCumulative.detected)
+    {
+        std::cout << "  [!] 检测到 y 单调累积偏移\n";
+        std::cout << "  起始点: page " << stats.yCumulative.startPage << ", ref line "
+                  << stats.yCumulative.startRefLineNum << " (TEXT_FRAME \""
+                  << stats.yCumulative.startText << "\"";
+        if (!stats.yCumulative.startFontName.empty())
+            std::cout << " " << stats.yCumulative.startFontName << " "
+                      << stats.yCumulative.startFontSize;
+        std::cout << ")\n";
+        if (stats.yCumulative.initialHeightDelta != 0)
+        {
+            std::cout << "  初始 height 差异: "
+                      << (stats.yCumulative.initialHeightDelta > 0 ? "+" : "")
+                      << stats.yCumulative.initialHeightDelta << " twips (ref="
+                      << stats.yCumulative.initialRefHeight
+                      << ", test=" << stats.yCumulative.initialTestHeight << ")\n";
+        }
+        std::cout << "  累积至 page " << stats.yCumulative.endPage << ": "
+                  << (stats.yCumulative.offsetAtEnd > 0 ? "+" : "")
+                  << stats.yCumulative.offsetAtEnd << " twips\n";
+        std::cout << "  根因推断: " << stats.yCumulative.likelyRootCause << "\n";
+        std::cout << "  建议排查: 段落间距/行距计算 (sw/source/core/text/itrform2.cxx)\n";
+    }
+    else
+    {
+        std::cout << "  未检测到明显的 y 单调累积偏移\n";
+    }
+
+    // [4] 按页分布
+    std::cout << "\n[4] 按页分布\n";
+    for (const auto& [pageNum, count] : stats.diffsPerPage)
+    {
+        std::cout << "  Page " << pageNum << ": " << count << " 处差异";
+        // 标记结构性差异
+        int structuralCount = 0;
+        for (const auto& r : results)
+        {
+            int rPage = r.refEntry ? r.refEntry->pageNum : (r.testEntry ? r.testEntry->pageNum : 0);
+            if (rPage == pageNum && (r.op == DiffOp::OP_INSERT || r.op == DiffOp::OP_DELETE))
+                ++structuralCount;
+        }
+        if (structuralCount > 0)
+            std::cout << " [!] 结构性差异: " << structuralCount;
+        std::cout << "\n";
+    }
+
+    // [5] 优先修复建议
+    std::cout << "\n[5] 优先修复建议\n";
+    int suggestionIdx = 1;
+    if (stats.yCumulative.detected)
+    {
+        std::cout << "  " << suggestionIdx++ << ". [根因] 修复 page "
+                  << stats.yCumulative.startPage << " TEXT_FRAME height 计算 (影响后续 "
+                  << stats.countByCategory[DiffCategory::GEOMETRIC_Y] << " 处 y 偏移)\n";
+    }
+    if (stats.countByCategory[DiffCategory::STRUCTURAL_MISSING] > 0)
+    {
+        std::cout << "  " << suggestionIdx++ << ". [结构] 修复缺失节点 ("
+                  << stats.countByCategory[DiffCategory::STRUCTURAL_MISSING]
+                  << " 处, 检查分页/内容生成逻辑)\n";
+    }
+    if (stats.countByCategory[DiffCategory::STRUCTURAL_EXTRA] > 0)
+    {
+        std::cout << "  " << suggestionIdx++ << ". [结构] 修复多余节点 ("
+                  << stats.countByCategory[DiffCategory::STRUCTURAL_EXTRA]
+                  << " 处, 检查是否重复生成)\n";
+    }
+    if (stats.countByCategory[DiffCategory::CONTENT_TEXT] > 0)
+    {
+        std::cout << "  " << suggestionIdx++ << ". [内容] 修复文本内容差异 ("
+                  << stats.countByCategory[DiffCategory::CONTENT_TEXT] << " 处)\n";
+    }
+    if (stats.countByCategory[DiffCategory::GEOMETRIC_WIDTH] > 0
+        || stats.countByCategory[DiffCategory::GEOMETRIC_X] > 0)
+    {
+        std::cout << "  " << suggestionIdx++ << ". [几何] 修复 x/width 差异 (检查 Section/Column 边距计算)\n";
+    }
+    if (suggestionIdx == 1)
+        std::cout << "  无差异，无需修复\n";
+
     std::cout.flush();
 }
 
@@ -1101,6 +1753,156 @@ static const char* AlgoTypeName(AlgoType t)
     }
 }
 
+// ── 按页分组对比 ──
+
+struct PageGroup
+{
+    int pageNum = 0;
+    std::vector<FrameEntry> entries;
+    std::vector<int> originalIndices; // 原始索引映射
+};
+
+static std::vector<PageGroup> GroupByPage(const std::vector<FrameEntry>& entries)
+{
+    std::vector<PageGroup> groups;
+    std::map<int, size_t> pageToGroupIdx;
+
+    for (size_t i = 0; i < entries.size(); ++i)
+    {
+        int pg = entries[i].pageNum;
+        auto it = pageToGroupIdx.find(pg);
+        if (it == pageToGroupIdx.end())
+        {
+            pageToGroupIdx[pg] = groups.size();
+            groups.push_back({ pg, {}, {} });
+            it = pageToGroupIdx.find(pg);
+        }
+        groups[it->second].entries.push_back(entries[i]);
+        groups[it->second].originalIndices.push_back(static_cast<int>(i));
+    }
+    return groups;
+}
+
+// 按页分组对比，页内用指定算法对齐
+static std::vector<DiffResult> ComputePagedDiff(const std::vector<FrameEntry>& ref,
+                                                const std::vector<FrameEntry>& test,
+                                                AlgoType innerAlgo)
+{
+    auto refPages = GroupByPage(ref);
+    auto testPages = GroupByPage(test);
+
+    // 收集所有页码（按顺序）
+    std::vector<int> allPages;
+    {
+        std::set<int> seen;
+        for (const auto& g : refPages)
+        {
+            if (seen.insert(g.pageNum).second)
+                allPages.push_back(g.pageNum);
+        }
+        for (const auto& g : testPages)
+        {
+            if (seen.insert(g.pageNum).second)
+                allPages.push_back(g.pageNum);
+        }
+    }
+
+    std::vector<DiffResult> allResults;
+
+    for (int pg : allPages)
+    {
+        // 找到该页的 ref 和 test 组
+        const std::vector<FrameEntry>* refPage = nullptr;
+        const std::vector<FrameEntry>* testPage = nullptr;
+        for (const auto& g : refPages)
+            if (g.pageNum == pg)
+            {
+                refPage = &g.entries;
+                break;
+            }
+        for (const auto& g : testPages)
+            if (g.pageNum == pg)
+            {
+                testPage = &g.entries;
+                break;
+            }
+
+        std::vector<DiffResult> pageResults;
+        if (refPage && testPage)
+        {
+            switch (innerAlgo)
+            {
+                case AlgoType::LCS:
+                    pageResults = ComputeLcsDiff(*refPage, *testPage);
+                    break;
+                case AlgoType::NEEDLEMAN:
+                    pageResults = ComputeNeedlemanWunschDiff(*refPage, *testPage);
+                    break;
+                case AlgoType::MYERS:
+                default:
+                    pageResults = ComputeMyersDiff(*refPage, *testPage);
+                    break;
+            }
+        }
+        else if (refPage)
+        {
+            // test 缺少该页
+            for (const auto& e : *refPage)
+            {
+                DiffResult r;
+                r.op = DiffOp::OP_DELETE;
+                r.refEntry = &e;
+                r.testEntry = nullptr;
+                r.refIdx = 0;
+                r.testIdx = -1;
+                std::ostringstream oss;
+                oss << "缺失: " << EntryToShortDesc(e);
+                r.description = oss.str();
+                ClassifyDiff(r);
+                pageResults.push_back(r);
+            }
+        }
+        else if (testPage)
+        {
+            // ref 缺少该页
+            for (const auto& e : *testPage)
+            {
+                DiffResult r;
+                r.op = DiffOp::OP_INSERT;
+                r.refEntry = nullptr;
+                r.testEntry = &e;
+                r.refIdx = -1;
+                r.testIdx = 0;
+                std::ostringstream oss;
+                oss << "额外: " << EntryToShortDesc(e);
+                r.description = oss.str();
+                ClassifyDiff(r);
+                pageResults.push_back(r);
+            }
+        }
+
+        // 添加页分隔标记
+        if (!pageResults.empty())
+        {
+            DiffResult pageMarker;
+            pageMarker.op = DiffOp::OP_EQUAL;
+            pageMarker.refEntry = nullptr;
+            pageMarker.testEntry = nullptr;
+            pageMarker.refIdx = -1;
+            pageMarker.testIdx = -1;
+            std::ostringstream oss;
+            oss << "--- Page " << pg << " ---";
+            pageMarker.description = oss.str();
+            allResults.push_back(pageMarker);
+        }
+
+        for (auto& r : pageResults)
+            allResults.push_back(r);
+    }
+
+    return allResults;
+}
+
 // ── 快捷模式路径解析 ──
 
 static std::string resolveLayerPath(const std::string& testDir, const std::string& prefix,
@@ -1134,6 +1936,8 @@ int main(int argc, char* argv[])
             << "  frame_diff <ref.txt> <test.txt> --algo=myers         Myers Diff 算法对比\n"
             << "  frame_diff <ref.txt> <test.txt> --algo=needleman     Needleman-Wunsch 算法对比\n"
             << "  frame_diff <ref.txt> <test.txt> --all                输出所有算法结果\n"
+            << "  frame_diff <ref.txt> <test.txt> --by-page            按页分组对比\n"
+            << "  frame_diff <ref.txt> <test.txt> --root-cause         输出根因分析报告\n"
             << "  frame_diff <ref.txt> <test.txt> --verbose            同时显示匹配项\n"
             << "\n"
             << "  frame_diff frame                   快捷: 对比 test/lo_frame.txt vs "
@@ -1147,6 +1951,12 @@ int main(int argc, char* argv[])
             << "  myers     - 最短编辑路径，生成最小编辑操作数\n"
             << "  needleman - 全局序列对齐，考虑全局最优对齐\n"
             << "\n"
+            << "改进说明（严格比对，不设容差）:\n"
+            << "  - StructurallySimilar 用于 Myers/LCS 对齐，识别\"同条目不同几何\"为 CHANGE\n"
+            << "  - FrameEntriesEqual 保持不变，最终验证仍为严格 0 差异\n"
+            << "  - --by-page 按页分组对比，避免跨页污染\n"
+            << "  - --root-cause 输出差异分类与根因统计报告\n"
+            << "\n"
             << "Exit code: 0 = 无差异, 1 = 有差异或错误.\n";
         return 1;
     }
@@ -1155,6 +1965,8 @@ int main(int argc, char* argv[])
     std::string testPath;
     std::string testDir = "../test";
     bool verbose = false;
+    bool byPage = false;
+    bool rootCause = false;
     AlgoType algo = AlgoType::POSITION;
 
     // 解析第一个参数：判断是 layer 名称还是文件路径
@@ -1183,6 +1995,10 @@ int main(int argc, char* argv[])
                 algo = AlgoType::ALL;
             else if (a == "--verbose" || a == "-v")
                 verbose = true;
+            else if (a == "--by-page")
+                byPage = true;
+            else if (a == "--root-cause")
+                rootCause = true;
         }
     }
     else
@@ -1196,6 +2012,10 @@ int main(int argc, char* argv[])
                 algo = ParseAlgoType(a.substr(7));
             else if (a == "--all")
                 algo = AlgoType::ALL;
+            else if (a == "--by-page")
+                byPage = true;
+            else if (a == "--root-cause")
+                rootCause = true;
             else if (refPath.empty())
                 refPath = a;
             else if (testPath.empty())
@@ -1281,6 +2101,18 @@ int main(int argc, char* argv[])
     bool runMyers = (algo == AlgoType::MYERS || algo == AlgoType::ALL);
     bool runNeedleman = (algo == AlgoType::NEEDLEMAN || algo == AlgoType::ALL);
 
+    // --by-page 模式下，跳过逐行对比，使用按页分组的对齐算法
+    if (byPage)
+    {
+        runPosition = false;
+        // 如果用户没有指定算法，默认用 Myers
+        if (algo == AlgoType::POSITION)
+            algo = AlgoType::MYERS;
+        runLcs = (algo == AlgoType::LCS || algo == AlgoType::ALL);
+        runMyers = (algo == AlgoType::MYERS || algo == AlgoType::ALL);
+        runNeedleman = (algo == AlgoType::NEEDLEMAN || algo == AlgoType::ALL);
+    }
+
     int finalExitCode = 0;
 
     // 1. 逐行对比
@@ -1347,48 +2179,77 @@ int main(int argc, char* argv[])
         }
     }
 
+    // 辅助函数: 检查是否有差异
+    auto hasDiffs = [](const std::vector<DiffResult>& results) {
+        for (const auto& r : results)
+            if (r.op != DiffOp::OP_EQUAL)
+                return true;
+        return false;
+    };
+
     // 2. LCS
     if (runLcs)
     {
-        auto results = ComputeLcsDiff(ref, test);
-        PrintAlignedDiff("LCS（最长公共子序列）", results, verbose);
-        for (const auto& r : results)
+        std::vector<DiffResult> results;
+        if (byPage)
         {
-            if (r.op != DiffOp::OP_EQUAL)
-            {
-                finalExitCode = 1;
-                break;
-            }
+            results = ComputePagedDiff(ref, test, AlgoType::LCS);
+            PrintAlignedDiff("LCS（最长公共子序列，按页分组）", results, verbose);
+        }
+        else
+        {
+            results = ComputeLcsDiff(ref, test);
+            PrintAlignedDiff("LCS（最长公共子序列）", results, verbose);
+        }
+        if (hasDiffs(results))
+        {
+            finalExitCode = 1;
+            if (rootCause)
+                PrintRootCauseReport(results);
         }
     }
 
     // 3. Myers
     if (runMyers)
     {
-        auto results = ComputeMyersDiff(ref, test);
-        PrintAlignedDiff("Myers Diff（最短编辑路径）", results, verbose);
-        for (const auto& r : results)
+        std::vector<DiffResult> results;
+        if (byPage)
         {
-            if (r.op != DiffOp::OP_EQUAL)
-            {
-                finalExitCode = 1;
-                break;
-            }
+            results = ComputePagedDiff(ref, test, AlgoType::MYERS);
+            PrintAlignedDiff("Myers Diff（最短编辑路径，按页分组）", results, verbose);
+        }
+        else
+        {
+            results = ComputeMyersDiff(ref, test);
+            PrintAlignedDiff("Myers Diff（最短编辑路径）", results, verbose);
+        }
+        if (hasDiffs(results))
+        {
+            finalExitCode = 1;
+            if (rootCause)
+                PrintRootCauseReport(results);
         }
     }
 
     // 4. Needleman-Wunsch
     if (runNeedleman)
     {
-        auto results = ComputeNeedlemanWunschDiff(ref, test);
-        PrintAlignedDiff("Needleman-Wunsch（全局序列对齐）", results, verbose);
-        for (const auto& r : results)
+        std::vector<DiffResult> results;
+        if (byPage)
         {
-            if (r.op != DiffOp::OP_EQUAL)
-            {
-                finalExitCode = 1;
-                break;
-            }
+            results = ComputePagedDiff(ref, test, AlgoType::NEEDLEMAN);
+            PrintAlignedDiff("Needleman-Wunsch（全局序列对齐，按页分组）", results, verbose);
+        }
+        else
+        {
+            results = ComputeNeedlemanWunschDiff(ref, test);
+            PrintAlignedDiff("Needleman-Wunsch（全局序列对齐）", results, verbose);
+        }
+        if (hasDiffs(results))
+        {
+            finalExitCode = 1;
+            if (rootCause)
+                PrintRootCauseReport(results);
         }
     }
 

@@ -86,12 +86,14 @@ private:
         int indentLeft = 0;
         int indentRight = 0;
         int indentFirstLine = 0;
+        int indentHanging = 0;
         bool pageBreakBefore = false;
         bool keepNext = false;
         bool keepLines = false;
         // 字符属性
         std::string fontName;
         int fontSize = 0; // 半点（0 表示未设置）
+        std::string cjkFontName; // CJK 字体（w:eastAsia）
         bool bold = false;
         bool italic = false;
         std::string color;

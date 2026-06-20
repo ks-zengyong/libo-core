@@ -251,6 +251,12 @@ public:
     // 迁移自 LO flowfrm.cxx: WrongPageDesc (行 984-1054)
     bool WrongPageDesc(SwPageFrame* pNew);
 
+    // === 页面描述验证 ===
+    // 迁移自 LO pagechg.cxx: CheckPageDescs (行 1274-1514)
+    // 遍历页面链，检查页面描述符/格式/奇偶页是否匹配，必要时插入/删除空页
+    static void CheckPageDescs(SwPageFrame* pStart, bool bNotifyFields = false,
+                               SwPageFrame** ppPrev = nullptr);
+
     // 树操作
     void InsertBefore(SwLayoutFrame* pParent, SwFrame* pSibling);
     void InsertBehind(SwLayoutFrame* pParent, SwFrame* pSibling);

@@ -203,6 +203,14 @@ void DocxParser::ParseTheme()
                 themeFonts_["majorAscii"] = typeface;
             }
         }
+        // 解析 East Asian 字体（对应 LO 的 CJK 字体槽）
+        auto ea = majorFont.child("a:ea");
+        if (ea)
+        {
+            std::string typeface = ea.attribute("typeface").as_string();
+            if (!typeface.empty())
+                themeFonts_["majorEastAsia"] = typeface;
+        }
     }
 
     // 解析 minorFont（正文字体）
@@ -218,6 +226,14 @@ void DocxParser::ParseTheme()
                 themeFonts_["minorHAnsi"] = typeface;
                 themeFonts_["minorAscii"] = typeface;
             }
+        }
+        // 解析 East Asian 字体（对应 LO 的 CJK 字体槽）
+        auto ea = minorFont.child("a:ea");
+        if (ea)
+        {
+            std::string typeface = ea.attribute("typeface").as_string();
+            if (!typeface.empty())
+                themeFonts_["minorEastAsia"] = typeface;
         }
     }
 }
@@ -269,6 +285,21 @@ void DocxParser::ParseStyles(SwDoc& doc)
                             auto it = themeFonts_.find(themeFont);
                             if (it != themeFonts_.end())
                                 defaultStyle.fontName = it->second;
+                        }
+                    }
+
+                    // 解析 CJK 字体（w:eastAsia / w:eastAsiaTheme）
+                    std::string eaFont = rFonts.attribute("w:eastAsia").as_string();
+                    if (!eaFont.empty())
+                        defaultStyle.cjkFontName = eaFont;
+                    else
+                    {
+                        std::string eaTheme = rFonts.attribute("w:eastAsiaTheme").as_string();
+                        if (!eaTheme.empty())
+                        {
+                            auto it = themeFonts_.find(eaTheme);
+                            if (it != themeFonts_.end())
+                                defaultStyle.cjkFontName = it->second;
                         }
                     }
                 }
@@ -377,6 +408,7 @@ void DocxParser::ParseStyles(SwDoc& doc)
                 def.indentLeft = ind.attribute("w:left").as_int(0);
                 def.indentRight = ind.attribute("w:right").as_int(0);
                 def.indentFirstLine = ind.attribute("w:firstLine").as_int(0);
+                def.indentHanging = ind.attribute("w:hanging").as_int(0);
             }
 
             auto pageBreakBefore = pPr.child("w:pageBreakBefore");
@@ -415,6 +447,19 @@ void DocxParser::ParseStyles(SwDoc& doc)
                         auto it = themeFonts_.find(themeFont);
                         if (it != themeFonts_.end())
                             def.fontName = it->second;
+                    }
+                }
+
+                // 解析 CJK 字体（w:eastAsia / w:eastAsiaTheme）
+                def.cjkFontName = rFonts.attribute("w:eastAsia").as_string();
+                if (def.cjkFontName.empty())
+                {
+                    std::string eaTheme = rFonts.attribute("w:eastAsiaTheme").as_string();
+                    if (!eaTheme.empty())
+                    {
+                        auto it = themeFonts_.find(eaTheme);
+                        if (it != themeFonts_.end())
+                            def.cjkFontName = it->second;
                     }
                 }
             }
@@ -466,6 +511,8 @@ void DocxParser::ParseStyles(SwDoc& doc)
                 pColl->SetAttr(RES_PARATR_ADJUST, def.alignment);
             if (!def.fontName.empty())
                 pColl->SetAttr(RES_CHRATR_FONT, def.fontName);
+            if (!def.cjkFontName.empty())
+                pColl->SetAttr(RES_CHRATR_CJK_FONT, def.cjkFontName);
             if (def.fontSize > 0)
                 pColl->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(def.fontSize));
             if (def.bold)
@@ -480,6 +527,14 @@ void DocxParser::ParseStyles(SwDoc& doc)
                 pColl->SetAttr(RES_PARATR_LINESPACING, std::to_string(def.spacingLine));
             if (def.spacingLineRule != "auto")
                 pColl->SetAttr(RES_PARATR_LINE_RULE, def.spacingLineRule);
+            if (def.indentLeft != 0)
+                pColl->SetAttr(RES_PARATR_INDENT, std::to_string(def.indentLeft));
+            if (def.indentRight != 0)
+                pColl->SetAttr(RES_PARATR_RIGHT_INDENT, std::to_string(def.indentRight));
+            if (def.indentFirstLine != 0)
+                pColl->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(def.indentFirstLine));
+            if (def.indentHanging != 0)
+                pColl->SetAttr(RES_PARATR_HANGING, std::to_string(def.indentHanging));
         }
     }
 
@@ -498,6 +553,8 @@ void DocxParser::ParseStyles(SwDoc& doc)
         // 继承父样式的字符属性（如果当前样式没有设置）
         if (def.fontName.empty() && !parent.fontName.empty())
             def.fontName = parent.fontName;
+        if (def.cjkFontName.empty() && !parent.cjkFontName.empty())
+            def.cjkFontName = parent.cjkFontName;
         if (def.fontSize <= 0 && parent.fontSize > 0)
             def.fontSize = parent.fontSize;
         if (!def.bold && parent.bold)
@@ -521,6 +578,8 @@ void DocxParser::ParseStyles(SwDoc& doc)
             def.indentRight = parent.indentRight;
         if (def.indentFirstLine == 0 && parent.indentFirstLine != 0)
             def.indentFirstLine = parent.indentFirstLine;
+        if (def.indentHanging == 0 && parent.indentHanging != 0)
+            def.indentHanging = parent.indentHanging;
         if (!def.pageBreakBefore && parent.pageBreakBefore)
             def.pageBreakBefore = parent.pageBreakBefore;
         if (!def.keepNext && parent.keepNext)
@@ -537,17 +596,6 @@ void DocxParser::ParseStyles(SwDoc& doc)
         {
             resolveInheritance(def.basedOn, def);
         }
-    }
-
-    // DEBUG: Print resolved style fonts
-    fprintf(stderr, "[Parser] Resolved style fonts:\n");
-    for (auto & [ id, def ] : styles_)
-    {
-        fprintf(stderr,
-                "[Parser]   styleId='%s' name='%s' font='%s' size=%d"
-                " spacingBefore=%d spacingAfter=%d spacingLine=%d\n",
-                id.c_str(), def.name.c_str(), def.fontName.c_str(), def.fontSize, def.spacingBefore,
-                def.spacingAfter, def.spacingLine);
     }
 }
 
@@ -1089,7 +1137,9 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         int nRows = 0;
         int nCols = 0;
         // 单元格内容：按行优先顺序，每个单元格可能有多个段落
-        std::vector<std::vector<std::string>> cells;
+        std::vector<std::vector<SwTableNode::ParagraphInfo>> cells;
+        // 表格列宽（来自 w:tblGrid/w:gridCol，单位 twips）
+        std::vector<sal_Int32> gridCols;
     };
 
     std::vector<ParaInfo> paras; // 所有 w:p 段落（按文档顺序）
@@ -1152,30 +1202,58 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         else if (name == "w:tbl")
         {
             TableInfo ti;
+            // 解析 tblGrid 列宽（对应 LO DomainMapper: w:gridCol 定义表格列宽）
+            auto tblGrid = child.child("w:tblGrid");
+            if (tblGrid)
+            {
+                for (auto gc : tblGrid.children("w:gridCol"))
+                {
+                    ti.gridCols.push_back(gc.attribute("w:w").as_int());
+                }
+            }
             // 计算行列
             for (auto tr : child.children("w:tr"))
             {
                 ti.nRows++;
                 int tcCount = 0;
-                std::vector<std::string> rowCells;
+                std::vector<SwTableNode::ParagraphInfo> rowCells;
                 for (auto cell : tr.children("w:tc"))
                 {
                     tcCount++;
                     // 收集单元格文本（每个单元格的第一个段落为主内容，其余为附加段落）
-                    std::vector<std::string> cellParas;
+                    std::vector<SwTableNode::ParagraphInfo> cellParas;
                     for (auto p : cell.children("w:p"))
                     {
-                        std::string pText;
+                        SwTableNode::ParagraphInfo pi;
                         for (auto r : p.children("w:r"))
                         {
                             for (auto t : r.children("w:t"))
-                                pText += t.text().as_string();
+                                pi.text += t.text().as_string();
+                            // 解析 run 字体（对应 LO DomainMapper: w:rPr/w:rFonts, w:sz）
+                            auto rPr = r.child("w:rPr");
+                            if (rPr)
+                            {
+                                auto rFonts = rPr.child("w:rFonts");
+                                if (rFonts)
+                                {
+                                    std::string font = rFonts.attribute("w:ascii").as_string();
+                                    if (!font.empty())
+                                        pi.fontName = font;
+                                }
+                                auto sz = rPr.child("w:sz");
+                                if (sz)
+                                {
+                                    int v = sz.attribute("w:val").as_int(20);
+                                    if (v > 0)
+                                        pi.fontSizeHalfPt = v;
+                                }
+                            }
                         }
-                        cellParas.push_back(pText);
+                        cellParas.push_back(pi);
                     }
                     // 合并到 cells（按行优先的单元格顺序）
                     if (cellParas.empty())
-                        ti.cells.push_back({ "" });
+                        ti.cells.push_back({ SwTableNode::ParagraphInfo{ "", "Calibri", 20 } });
                     else
                         ti.cells.push_back(cellParas);
                 }
@@ -1412,6 +1490,24 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
 
                 if (pTN)
                 {
+                    // 设置表格列宽（MakeFrames 通过 GetGridCols() 读取列宽渲染单元格）
+                    // 对应 LO: 表格左边框占用 1 twip，从首列减 1，末列加 1
+                    if (!fs.table.gridCols.empty())
+                    {
+                        std::vector<sal_Int32> adjustedCols = fs.table.gridCols;
+                        if (adjustedCols.size() >= 2)
+                        {
+                            adjustedCols[0] -= 1;
+                            adjustedCols.back() += 1;
+                        }
+                        pTN->SetGridCols(adjustedCols);
+                    }
+
+                    // 取出 tableData 引用，同步填充单元格文本
+                    // （MakeFrames 通过 GetTableData() 读取单元格文本渲染）
+                    SwTableNode::TableData tableData = pTN->GetTableData();
+                    const int nCols = fs.table.nCols;
+
                     SwNodeOffset idx = pTN->GetIndex() + SwNodeOffset(1);
                     for (int ci = 0;
                          ci < totalCells && ci < static_cast<int>(fs.table.cells.size()); ci++)
@@ -1425,17 +1521,50 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                         if (pText && pText->IsTextNode())
                         {
                             SwTextNode* pCellText = static_cast<SwTextNode*>(pText);
+                            std::string cellText;
                             if (!cellParas.empty())
-                                pCellText->SetText(cellParas[0].empty() ? " " : cellParas[0]);
+                            {
+                                cellText = cellParas[0].text.empty() ? std::string(" ") : cellParas[0].text;
+                                pCellText->SetText(cellText);
+                            }
                             else
-                                pCellText->SetText(" ");
+                            {
+                                cellText = " ";
+                                pCellText->SetText(cellText);
+                            }
                             pCellText->SetStyleName("Default Paragraph Style");
+
+                            // 同步填充 tableData（MakeFrames 通过 GetTableData 读取单元格文本）
+                            int nRow = ci / nCols;
+                            int nCol = ci % nCols;
+                            if (nRow < static_cast<int>(tableData.size())
+                                && nCol < static_cast<int>(tableData[nRow].cells.size()))
+                            {
+                                tableData[nRow].cells[nCol].text = cellText;
+                                // 填充所有段落（MakeFrames 为每段创建独立 TextFrame）
+                                tableData[nRow].cells[nCol].paragraphs.clear();
+                                if (cellParas.empty())
+                                {
+                                    tableData[nRow].cells[nCol].paragraphs.push_back(
+                                        SwTableNode::ParagraphInfo{ " ", "Calibri", 20 });
+                                }
+                                else
+                                {
+                                    for (const auto& cp : cellParas)
+                                    {
+                                        SwTableNode::ParagraphInfo pi = cp;
+                                        if (pi.text.empty())
+                                            pi.text = " ";
+                                        tableData[nRow].cells[nCol].paragraphs.push_back(pi);
+                                    }
+                                }
+                            }
 
                             SwNode* pAnchor = pText;
                             for (size_t pi = 1; pi < cellParas.size(); pi++)
                             {
                                 SwTextNode* pNewTN = rNodes.MakeTextNode(*pAnchor, pDefaultColl);
-                                pNewTN->SetText(cellParas[pi]);
+                                pNewTN->SetText(cellParas[pi].text);
                                 pNewTN->SetStyleName("Default Paragraph Style");
                                 pAnchor = pNewTN;
                             }
@@ -1446,6 +1575,9 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                             break;
                         idx = pBoxEnd->GetIndex() + SwNodeOffset(1);
                     }
+
+                    // 回写 tableData
+                    pTN->SetTableData(tableData);
                 }
             }
         }
@@ -1617,6 +1749,9 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 pInsertAfter = pTableAnchorTN;
                 pTableAnchorTN->SetText("");
                 pTableAnchorTN->SetStyleName("Default Paragraph Style");
+                // 同步节索引（CalcBodyTextFrameHorz 通过 RES_SECTION_INDEX 读取节边距）
+                pTableAnchorTN->SetAttr(RES_SECTION_INDEX,
+                                        std::to_string(m_nCurrentSection_));
                 tableAnchorNodeIndex = static_cast<int>(pTableAnchorTN->GetIndex());
             }
         }
@@ -1675,6 +1810,15 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         inSection = false;
     }
 
+    // 处理 body 级 sectPr（OOXML: 最后一个 sectPr 是 w:body 的直接子节点）
+    // 对应 LO DomainMapper: body-level sectPr 定义最后一节的页面属性
+    // 若不处理，最后一节的 w:pgMar（如 w:left="1800"）将丢失
+    auto bodySectPr = bodyNode.child("w:sectPr");
+    if (bodySectPr)
+    {
+        ApplySectPrCore(bodySectPr, doc, false);
+    }
+
     // ── 阶段 E：设置 Fly anchor ─────────────────────────────
     for (size_t k = 0; k < flyStartNodes.size() && k < flyAnchorTargets.size(); k++)
     {
@@ -1710,8 +1854,6 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 flyStartNodes[k]->SetAnchorNodeIndex(target);
         }
     }
-
-    (void)bodyNode; // bodyNode 已遍历过，保留参数
 }
 
 // ParseParagraph: 解析段落
@@ -1766,14 +1908,6 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         pInsertAfter = rLastNode.StartOfSectionNode();
     }
 
-    std::cerr << "[ParseParagraph] InsertAfter idx=" << pInsertAfter->GetIndex()
-              << " bInsideTable=" << (bInsideTable ? "yes" : "no") << " type="
-              << (pInsertAfter->IsContentNode()
-                      ? "content"
-                      : pInsertAfter->IsStartNode() ? "start"
-                                                    : pInsertAfter->IsEndNode() ? "end" : "other")
-              << std::endl;
-
     // 创建文本节点
     SwTextNode* pTextNode = rNodes.MakeTextNode(*pInsertAfter, pColl);
 
@@ -1825,31 +1959,16 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
         auto it = styles_.find(sStyleId);
         if (it != styles_.end())
             pStyleDef = &it->second;
-        else
-            std::cerr << "[DEBUG] Style not found: styleId=" << sStyleId
-                      << " mapSize=" << styles_.size() << std::endl;
     }
     if (!pStyleDef)
     {
-        int nDefaultCount = 0;
         for (auto & [ id, def ] : styles_)
         {
             if (def.type == "paragraph" && def.isDefault)
             {
                 pStyleDef = &def;
-                nDefaultCount++;
-                std::cerr << "[DEBUG] Fallback default style: id=" << id << " name=" << def.name
-                          << std::endl;
             }
         }
-        std::cerr << "[DEBUG] sStyleId=" << sStyleId << " foundStyle=" << (pStyleDef ? "yes" : "NO")
-                  << " nDefaultCount=" << nDefaultCount << std::endl;
-    }
-    else
-    {
-        std::cerr << "[DEBUG] Found style: styleId=" << sStyleId << " name=" << pStyleDef->name
-                  << " fontName=" << pStyleDef->fontName << " fontSize=" << pStyleDef->fontSize
-                  << " basedOn=" << pStyleDef->basedOn << std::endl;
     }
 
     // 解析文本内容和 Run 属性
@@ -1857,6 +1976,16 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
     bool bRunPropsApplied = false;
     bool bTextRunFound = false;
     bool bFirstTextRunProps = false;
+    // LO: 首 text portion 是第一个含 <w:t> 的 run，<w:br>/<w:tab>/<w:cr> 不算文本 portion
+    auto hasTextContent = [](pugi::xml_node rNode) {
+        for (auto c : rNode.children())
+        {
+            std::string n = c.name();
+            if (n == "w:t" || n == "w:sym")
+                return true;
+        }
+        return false;
+    };
     for (auto child : pNode.children())
     {
         std::string name = child.name();
@@ -1866,11 +1995,14 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             std::string runText = ParseRunText(child);
             auto rPr = child.child("w:rPr");
 
+            bool bHasText = hasTextContent(child);
             if (!runText.empty())
             {
-                bTextRunFound = true;
+                if (bHasText)
+                    bTextRunFound = true;
                 // 首段文本 run 的直接格式用于段落行高（对应 LO SwTextFormatter 首 portion）
-                if (!bFirstTextRunProps && rPr)
+                // 仅 <w:t> run 才算首文本 run，<w:br> run 不算
+                if (bHasText && !bFirstTextRunProps && rPr)
                 {
                     ParseRunProps(rPr, pTextNode);
                     bFirstTextRunProps = true;
@@ -1914,10 +2046,12 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             {
                 std::string runText = ParseRunText(r);
                 auto rPr = r.child("w:rPr");
+                bool bHasText = hasTextContent(r);
                 if (!runText.empty())
                 {
-                    bTextRunFound = true;
-                    if (!bFirstTextRunProps && rPr)
+                    if (bHasText)
+                        bTextRunFound = true;
+                    if (bHasText && !bFirstTextRunProps && rPr)
                     {
                         ParseRunProps(rPr, pTextNode);
                         bFirstTextRunProps = true;
@@ -1939,11 +2073,18 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
     {
         pTextNode->SetStyleName(pStyleDef->name);
 
+        // 始终记录样式链字号，用于 *Chars → twips 转换
+        // LO 对首字符是 \n（<w:br>）的段落用样式链字号（SeekCursor 对 \n 的字体解析）
+        if (pStyleDef->fontSize > 0)
+            pTextNode->SetAttr(RES_CHRATR_FONTSIZE_STYLE, std::to_string(pStyleDef->fontSize));
+
         if (bTextRunFound)
         {
             // 有文本的段落：run 直接格式优先，样式仅作后备
             if (!pStyleDef->fontName.empty() && !pTextNode->GetAttr(RES_CHRATR_FONT))
                 pTextNode->SetAttr(RES_CHRATR_FONT, pStyleDef->fontName);
+            if (!pStyleDef->cjkFontName.empty() && !pTextNode->GetAttr(RES_CHRATR_CJK_FONT))
+                pTextNode->SetAttr(RES_CHRATR_CJK_FONT, pStyleDef->cjkFontName);
             if (pStyleDef->fontSize > 0 && !pTextNode->GetAttr(RES_CHRATR_FONTSIZE))
                 pTextNode->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(pStyleDef->fontSize));
             if (pStyleDef->bold && !pTextNode->GetAttr(RES_CHRATR_WEIGHT))
@@ -1958,6 +2099,8 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             // 空段落：保留 pPr/rPr 属性，仅用样式作为后备
             if (!pStyleDef->fontName.empty() && !pTextNode->GetAttr(RES_CHRATR_FONT))
                 pTextNode->SetAttr(RES_CHRATR_FONT, pStyleDef->fontName);
+            if (!pStyleDef->cjkFontName.empty() && !pTextNode->GetAttr(RES_CHRATR_CJK_FONT))
+                pTextNode->SetAttr(RES_CHRATR_CJK_FONT, pStyleDef->cjkFontName);
             if (pStyleDef->fontSize > 0 && !pTextNode->GetAttr(RES_CHRATR_FONTSIZE))
                 pTextNode->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(pStyleDef->fontSize));
             if (pStyleDef->bold && !pTextNode->GetAttr(RES_CHRATR_WEIGHT))
@@ -1978,6 +2121,15 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             pTextNode->SetAttr(RES_PARATR_LINESPACING, std::to_string(pStyleDef->spacingLine));
         if (pStyleDef->spacingLineRule != "auto" && !pTextNode->GetAttr(RES_PARATR_LINE_RULE))
             pTextNode->SetAttr(RES_PARATR_LINE_RULE, pStyleDef->spacingLineRule);
+        // 从样式继承缩进（如果段落自身没有设置）
+        if (pStyleDef->indentLeft != 0 && !pTextNode->GetAttr(RES_PARATR_INDENT))
+            pTextNode->SetAttr(RES_PARATR_INDENT, std::to_string(pStyleDef->indentLeft));
+        if (pStyleDef->indentRight != 0 && !pTextNode->GetAttr(RES_PARATR_RIGHT_INDENT))
+            pTextNode->SetAttr(RES_PARATR_RIGHT_INDENT, std::to_string(pStyleDef->indentRight));
+        if (pStyleDef->indentFirstLine != 0 && !pTextNode->GetAttr(RES_PARATR_FIRSTLINE))
+            pTextNode->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(pStyleDef->indentFirstLine));
+        if (pStyleDef->indentHanging != 0 && !pTextNode->GetAttr(RES_PARATR_HANGING))
+            pTextNode->SetAttr(RES_PARATR_HANGING, std::to_string(pStyleDef->indentHanging));
     }
 
     pTextNode->SetText(text);
@@ -1997,8 +2149,6 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
                 // 创建 Fly 节区，锚点为当前段落节点
                 int anchorIdx = static_cast<int>(pTextNode->GetIndex());
                 SwStartNode* pFlyStart = rNodes.InsertFlySection(SwFlyStartNode, anchorIdx);
-                std::cerr << "[ParseTxbx] Found txbxContent, creating Fly section at index "
-                          << pFlyStart->GetIndex() << " with anchor=" << anchorIdx << std::endl;
 
                 // 解析文本框内容并添加到 Fly 节区
                 // TODO: 解析 txbxContent 内的段落并插入到 Fly 节区
@@ -2021,8 +2171,6 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             // 创建 Fly 节区，锚点为当前段落节点
             int anchorIdx = static_cast<int>(pTextNode->GetIndex());
             SwStartNode* pFlyStart = rNodes.InsertFlySection(SwFlyStartNode, anchorIdx);
-            std::cerr << "[ParseDrawing] Found " << anchorName << ", creating Fly section at index "
-                      << pFlyStart->GetIndex() << " with anchor=" << anchorIdx << std::endl;
 
             for (auto& graphic : anchor.children())
             {
@@ -2044,8 +2192,6 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
                         // 插入图片节点到 Fly 节区
                         SwNode& rFlyStartNode = *pFlyStart;
                         SwGrfNode* pGrfNode = rNodes.InsertGrfNode(rFlyStartNode);
-                        std::cerr << "[ParseDrawing] Inserted GrfNode at index "
-                                  << pGrfNode->GetIndex() << std::endl;
                     }
                     // 检查是否是文本框
                     else
@@ -2065,7 +2211,6 @@ void DocxParser::ParseParagraph(pugi::xml_node pNode, SwDoc& doc)
             std::string cname = child.name();
             if (cname == "w:drawing" || cname == "drawing")
             {
-                std::cerr << "[ParseTxbx] Found drawing in run" << std::endl;
                 processDrawing(child);
             }
             else if (cname == "mc:AlternateContent" || cname == "mc:Choice"
@@ -2208,15 +2353,37 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
             pNode->SetAttr(RES_UL_SPACE_AFTER, std::to_string(nAfter));
     }
 
-    // 缩进
+    // 缩进（对应 LO SvxLRSpaceItem: left/right/firstLine/hanging）
+    // LO: 当 *Chars 非零时，用字符数计算缩进，覆盖 twips 值
+    // 转换公式: indent_twips = chars * fontSize_halfPt / 10
+    // （对应 LO DomainMapper_Impl 中 char-to-twips 转换）
     auto ind = pPrNode.child("w:ind");
     if (ind)
     {
         int left = ind.attribute("w:left").as_int(0);
         int right = ind.attribute("w:right").as_int(0);
         int firstLine = ind.attribute("w:firstLine").as_int(0);
-        // 存储左缩进
+        int hanging = ind.attribute("w:hanging").as_int(0);
+        int leftChars = ind.attribute("w:leftChars").as_int(0);
+        int rightChars = ind.attribute("w:rightChars").as_int(0);
+        int firstLineChars = ind.attribute("w:firstLineChars").as_int(0);
+        int hangingChars = ind.attribute("w:hangingChars").as_int(0);
+
         pNode->SetAttr(RES_PARATR_INDENT, std::to_string(left));
+        pNode->SetAttr(RES_PARATR_RIGHT_INDENT, std::to_string(right));
+        if (firstLine != 0)
+            pNode->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(firstLine));
+        if (hanging != 0)
+            pNode->SetAttr(RES_PARATR_HANGING, std::to_string(hanging));
+        // 存储 *Chars 值，在 GetEffectiveTextLineWidths 中根据字号转换
+        if (leftChars != 0)
+            pNode->SetAttr(RES_PARATR_INDENT_CHARS, std::to_string(leftChars));
+        if (rightChars != 0)
+            pNode->SetAttr(RES_PARATR_RIGHT_INDENT_CHARS, std::to_string(rightChars));
+        if (firstLineChars != 0)
+            pNode->SetAttr(RES_PARATR_FIRSTLINE_CHARS, std::to_string(firstLineChars));
+        if (hangingChars != 0)
+            pNode->SetAttr(RES_PARATR_HANGING_CHARS, std::to_string(hangingChars));
     }
 
     // 分页（w:val="0" 表示不分页，缺少 w:val 或 w:val="1" 表示分页）
@@ -2281,8 +2448,6 @@ void DocxParser::ApplySectPrCore(pugi::xml_node sectPr, SwDoc& doc, bool bPendin
         return;
 
     std::string breakType = GetSectPrBreakType(sectPr);
-    std::cerr << "[Parser] sectPr endingSection=" << m_nCurrentSection_
-              << " breakType=" << breakType << std::endl;
 
     SwPageDesc* pDesc = doc.GetDefaultPageDesc();
     if (pDesc)
@@ -2325,7 +2490,14 @@ void DocxParser::ApplySectPrCore(pugi::xml_node sectPr, SwDoc& doc, bool bPendin
                 sectMargins.colSpace = cols.attribute("w:space").as_int(708);
                 auto col = cols.child("w:col");
                 if (col)
+                {
                     sectMargins.colWidth = col.attribute("w:w").as_int(0);
+                    // OOXML: w:space 可在 w:cols 或 w:col 上指定
+                    // w:col/@w:space 优先（列后间距），w:cols/@w:space 为默认值
+                    int colSpace = col.attribute("w:space").as_int(-1);
+                    if (colSpace > 0)
+                        sectMargins.colSpace = colSpace;
+                }
             }
             // OOXML sectPr 定义当前结束节的属性（对应 LO DomainMapper）
             doc.SetSectionMargins(m_nCurrentSection_, sectMargins);
@@ -2374,37 +2546,20 @@ void DocxParser::ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleN
 
         if (!def.fontName.empty())
         {
+            // LO: run-level direct format (rPr) takes precedence over style for text layout.
+            // Style font is only a fallback when run has no direct font.
             bool bUseStyleFont = !bHasTextContent || !hasDirect(RES_CHRATR_FONT);
-            const std::string* pDirectFont = pTN->GetAttr(RES_CHRATR_FONT);
-            // 首 run 可能是 Segoe UI Emoji/Semibold 等装饰字体，布局应使用段落样式字体
-            if (!bUseStyleFont && pDirectFont && def.fontName != *pDirectFont)
-            {
-                if (*pDirectFont == "Segoe UI Emoji" || *pDirectFont == "Segoe UI Semibold")
-                    bUseStyleFont = true;
-            }
             if (bUseStyleFont)
                 pTN->SetAttr(RES_CHRATR_FONT, def.fontName);
         }
+        // 应用默认 CJK 字体（用于空段落高度计算，对应 LO SwFont CJK 字体槽）
+        if (!def.cjkFontName.empty() && !hasDirect(RES_CHRATR_CJK_FONT))
+            pTN->SetAttr(RES_CHRATR_CJK_FONT, def.cjkFontName);
         if (def.fontSize > 0)
         {
+            // LO: run-level direct size (w:sz) takes precedence over style size.
+            // Style size is only a fallback when run has no direct size.
             bool bUseStyleSize = !bHasTextContent || !hasDirect(RES_CHRATR_FONTSIZE);
-            const std::string* pDirectFont = pTN->GetAttr(RES_CHRATR_FONT);
-            const std::string* pDirectSize = pTN->GetAttr(RES_CHRATR_FONTSIZE);
-            if (!bUseStyleSize && pDirectFont
-                && (*pDirectFont == "Segoe UI Emoji" || *pDirectFont == "Segoe UI Semibold"))
-                bUseStyleSize = true;
-            // 装饰字体常带错误字号（36），样式字号更可靠
-            if (!bUseStyleSize && pDirectSize && def.fontSize > 0)
-            {
-                try
-                {
-                    if (std::stoi(*pDirectSize) > def.fontSize + 4)
-                        bUseStyleSize = true;
-                }
-                catch (...)
-                {
-                }
-            }
             if (bUseStyleSize)
                 pTN->SetAttr(RES_CHRATR_FONTSIZE, std::to_string(def.fontSize));
         }
@@ -2420,6 +2575,14 @@ void DocxParser::ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleN
             pTN->SetAttr(RES_PARATR_LINESPACING, std::to_string(def.spacingLine));
         if (def.spacingLineRule != "auto")
             pTN->SetAttr(RES_PARATR_LINE_RULE, def.spacingLineRule);
+        if (def.indentLeft != 0 && !hasDirect(RES_PARATR_INDENT))
+            pTN->SetAttr(RES_PARATR_INDENT, std::to_string(def.indentLeft));
+        if (def.indentRight != 0 && !hasDirect(RES_PARATR_RIGHT_INDENT))
+            pTN->SetAttr(RES_PARATR_RIGHT_INDENT, std::to_string(def.indentRight));
+        if (def.indentFirstLine != 0 && !hasDirect(RES_PARATR_FIRSTLINE))
+            pTN->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(def.indentFirstLine));
+        if (def.indentHanging != 0 && !hasDirect(RES_PARATR_HANGING))
+            pTN->SetAttr(RES_PARATR_HANGING, std::to_string(def.indentHanging));
         break;
     }
 }
@@ -2484,9 +2647,19 @@ void DocxParser::ApplyFirstTextRunFromXml(pugi::xml_node pNode, SwTextNode* pTN)
     if (!pNode || !pTN || pTN->GetText().empty())
         return;
 
+    // LO: 首 text portion 是第一个含 <w:t> 的 run，<w:br>/<w:tab>/<w:cr> 不算文本 portion
+    auto hasTextContent = [](pugi::xml_node rNode) {
+        for (auto c : rNode.children())
+        {
+            std::string n = c.name();
+            if (n == "w:t" || n == "w:sym")
+                return true;
+        }
+        return false;
+    };
+
     auto applyFirstRun = [&](pugi::xml_node r) {
-        std::string runText = ParseRunText(r);
-        if (runText.empty())
+        if (!hasTextContent(r))
             return false;
         auto rPr = r.child("w:rPr");
         if (rPr)
@@ -2587,25 +2760,36 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
     SwTextFormatColl* pColl = doc.GetDefaultTextFormatColl();
     SwTableNode* pTableNode = rNodes.InsertTable(*pInsertAfter, nCols, pColl, nRows);
 
+    // 获取 tableData 引用以便填充单元格内容（MakeFrames 读取 tableData 渲染）
+    SwTableNode::TableData tableData = pTableNode->GetTableData();
+
     // 解析表格内容到单元格
     // 遍历表格节点内部的单元格
     SwNodeOffset nTableIdx = pTableNode->GetIndex();
     SwNodeOffset nCellIdx = nTableIdx + 1;
+    int nRowIdx = 0;
 
     for (auto row : tblNode.children("w:tr"))
     {
+        int nColIdx = 0;
         for (auto cell : row.children("w:tc"))
         {
             // 找到当前单元格的 StartNode
             SwNode* pCellStart = rNodes[nCellIdx];
             if (!pCellStart || !pCellStart->IsStartNode())
+            {
+                nColIdx++;
                 continue;
+            }
 
             // 找到单元格内的 TextNode（在 StartNode 之后）
             SwNodeOffset nTextIdx = nCellIdx + 1;
             SwNode* pTextNode = rNodes[nTextIdx];
             if (!pTextNode || !pTextNode->IsTextNode())
+            {
+                nColIdx++;
                 continue;
+            }
 
             SwTextNode* pCellText = static_cast<SwTextNode*>(pTextNode);
 
@@ -2631,10 +2815,22 @@ void DocxParser::ParseTable(pugi::xml_node tblNode, SwDoc& doc)
             }
             pCellText->SetText(cellText);
 
+            // 同步填充 tableData（MakeFrames 通过 GetTableData 读取单元格文本）
+            if (nRowIdx < static_cast<int>(tableData.size())
+                && nColIdx < static_cast<int>(tableData[nRowIdx].cells.size()))
+            {
+                tableData[nRowIdx].cells[nColIdx].text = cellText;
+            }
+
             // 跳到下一个单元格（StartNode + TextNode + EndNode = 3 个节点）
             nCellIdx += 3;
+            nColIdx++;
         }
+        nRowIdx++;
     }
+
+    // 回写 tableData
+    pTableNode->SetTableData(tableData);
 }
 
 //===----------------------------------------------------------------------===//
@@ -2884,6 +3080,24 @@ void DocxParser::ParseRunProps(pugi::xml_node rPrNode, SwTextNode* pNode, bool b
                 auto it = themeFonts_.find(themeFont);
                 if (it != themeFonts_.end())
                     pNode->SetAttr(nFontWhich, it->second);
+            }
+        }
+
+        // 解析 CJK 字体（w:eastAsia / w:eastAsiaTheme）
+        // 对应 LO SwFont 的 CJK 字体槽，用于空段落高度计算
+        std::string eaFont = rFonts.attribute("w:eastAsia").as_string();
+        if (!eaFont.empty())
+        {
+            pNode->SetAttr(RES_CHRATR_CJK_FONT, eaFont);
+        }
+        else
+        {
+            std::string eaTheme = rFonts.attribute("w:eastAsiaTheme").as_string();
+            if (!eaTheme.empty())
+            {
+                auto it = themeFonts_.find(eaTheme);
+                if (it != themeFonts_.end())
+                    pNode->SetAttr(RES_CHRATR_CJK_FONT, it->second);
             }
         }
     }

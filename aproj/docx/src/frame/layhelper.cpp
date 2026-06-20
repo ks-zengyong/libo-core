@@ -3,10 +3,12 @@
 
 #include "layhelper.h"
 #include "frame.h"
+#include "frmtree.h"  // for InsertNewPage
 #include "../core/types.h"
 #include "../core/doc.h"
 #include "../core/node.h"
 #include <limits>
+#include <iostream>
 
 // ============================================================================
 // SwLayCacheImpl implementation
@@ -105,38 +107,83 @@ sal_uLong SwLayHelper::CalcPageCount()
 bool SwLayHelper::CheckInsertPage(SwPageFrame*& rpPage, SwLayoutFrame*& rpLay,
                                    SwFrame*& rpFrame, bool& rIsBreakAfter)
 {
-    // In LO, this checks break items and page descriptions to decide if a new page is needed
-    // Simplified: basic implementation without full break item support
+    // 对应 LO SwLayHelper::CheckInsertPage (laycache.cxx:615-688)
+    // LO 逻辑:
+    //   1. 从 frame 获取 SvxFormatBreakItem 和 SwFormatPageDesc
+    //   2. 检查 PageBefore/PageAfter/PageBoth
+    //   3. 如果有 break 或 page desc 变更，调用 InsertNewPage
+    //   4. 更新 rpPage/rpLay 到新页面
+    //
+    // aproj 适配:
+    //   - RES_BREAK 属性存储在 TextNode 上（"page"/"section"/"continuous"）
+    //   - "page" 对应 LO 的 PageBefore
+    //   - 暂不支持 PageAfter/PageBoth（OOXML w:br w:type="page" 已在解析时转为 RES_BREAK="page"）
 
     bool bEnd = (nullptr == rpPage->GetNext());
 
-    // Check for page break (simplified - in LO this checks SvxFormatBreakItem)
+    // 从 frame 获取关联的 TextNode，读取 RES_BREAK 属性
+    // 对应 LO: rpFrame->GetBreakItem()
     bool bBrk = rIsBreakAfter;
-    rIsBreakAfter = false; // Reset for next check
+    rIsBreakAfter = false; // Reset
+
+    if (!bBrk && rpFrame && rpFrame->IsTextFrame())
+    {
+        SwContentNode* pCN = rpFrame->GetNode();
+        if (pCN)
+        {
+            SwTextNode* pTN = pCN->GetTextNode();
+            if (pTN)
+            {
+                const std::string* pBreak = pTN->GetAttr(RES_BREAK);
+                if (pBreak && (*pBreak == "page" || *pBreak == "section"))
+                {
+                    // "page"/"section" 对应 LO PageBefore
+                    bBrk = true;
+                }
+            }
+        }
+    }
 
     if (bBrk)
     {
-        // Insert a new page
-        // In LO, this calls InsertNewPage with page desc
-        // Simplified: create a basic new page
+        // 对应 LO: ::InsertNewPage(pDesc, rpPage->GetUpper(), ...)
+        // aproj: 使用 InsertNewPage 创建新页面
+        SwRootFrame* pRoot = static_cast<SwRootFrame*>(rpPage->GetUpper());
+        if (!pRoot)
+            return false;
 
+        SwPageFrame* pNewPage = InsertNewPage(pRoot);
+        if (!pNewPage)
+            return false;
+
+        // 对应 LO: 更新 rpPage 到新页面
         if (bEnd)
         {
-            // We're at the end, need to create a new page
-            // This would normally call InsertNewPage from frmtool
-            // For now, return true to indicate page break needed
-            return true;
+            // 在末尾追加：rpPage 已由 InsertNewPage 追加到末尾
+            rpPage = pNewPage;
         }
         else
         {
-            // Move to next page
+            // 非末尾：移动到下一页
             rpPage = static_cast<SwPageFrame*>(rpPage->GetNext());
-            // FindBodyCont: get the body layout frame from the page
-            // In aproj, body is the first lower of the page
-            SwFrame* pLower = rpPage->GetLower();
-            rpLay = pLower && pLower->IsBodyFrame() ? static_cast<SwLayoutFrame*>(pLower) : nullptr;
-            return true;
+            // aproj 无空页概念，跳过 LO 的空页检查
         }
+
+        // 对应 LO: rpLay = rpPage->FindBodyCont()
+        // aproj: body 是页面的第一个 lower
+        SwFrame* pLower = rpPage->GetLower();
+        rpLay = pLower && pLower->IsBodyFrame() ? static_cast<SwLayoutFrame*>(pLower) : nullptr;
+
+        // 对应 LO: while (rpLay->Lower()) rpLay = static_cast<SwLayoutFrame*>(rpLay->Lower());
+        // 走到最深的布局叶子（处理 Section/Column 嵌套）
+        while (rpLay && rpLay->Lower() && rpLay->Lower()->IsLayoutFrame())
+        {
+            rpLay = static_cast<SwLayoutFrame*>(rpLay->Lower());
+        }
+
+        std::cerr << "[CheckInsertPage] New page created: pageNum="
+                  << (rpPage ? rpPage->GetPhyPageNum() : 0) << std::endl;
+        return true;
     }
 
     return false;
@@ -144,55 +191,84 @@ bool SwLayHelper::CheckInsertPage(SwPageFrame*& rpPage, SwLayoutFrame*& rpLay,
 
 bool SwLayHelper::CheckInsert(SwNodeOffset nNodeIndex)
 {
-    // In LO, this is the main entry point for InsertCnt_ function
-    // It checks if we need to insert a new page based on:
-    // 1. Layout cache (if available)
-    // 2. Break after flag
-    // 3. Content wanting a break before
-    // 4. Maximum content per page estimation
+    // 对应 LO SwLayHelper::CheckInsert (laycache.cxx:697-880)
+    // LO 主分页入口：处理表格/文本分拆、Follow 链、分页符、Section 帧
+    // aproj 适配：无 layout cache (mpImpl=nullptr)，因此 do-while 仅执行一次，
+    //   保留表格行计数、CheckInsertPage 调用、mrpPrv 高度填充、Section 帧处理
 
     bool bRet = false;
     nNodeIndex -= mnStartOfContent;
 
-    // Count rows if this is a table frame (simplified)
+    // Step 1: 统计表格行数 (对应 LO laycache.cxx:701-711)
     sal_uInt16 nRows = 0;
     if (mrpFrame && mrpFrame->IsTabFrame())
     {
         SwFrame* pLow = static_cast<SwTabFrame*>(mrpFrame)->Lower();
-        while (pLow)
+        do
         {
             ++nRows;
-            pLow = pLow->GetNext();
-        }
+            pLow = pLow ? pLow->GetNext() : nullptr;
+        } while (pLow);
     }
 
-    // First pass check (simplified)
+    // Step 2: 首次调用跳过 (对应 LO laycache.cxx:712-717)
+    // LO: 检查 layout cache 是否匹配当前节点；aproj 无 cache，直接跳过
     if (mbFirst && mpImpl && mnIndex < mpImpl->size())
     {
-        // In LO, this checks if the cache entry matches the current node
-        // Simplified: skip this for now
+        // aproj: 无 cache 实现，mbFirst 仅在首次调用时为 true
         mbFirst = false;
     }
 
+    // Step 3: 主处理循环 (对应 LO laycache.cxx:718-877)
     if (!mbFirst)
     {
-        // Main loop: check for page breaks
-        // In LO, this has a complex loop handling splits and fly caches
-        // Simplified: basic page break check
-
-        SwPageFrame* pLastPage = mrpPage;
-        if (CheckInsertPage(mrpPage, mrpLay, mrpFrame, mbBreakAfter))
+        do
         {
-            bRet = true;
-            mrpPrv = nullptr;
+            // LO: 若 mpImpl 存在，处理分拆 (text/table split) 和 break cache
+            // aproj: 无 cache，跳过 split 处理
 
-            // Handle section frames (simplified)
-            if (mrpActualSection)
+            // Step 3a: 调用 CheckInsertPage (对应 LO laycache.cxx:824-825)
+            SwPageFrame* pLastPage = mrpPage;
+            if (CheckInsertPage(mrpPage, mrpLay, mrpFrame, mbBreakAfter))
             {
-                // In LO, this handles section frame creation for new pages
-                // Simplified: placeholder for section handling
+                // Step 3b: 检查 fly cache (对应 LO laycache.cxx:827)
+                CheckFlyCache_(pLastPage);
+
+                // Step 3c: 填充前一帧高度 (对应 LO laycache.cxx:828-832)
+                // LO: 若 mrpPrv 是 TextFrame 且高度未验证，设为父布局打印区高度
+                // 这确保分页时上一帧填满剩余页面空间
+                if (mrpPrv && mrpPrv->IsTextFrame() && !mrpPrv->isFrameAreaSizeValid())
+                {
+                    SwLayoutFrame* pUp = mrpPrv->GetUpper();
+                    if (pUp)
+                    {
+                        // aproj: 复制 frame area，修改高度，写回
+                        // 对应 LO: aFrm.Height(mrpPrv->GetUpper()->getFramePrintArea().Height())
+                        SwTwips nFillHeight = pUp->getFramePrintArea().Height();
+                        SwRect aArea = mrpPrv->getFrameArea();
+                        aArea.SetHeight(nFillHeight);
+                        mrpPrv->setFrameArea(aArea);
+                    }
+                }
+
+                bRet = true;
+                mrpPrv = nullptr;
+
+                // Step 3d: Section 帧处理 (对应 LO laycache.cxx:837-873)
+                // LO: 若存在 ActualSection，在新页面创建 Section 帧并移动内容
+                // aproj: Section 架构不同（Task 3.x 处理），此处保留接口
+                if (mrpActualSection && mrpActualSection->GetSectionFrame())
+                {
+                    // TODO Task 3.3: 迁移 LO Section 帧分页逻辑
+                    // 当前 aproj Section 由 ProcessMultiColumnSection 处理（待删除）
+                    // 暂保留空实现，避免破坏现有分页
+                }
             }
-        }
+
+            // LO: do-while 条件 - cache 中仍有当前节点的 break 条目
+            // aproj: 无 cache，循环仅执行一次
+        } while (mpImpl && mnIndex < mpImpl->size() &&
+                 mpImpl->GetBreakIndex(mnIndex) == nNodeIndex);
     }
 
     mbFirst = false;

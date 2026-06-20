@@ -175,6 +175,13 @@ enum SwAttrWhich : sal_uInt16
     RES_PARATR_HYPHENZONE,
     RES_PARATR_DROP, // 首字下沉
     RES_PARATR_INDENT, // 段落缩进（左缩进 twips）
+    RES_PARATR_RIGHT_INDENT, // 段落右缩进（twips，对应 LO SvxLRSpaceItem::GetRight）
+    RES_PARATR_FIRSTLINE, // 首行缩进（twips，对应 w:firstLine / SvxLRSpaceItem::GetTextFirstLineOfst）
+    RES_PARATR_HANGING, // 悬挂缩进（twips，对应 w:hanging，除首行外其他行额外缩进）
+    RES_PARATR_INDENT_CHARS, // 左缩进字符数（w:leftChars，1/100 字符，非零时覆盖 left）
+    RES_PARATR_RIGHT_INDENT_CHARS, // 右缩进字符数（w:rightChars）
+    RES_PARATR_FIRSTLINE_CHARS, // 首行缩进字符数（w:firstLineChars）
+    RES_PARATR_HANGING_CHARS, // 悬挂缩进字符数（w:hangingChars）
     RES_PARATR_LINE_RULE, // 行距规则：auto / exact / atLeast（对应 w:lineRule）
     RES_PARATR_END,
 
@@ -188,6 +195,7 @@ enum SwAttrWhich : sal_uInt16
     RES_CHRATR_STRIKETHROUGH,
     RES_CHRATR_COLOR, // 颜色
     RES_CHRATR_LANGUAGE, // 语言
+    RES_CHRATR_CJK_FONT, // CJK 字体（w:eastAsia，对应 LO SwFont 的 CJK 字体槽）
     RES_CHRATR_END,
 
     // 段落标记字符属性（w:pPr/w:rPr）
@@ -196,6 +204,10 @@ enum SwAttrWhich : sal_uInt16
     RES_CHRATR_FONT_PARA_MARK = RES_CHRATR_PARA_MARK_BEGIN, // 段落标记字体
     RES_CHRATR_FONTSIZE_PARA_MARK, // 段落标记字号（半点）
     RES_CHRATR_PARA_MARK_END,
+
+    // 样式链字号（来自段落样式的 ResolveAttr，不受 run rPr 覆盖）
+    // 用于 *Chars 转换：LO 对首字符是 \n（<w:br>）的段落用样式链字号
+    RES_CHRATR_FONTSIZE_STYLE,
 
     // 框架属性
     RES_FRM_SIZE = 200,

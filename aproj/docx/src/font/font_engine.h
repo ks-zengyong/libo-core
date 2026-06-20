@@ -102,6 +102,13 @@ public:
     int FindLineBreak(const std::string& fontName, int fontSizeHalfPt, const std::string& text,
                       SwTwips maxWidth);
 
+    // 文档兼容性设置（对应 LO DocumentSettingId）
+    // MS_WORD_COMP_GRID_METRICS: <w:useFELayout/> 触发，CJK 字体高度 *127/100
+    static void SetMsWordCompGridMetrics(bool bSet);
+    static bool GetMsWordCompGridMetrics();
+    // ADD_EXT_LEADING: DOCX 默认 true，ext leading 加入行高
+    static void SetAddExtLeading(bool bSet);
+
 private:
     FontEngine() = default;
     ~FontEngine() = default;
