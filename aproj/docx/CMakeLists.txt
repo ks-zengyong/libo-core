@@ -4,6 +4,21 @@ project(docx_core LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# 统一输出目录：所有 dll/lib/exe 产物输出到 aproj/docx/output
+set(DOCX_OUTPUT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/output)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${DOCX_OUTPUT_DIR})  # exe (Windows) / so (Linux)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${DOCX_OUTPUT_DIR})  # dll (Windows) / dylib (macOS)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${DOCX_OUTPUT_DIR})  # lib (Windows) / a (Linux)
+
+# 多配置生成器 (Visual Studio/Xcode) 默认会追加 Debug/Release 子目录，
+# 这里按配置覆盖为同一目录，使产物直接平铺到 output/ 下。
+foreach(CFG ${CMAKE_CONFIGURATION_TYPES})
+    string(TOUPPER ${CFG} CFG_UPPER)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${CFG_UPPER} ${DOCX_OUTPUT_DIR})
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${CFG_UPPER} ${DOCX_OUTPUT_DIR})
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${CFG_UPPER} ${DOCX_OUTPUT_DIR})
+endforeach()
+
 # Third-party sources
 set(THIRD_PARTY_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party)
 

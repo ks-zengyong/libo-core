@@ -18,7 +18,7 @@ echo   aproj/docx Build [%BUILD_CONFIG%]
 echo ========================================
 
 :: -- CMake Configure --------------------------
-echo [1/3] Configuring...
+echo [1/2] Configuring...
 cmake -B build -G "Visual Studio 17 2022" -A x64
 if %ERRORLEVEL% neq 0 (
     echo ERROR: CMake configure failed
@@ -26,34 +26,11 @@ if %ERRORLEVEL% neq 0 (
 )
 
 :: -- MSBuild Compile --------------------------
-echo [2/3] Building...
+echo [2/2] Building (artifacts go to output\)...
 cmake --build build --config %BUILD_CONFIG%
 if %ERRORLEVEL% neq 0 (
     echo ERROR: Build failed
     exit /b 1
-)
-
-:: -- Copy to output ----------------------------
-echo [3/3] Copying artifacts...
-if not exist output mkdir output
-if /I "%BUILD_CONFIG%"=="Debug" (
-    copy /Y build\%BUILD_CONFIG%\docx_e2e_test_debug.exe output\ >nul
-    copy /Y build\%BUILD_CONFIG%\render_diff_debug.exe   output\ >nul
-    copy /Y build\%BUILD_CONFIG%\node_diff_debug.exe     output\ >nul
-    copy /Y build\%BUILD_CONFIG%\frame_diff_debug.exe    output\ >nul
-    echo   docx_e2e_test_debug.exe
-    echo   render_diff_debug.exe
-    echo   node_diff_debug.exe
-    echo   frame_diff_debug.exe
-) else (
-    copy /Y build\%BUILD_CONFIG%\docx_e2e_test.exe output\ >nul
-    copy /Y build\%BUILD_CONFIG%\render_diff.exe   output\ >nul
-    copy /Y build\%BUILD_CONFIG%\node_diff.exe     output\ >nul
-    copy /Y build\%BUILD_CONFIG%\frame_diff.exe    output\ >nul
-    echo   docx_e2e_test.exe
-    echo   render_diff.exe
-    echo   node_diff.exe
-    echo   frame_diff.exe
 )
 
 echo.

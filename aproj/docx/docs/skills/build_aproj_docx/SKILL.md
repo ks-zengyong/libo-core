@@ -18,20 +18,36 @@ cd aproj/docx
 cmake -B build -G "Visual Studio 17 2022" -A x64
 ```
 
-### 编译
+### 编译（必须使用 build.bat）
 
-使用 `build.bat`（推荐）：
+> **⚠️ 重要：必须使用 `build.bat` 编译，不要直接调用 `cmake --build`！**
 
 ```bash
 build.bat              # Debug 模式（默认）
 build.bat Release      # Release 模式
 ```
 
-或手动编译：
+**原因**：`build.bat` 是项目统一的编译入口，包含了完整的配置检查、编译流程和产物整理。直接使用 `cmake --build` 可能导致产物路径不一致或其他问题。
 
-```bash
-cmake --build build --config Debug
-cmake --build build --config Release
+### 编译产物输出位置
+
+所有编译产物（exe、lib、pdb）统一输出到 `aproj/docx/output/` 目录下，无 Debug/Release 子目录：
+
+```
+output/
+├── docx_core.lib           # 核心静态库
+├── harfbuzz.lib
+├── miniz.lib
+├── pugixml.lib
+├── render_common.lib
+├── docx_e2e_test_debug.exe   # 端到端测试（Debug）
+├── docx_e2e_test.exe         # 端到端测试（Release）
+├── node_diff_debug.exe
+├── node_diff.exe
+├── frame_diff_debug.exe
+├── frame_diff.exe
+├── render_diff_debug.exe
+└── render_diff.exe
 ```
 
 ## 注意事项
@@ -53,11 +69,9 @@ cmake --build build --config Release
 | `pugixml` | 静态库 | XML 解析库 |
 | `harfbuzz` | 静态库 | 字体 shaping 库 |
 
-产物路径：`build/Debug/`（Debug）或 `build/Release/`（Release），编译后自动拷贝到 `output/`。
-
 ## 相关文件
 
-- `aproj/docx/build.bat` — 编译入口脚本
+- `aproj/docx/build.bat` — **编译入口脚本（必须使用）**
 - `aproj/docx/CMakeLists.txt` — 构建配置
 - `aproj/docx/test/test_end_to_end.cpp` — 端到端测试入口
 - `aproj/docx/test/gen_aproj.py` — 调用 docx_e2e_test 生成产物的脚本
