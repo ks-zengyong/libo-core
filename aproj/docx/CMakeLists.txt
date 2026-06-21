@@ -118,6 +118,27 @@ target_compile_definitions(frame_diff PRIVATE _CRT_SECURE_NO_WARNINGS=1)
 # Debug 编译产物加 _debug 后缀
 set_target_properties(docx_e2e_test render_diff node_diff frame_diff PROPERTIES DEBUG_POSTFIX "_debug")
 
+# 字体诊断工具
+add_executable(font_diagnose src/font_diagnose.cpp)
+target_include_directories(font_diagnose PRIVATE src/font)
+target_link_libraries(font_diagnose PRIVATE docx_core)
+target_compile_definitions(font_diagnose PRIVATE _CRT_SECURE_NO_WARNINGS=1)
+set_target_properties(font_diagnose PROPERTIES DEBUG_POSTFIX "_debug")
+
+# GDI 诊断工具（无依赖）
+add_executable(gdi_diag src/gdi_diag.cpp)
+target_compile_definitions(gdi_diag PRIVATE _CRT_SECURE_NO_WARNINGS=1)
+set_target_properties(gdi_diag PROPERTIES DEBUG_POSTFIX "_debug")
+
+# 段落属性诊断
+add_executable(para_diag src/para_diag.cpp)
+target_include_directories(para_diag PRIVATE src/core src/filter src/frame src/font src/layout
+                                     ${CMAKE_CURRENT_SOURCE_DIR}/third_party
+                                     ${CMAKE_CURRENT_SOURCE_DIR}/../../render_common)
+target_link_libraries(para_diag PRIVATE docx_core pugixml miniz)
+target_compile_definitions(para_diag PRIVATE _CRT_SECURE_NO_WARNINGS=1 NOMINMAX=1)
+set_target_properties(para_diag PROPERTIES DEBUG_POSTFIX "_debug")
+
 # MSVC specific
 if(MSVC)
     target_compile_options(docx_e2e_test PRIVATE /W3 /utf-8)
