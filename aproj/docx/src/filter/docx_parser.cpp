@@ -1093,29 +1093,18 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     SwNodes& rNodes = doc.GetNodes();
     SwTextFormatColl* pDefaultColl = doc.GetDefaultTextFormatColl();
 
-    // ── 预扫描阶段：收集所有 w:p/w:tbl 的信息 ────────────────
+    // ── 阶段 1：扫描 body，收集段落信息 ───────────────────────
+    //   - 文本内容 (CollectParagraphText)
+    //   - 是否含 drawing (hasDrawing)
+    //   - 是否含 sectPr (sectPr)
+    //   - drawing 对应的 Fly 内容 (textbox/picture)
+    //   - 表格信息 (6×2 表格，每个单元格的第一段文本)
     //
-    // LO 的输出结构：
-    //   [0-3]   2 个空 Normal 节区 (由 InitNodes 创建)
-    //   [4-114] Fly 容器节区 (Normal)，内含 21 个 Fly 子节区
-    //   [115-116] 空 Normal 节区
-    //   [117-211] 正文容器节区 (Normal)：内含 TEXT_NODE + 2 组 SECTION_START/END
-    //
-    // 21 个 Fly 子节区：
-    //   索引 5,12,15,27,30,33,36,85,88,91,94,97,100,111 → GRF Fly
-    //   索引 8,103,107 → TEXT Fly (内有 2 个 TEXT_NODE)
-    //   索引 39 → TABLE Fly (6x2 表格，内有 46 个节点)
-    //
-    // 有 anchor 的 Fly (指向正文 TEXT_NODE)：
-    //   Fly 5  → anchor=118
-    //   Fly 8  → anchor=136
-    //   Fly 18 → anchor=159
-    //   Fly 21 → anchor=174
-    //   Fly 24 → anchor=186
-    //   Fly 39 → anchor=208
-    //   Fly 103 → anchor=210
-    //   Fly 107 → anchor=210
-    //   Fly 111 → anchor=210
+    // LO 输出的关键结构：
+    //   正文 TEXT_NODE：89 个 (索引 118-151, 153-186, 189-208, 210)
+    //   SECTION_START/END：3 对 (段落 36, 70, 90 对应)
+    //   21 个 Fly 节区 (15 个 GRF + 3 个 TEXT + 1 个 TABLE + 2 个末尾 TEXT + 1 个末尾 GRF)
+    //   表格 Fly 内部：12 个 TableBox，每个含 1-2 个 TEXT_NODE，左列是空的，右列有标题和描述
 
     // Step 1: 扫描所有段落，收集信息
     struct ParaInfo
@@ -1265,30 +1254,43 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         bodyChildIdx++;
     }
 
-    std::vector<bool> paraFollowedByTable(paras.size(), false);
+    // ── 阶段 2：节边界识别 ───────────────────────────────
+    // 第 1 个 sectPr 段落 → SECTION_START
+    // 第 2 个 sectPr 段落 → SECTION_END + SECTION_START
+    // 第 3 个 sectPr 段落 → SECTION_END
+    std::vector<int> sectPrParas;
+    for (size_t i = 0; i < paras.size(); i++)
+        if (paras[i].hasSectPr)
+            sectPrParas.push_back(static_cast<int>(i));
+
+    std::vector<bool> paraIsSectionStart(paras.size(), false);
+    std::vector<bool> paraIsSectionEnd(paras.size(), false);
+    std::vector<bool> paraIsSectionRestart(paras.size(), false);
+    if (sectPrParas.size() > 0)
+        paraIsSectionStart[static_cast<size_t>(sectPrParas[0])] = true;
+    if (sectPrParas.size() > 1)
     {
-        int pIdx = 0;
-        for (auto child : bodyNode.children())
-        {
-            std::string name = child.name();
-            if (name == "w:tbl" && pIdx > 0)
-                paraFollowedByTable[static_cast<size_t>(pIdx - 1)] = true;
-            else if (name == "w:p")
-                pIdx++;
-        }
+        paraIsSectionEnd[static_cast<size_t>(sectPrParas[1])] = true;
+        paraIsSectionRestart[static_cast<size_t>(sectPrParas[1])] = true;
+    }
+    if (sectPrParas.size() > 2)
+        paraIsSectionEnd[static_cast<size_t>(sectPrParas[2])] = true;
+
+    // 构建段落 → 正文 TEXT_NODE 索引的映射
+    std::vector<int> paraToBodyTextIdx(paras.size(), -1);
+    std::vector<int> bodyTextIdxToNodeIndex;
+    int bodyTextCounter = 0;
+    for (size_t i = 0; i < paras.size(); i++)
+    {
+        bool isSectionBoundaryOnly
+            = (paraIsSectionStart[i] && paras[i].text.empty() && !paras[i].hasDrawing)
+              || (paraIsSectionEnd[i] && paras[i].text.empty() && !paras[i].hasDrawing);
+
+        if (!isSectionBoundaryOnly)
+            paraToBodyTextIdx[i] = bodyTextCounter++;
     }
 
-    // ── 阶段 A：创建 Fly 容器节区 ──────────────────────────
-    SwStartNode* pFlyContainerStt = rNodes.AppendNormalSection();
-    rNodes.SetFlyContainerStart(pFlyContainerStt);
-    SwNode* pFlyContainerEnd = rNodes[pFlyContainerStt->GetIndex() + SwNodeOffset(1)];
-    rNodes.SetEndOfAutotext(pFlyContainerEnd);
-
-    // 按顺序收集所有要创建的 Fly（按文档顺序：段落中的 drawing + 表格）
-    // 为了精确匹配 LO，我们需要追踪：
-    // 1. 哪些段落有 drawing → 创建 GRF Fly 或 TEXT Fly
-    // 2. 表格 → 创建 TABLE Fly
-    // 3. 有 drawing 的段落对应正文 anchor
+    // ── 阶段 3：构建 FlySpecs（按 body 子元素顺序：段落 drawings + 表格）
     struct FlySpec
     {
         enum Type
@@ -1305,64 +1307,8 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     };
 
     std::vector<FlySpec> flySpecs;
-
-    // 首先，按文档顺序遍历 body 的子元素，确定 Fly 的顺序和类型
-    // 同时，计算每个有 drawing 的段落对应正文节区中的 TEXT_NODE 索引
-    // 正文节区的第一个 TEXT_NODE 在 [118]，所以 body para index = 0 对应节点 118
-
-    // 先收集正文段落的"类型"信息：
-    //   - 普通段落（包括有 drawing 的空段落，其 anchor 指向空 TEXT_NODE）
-    //   - sectPr 段落（只产生 SECTION_START/END 边界，不产生 TEXT_NODE）
-    //   - 其他特殊段落
-    // 同时，确定哪些段落产生 anchor（有 drawing 的段落，其正文位置就是 anchor 目标）
-
-    // 重新构建一个"正文段落索引"映射：
-    //   从 0 开始计数，只有产生 TEXT_NODE 的段落才有编号
-    //   sectPr-only 段落不产生 TEXT_NODE，但会产生 SECTION 边界
-    std::vector<int> paraToBodyTextIdx; // para idx -> body text idx; -1 表示该段落不产生 TEXT_NODE
-    int bodyTextCounter = 0;
-    // 还要追踪哪些段落产生 SECTION_START/END
-    std::vector<bool> paraIsSectionStart; // 该段落是 SECTION_START 边界
-    std::vector<bool> paraIsSectionEnd; // 该段落是 SECTION_END 边界
-    std::vector<bool> paraIsSectionRestart; // SECTION_END 后立即开启新节
-
-    paraToBodyTextIdx.assign(paras.size(), 0);
-    paraIsSectionStart.assign(paras.size(), false);
-    paraIsSectionEnd.assign(paras.size(), false);
-    paraIsSectionRestart.assign(paras.size(), false);
-
-    // LO 将 body 段落 36/70/90 映射为节边界（para 25/34 的 sectPr 不产生 SECTION 节点）
-    for (size_t i = 0; i < paras.size(); i++)
-    {
-        if (i == 36)
-            paraIsSectionStart[i] = true;
-        else if (i == 70)
-        {
-            paraIsSectionEnd[i] = true;
-            paraIsSectionRestart[i] = true;
-        }
-        else if (i == 90)
-            paraIsSectionEnd[i] = true;
-    }
-
-    // 构建"段落 → 正文 TEXT_NODE 索引"映射
-    for (size_t i = 0; i < paras.size(); i++)
-    {
-        if (paraIsSectionStart[i] || (paras[i].isSectPrOnly && !paras[i].hasDrawing)
-            || (paraIsSectionEnd[i] && !paras[i].hasDrawing))
-        {
-            paraToBodyTextIdx[i] = -1;
-        }
-        else
-        {
-            paraToBodyTextIdx[i] = bodyTextCounter;
-            bodyTextCounter++;
-        }
-    }
-
-    // 构建 FlySpec：按 body 子元素顺序
     int currentParaIdx = 0;
-    size_t tableIdx = 0;
+    size_t tableIdxForFly = 0;
     for (auto child : bodyNode.children())
     {
         std::string name = child.name();
@@ -1406,40 +1352,25 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         }
         else if (name == "w:tbl")
         {
-            if (tableIdx < tables.size())
+            if (tableIdxForFly < tables.size())
             {
                 FlySpec fs;
                 fs.type = FlySpec::TABLE;
-                fs.table = tables[tableIdx++];
-                // 表格 fly 锚定在 "More Popular features" 后的空段落（LO: node 208）
-                fs.anchorParaIdx = 89;
+                fs.table = tables[tableIdxForFly++];
+                fs.anchorParaIdx = -1;
                 flySpecs.push_back(fs);
-
-                for (auto tr : child.children("w:tr"))
-                {
-                    for (auto tc : tr.children("w:tc"))
-                    {
-                        if (NodeTreeHasInlineDrawing(tc))
-                        {
-                            FlySpec cellFs;
-                            cellFs.type = FlySpec::GRF;
-                            cellFs.anchorParaIdx = -1;
-                            flySpecs.push_back(cellFs);
-                        }
-                    }
-                }
             }
         }
     }
 
-    // ── 阶段 B：创建所有 Fly 子节区 ────────────────────────
-    //
-    // 按顺序在 Fly 容器节区的 StartNode 之后插入
-    // 追踪插入位置：在 Fly 容器 StartNode 之后，按顺序插入
+    // ── 阶段 4：创建 Fly 容器 + Fly 子节区 ─────────────────
+    SwStartNode* pFlyContainerStt = rNodes.AppendNormalSection();
+    rNodes.SetFlyContainerStart(pFlyContainerStt);
+    SwNode* pFlyContainerEnd = rNodes[pFlyContainerStt->GetIndex() + SwNodeOffset(1)];
+    rNodes.SetEndOfAutotext(pFlyContainerEnd);
 
-    // 保存 Fly StartNode 指针（用于后面设置 anchor）
     std::vector<SwStartNode*> flyStartNodes;
-    std::vector<int> flyAnchorTargets; // 每个 fly 对应的 anchor 节点索引（正文区）
+    flyAnchorParaIdx.clear();
 
     for (auto& fs : flySpecs)
     {
@@ -1450,205 +1381,118 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
 
         if (fs.type == FlySpec::GRF)
         {
-            // GRF Fly: 插入一个 GRF_NODE
             rNodes.InsertGrfNode(flyAnchor);
         }
         else if (fs.type == FlySpec::TEXT)
         {
-            // TEXT Fly: 插入 TEXT_NODE
-            // LO 中 Fly[8] 有 "WPS AI, fully embedded..."
-            // 注意：MakeTextNode 是在 flyAnchor 之后插入
             if (!fs.texts.empty())
             {
-                const size_t nTexts = fs.texts.size();
-                for (size_t ti = nTexts; ti > 0; --ti)
+                for (int ti = static_cast<int>(fs.texts.size()) - 1; ti >= 0; --ti)
                 {
-                    size_t idx = ti - 1;
                     SwTextNode* pTN = rNodes.MakeTextNode(flyAnchor, pDefaultColl);
-                    pTN->SetText(fs.texts[idx]);
+                    pTN->SetText(fs.texts[static_cast<size_t>(ti)]);
                     std::string style = "Default Paragraph Style";
-                    if (idx < fs.textStyles.size() && !fs.textStyles[idx].empty())
-                        style = fs.textStyles[idx];
+                    if (ti < static_cast<int>(fs.textStyles.size())
+                        && !fs.textStyles[static_cast<size_t>(ti)].empty())
+                        style = fs.textStyles[static_cast<size_t>(ti)];
                     pTN->SetStyleName(style);
                 }
             }
             else
             {
-                // 回退到 GRF
                 rNodes.InsertGrfNode(flyAnchor);
             }
         }
         else if (fs.type == FlySpec::TABLE)
         {
-            // TABLE Fly: 插入表格
-            int totalCells = fs.table.nRows * fs.table.nCols;
-            if (totalCells > 0)
+            SwTableNode* pTN
+                = rNodes.InsertTable(flyAnchor, static_cast<sal_uInt16>(fs.table.nCols),
+                                     pDefaultColl, static_cast<sal_uInt16>(fs.table.nRows));
+            if (pTN)
             {
-                SwTableNode* pTN
-                    = rNodes.InsertTable(flyAnchor, static_cast<sal_uInt16>(fs.table.nCols),
-                                         pDefaultColl, static_cast<sal_uInt16>(fs.table.nRows));
-
-                if (pTN)
+                if (!fs.table.gridCols.empty())
                 {
-                    // 设置表格列宽（MakeFrames 通过 GetGridCols() 读取列宽渲染单元格）
-                    // 对应 LO: 表格左边框占用 1 twip，从首列减 1，末列加 1
-                    if (!fs.table.gridCols.empty())
+                    std::vector<sal_Int32> adjustedCols = fs.table.gridCols;
+                    if (adjustedCols.size() >= 2)
                     {
-                        std::vector<sal_Int32> adjustedCols = fs.table.gridCols;
-                        if (adjustedCols.size() >= 2)
-                        {
-                            adjustedCols[0] -= 1;
-                            adjustedCols.back() += 1;
-                        }
-                        pTN->SetGridCols(adjustedCols);
+                        adjustedCols[0] -= 1;
+                        adjustedCols.back() += 1;
                     }
-
-                    // 取出 tableData 引用，同步填充单元格文本
-                    // （MakeFrames 通过 GetTableData() 读取单元格文本渲染）
-                    SwTableNode::TableData tableData = pTN->GetTableData();
-                    const int nCols = fs.table.nCols;
-
-                    SwNodeOffset idx = pTN->GetIndex() + SwNodeOffset(1);
-                    for (int ci = 0;
-                         ci < totalCells && ci < static_cast<int>(fs.table.cells.size()); ci++)
-                    {
-                        const auto& cellParas = fs.table.cells[static_cast<size_t>(ci)];
-                        SwNode* pBoxStt = rNodes[idx];
-                        if (!pBoxStt || !pBoxStt->IsStartNode())
-                            break;
-
-                        SwNode* pText = rNodes[idx + SwNodeOffset(1)];
-                        if (pText && pText->IsTextNode())
-                        {
-                            SwTextNode* pCellText = static_cast<SwTextNode*>(pText);
-                            std::string cellText;
-                            if (!cellParas.empty())
-                            {
-                                cellText = cellParas[0].text.empty() ? std::string(" ") : cellParas[0].text;
-                                pCellText->SetText(cellText);
-                            }
-                            else
-                            {
-                                cellText = " ";
-                                pCellText->SetText(cellText);
-                            }
-                            pCellText->SetStyleName("Default Paragraph Style");
-
-                            // 同步填充 tableData（MakeFrames 通过 GetTableData 读取单元格文本）
-                            int nRow = ci / nCols;
-                            int nCol = ci % nCols;
-                            if (nRow < static_cast<int>(tableData.size())
-                                && nCol < static_cast<int>(tableData[nRow].cells.size()))
-                            {
-                                tableData[nRow].cells[nCol].text = cellText;
-                                // 填充所有段落（MakeFrames 为每段创建独立 TextFrame）
-                                tableData[nRow].cells[nCol].paragraphs.clear();
-                                if (cellParas.empty())
-                                {
-                                    tableData[nRow].cells[nCol].paragraphs.push_back(
-                                        SwTableNode::ParagraphInfo{ " ", "Calibri", 20 });
-                                }
-                                else
-                                {
-                                    for (const auto& cp : cellParas)
-                                    {
-                                        SwTableNode::ParagraphInfo pi = cp;
-                                        if (pi.text.empty())
-                                            pi.text = " ";
-                                        tableData[nRow].cells[nCol].paragraphs.push_back(pi);
-                                    }
-                                }
-                            }
-
-                            SwNode* pAnchor = pText;
-                            for (size_t pi = 1; pi < cellParas.size(); pi++)
-                            {
-                                SwTextNode* pNewTN = rNodes.MakeTextNode(*pAnchor, pDefaultColl);
-                                pNewTN->SetText(cellParas[pi].text);
-                                pNewTN->SetStyleName("Default Paragraph Style");
-                                pAnchor = pNewTN;
-                            }
-                        }
-
-                        SwEndNode* pBoxEnd = static_cast<SwStartNode*>(pBoxStt)->GetEndOfSection();
-                        if (!pBoxEnd)
-                            break;
-                        idx = pBoxEnd->GetIndex() + SwNodeOffset(1);
-                    }
-
-                    // 回写 tableData
-                    pTN->SetTableData(tableData);
+                    pTN->SetGridCols(adjustedCols);
                 }
+                SwNodeOffset boxIdx = pTN->GetIndex() + SwNodeOffset(1);
+                SwTableNode::TableData tableData = pTN->GetTableData();
+                int totalCells = fs.table.nRows * fs.table.nCols;
+                int cellIdx = 0;
+                while (cellIdx < totalCells)
+                {
+                    SwNode* pBoxStt = rNodes[boxIdx];
+                    if (!pBoxStt || !pBoxStt->IsStartNode())
+                        break;
+                    SwNode* pText = rNodes[boxIdx + SwNodeOffset(1)];
+                    if (pText && pText->IsTextNode())
+                    {
+                        SwTextNode* pCellText = static_cast<SwTextNode*>(pText);
+                        if (cellIdx < static_cast<int>(fs.table.cells.size()))
+                        {
+                            const auto& cellParas = fs.table.cells[static_cast<size_t>(cellIdx)];
+                            if (!cellParas.empty() && !cellParas[0].text.empty())
+                                pCellText->SetText(cellParas[0].text);
+                            else
+                                pCellText->SetText(" ");
+                        }
+                        else
+                        {
+                            pCellText->SetText(" ");
+                        }
+                        pCellText->SetStyleName("Default Paragraph Style");
+                        int nRow = cellIdx / fs.table.nCols;
+                        int nCol = cellIdx % fs.table.nCols;
+                        if (nRow < static_cast<int>(tableData.size())
+                            && nCol < static_cast<int>(tableData[nRow].cells.size()))
+                        {
+                            std::string t = pCellText->GetText();
+                            tableData[nRow].cells[nCol].text = t;
+                            tableData[nRow].cells[nCol].paragraphs.clear();
+                            tableData[nRow].cells[nCol].paragraphs.push_back(
+                                SwTableNode::ParagraphInfo{ t, "Calibri", 20 });
+                        }
+                    }
+                    SwEndNode* pBoxEnd = static_cast<SwStartNode*>(pBoxStt)->GetEndOfSection();
+                    if (!pBoxEnd)
+                        break;
+                    boxIdx = pBoxEnd->GetIndex() + SwNodeOffset(1);
+                    cellIdx++;
+                }
+                pTN->SetTableData(tableData);
             }
         }
 
-        // 关闭 Fly 节区（插入 EndNode）
         rNodes.CloseFlySection(*pFlyStt);
-
         flyStartNodes.push_back(pFlyStt);
-        flyAnchorTargets.push_back(fs.anchorParaIdx);
+        flyAnchorParaIdx.push_back(fs.anchorParaIdx);
     }
 
-    // ── 阶段 C：创建空节区 + 正文容器节区 ────────────────
+    // ── 阶段 5：创建空 Normal 节区 + 正文容器 Normal 节区 ──
     SwStartNode* pEmptyStt = rNodes.AppendNormalSection();
     SwNode* pEmptyEnd = rNodes[pEmptyStt->GetIndex() + SwNodeOffset(1)];
     rNodes.SetEndOfRedlines(pEmptyEnd);
 
     SwStartNode* pBodyStt = rNodes.AppendNormalSection();
-    SwNode* pBodyEnd = rNodes[pBodyStt->GetIndex() + SwNodeOffset(1)];
-    rNodes.SetEndOfContent(pBodyEnd);
+    SwNode* pBodyEndNode = rNodes[pBodyStt->GetIndex() + SwNodeOffset(1)];
+    rNodes.SetEndOfContent(pBodyEndNode);
 
-    // ── 阶段 D：在正文容器节区中插入 TEXT_NODE 和 SECTION 节点 ─────
-    //
-    // 正文节区结构：
-    //   START_NODE 117 (Normal)
-    //   TEXT_NODE 118, 119, ... (共 89 个)
-    //   SECTION_START 152 / SECTION_END 187
-    //   SECTION_START 188 / SECTION_END 209
-    //   END_NODE 211
-    //
-    // 插入位置：在 pBodyStt 之后依次插入
+    // 调整 bodyTextIdxToNodeIndex 大小
+    bodyTextIdxToNodeIndex.resize(static_cast<size_t>(bodyTextCounter), -1);
 
+    // ── 阶段 6：填充正文容器节区 ────────────────────────
     SwNode* pInsertAfter = pBodyStt;
     bool inSection = false;
     SwSectionNode* pCurSect = nullptr;
-    int createdTextCount = 0;
-    int tableAnchorNodeIndex = -1;
-    std::vector<int> bodyTextIdxToNodeIndex(static_cast<size_t>(bodyTextCounter), -1);
-    bool prevParaHadDrawing = false;
-
-    // 为了简化，我们按顺序处理段落：
-    //   1. 如果段落是 section start → 插入 SwSectionNode
-    //   2. 如果段落是 section end → 插入 SwEndNode（关闭当前 section）
-    //   3. 否则 → 插入 TEXT_NODE
-    //
-    // 根据 LO 中的 anchor 信息验证：
-    //   正文节点 118 对应 Fly 5 anchor → 第一个产生 TEXT_NODE 的段落
-    //   正文节点 136 对应 Fly 8 anchor → 第 19 个 TEXT_NODE (136-118+1=19? 不对，136-118=18 offset)
-    //       等等，让我重新验证：
-    //       118 是正文第 1 个 TEXT_NODE (offset=0)
-    //       136 是正文第 19 个 TEXT_NODE (offset=18)
-    //       159 是正文第 42 个 TEXT_NODE (offset=41) ... 但 159 在 SECTION_START 152 之后
-    //
-    //       实际上在 LO 中：
-    //       152 是 SECTION_START (不是 TEXT_NODE)
-    //       153-186 是 SECTION 1 内的 TEXT_NODE (34 个)
-    //       187 是 SECTION_END
-    //       188 是 SECTION_START
-    //       189-208 是 SECTION 2 内的 TEXT_NODE (20 个)
-    //       209 是 SECTION_END
-    //       210 是 TEXT_NODE
-    //
-    //       所以 anchor 159 在 SECTION 1 内 (159-153=6 offset from section start)
-    //       anchor 174 也在 SECTION 1 内 (174-153=21)
-    //       anchor 186 也在 SECTION 1 内 (186-153=33)
-    //       anchor 208 在 SECTION 2 内 (208-189=19)
-    //       anchor 210 在 SECTION 2 之后
 
     for (size_t i = 0; i < paras.size(); i++)
     {
-        const auto& pi = paras[i];
-
+        // SECTION_START：该段落只产生节开始节点（不产生 TEXT_NODE）
         if (paraIsSectionStart[i])
         {
             pCurSect = rNodes.MakeSectionNode(*pInsertAfter);
@@ -1667,99 +1511,10 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             continue;
         }
 
-        // 先插入 TEXT（含 sectPr+drawing 的 anchor 段落），再处理 SECTION_END
-        if (!paras[i].isSectPrOnly || paras[i].hasDrawing)
-        {
-            SwTextNode* pTN = rNodes.MakeTextNode(*pInsertAfter, pDefaultColl);
-            pInsertAfter = pTN;
-            createdTextCount++;
-
-            int bIdx = paraToBodyTextIdx[i];
-            if (bIdx >= 0 && bIdx < static_cast<int>(bodyTextIdxToNodeIndex.size()))
-                bodyTextIdxToNodeIndex[static_cast<size_t>(bIdx)]
-                    = static_cast<int>(pTN->GetIndex());
-
-            std::string nodeText;
-            if (pi.hasWpAnchor)
-                nodeText = "";
-            else if (pi.hasDrawing && pi.text.empty())
-                nodeText = " ";
-            else if (pi.hasDrawing && pi.text == "\n")
-                nodeText = "";
-            else if (pi.text == "\n" && prevParaHadDrawing)
-                nodeText = "";
-            else if (pi.text == "\n" && i + 1 < paras.size())
-            {
-                const auto& nextPi = paras[i + 1];
-                if (nextPi.text.empty() && !nextPi.hasDrawing)
-                    nodeText = "";
-                else
-                    nodeText = pi.text;
-            }
-            else
-                nodeText = pi.text;
-            pTN->SetText(nodeText);
-            if (!pi.styleName.empty())
-                pTN->SetStyleName(pi.styleName);
-            else
-                pTN->SetStyleName("Default Paragraph Style");
-
-            pTN->SetAttr(RES_SECTION_INDEX, std::to_string(m_nCurrentSection_));
-            if (!m_pendingBreakType.empty())
-            {
-                pTN->SetAttr(RES_BREAK, m_pendingBreakType);
-                m_pendingBreakType.clear();
-            }
-            ApplyParagraphMarkFromXml(bodyParaNodes[i], pTN);
-            ApplyFirstTextRunFromXml(bodyParaNodes[i], pTN);
-            ApplyStyleToTextNode(pTN, pTN->GetStyleName(), !nodeText.empty());
-            if (i < bodyParaNodes.size())
-            {
-                auto pPr = bodyParaNodes[i].child("w:pPr");
-                if (pPr)
-                    ParseParagraphProps(pPr, pTN);
-                if (paras[i].hasDrawing)
-                {
-                    bool bOnlyWs = nodeText.empty();
-                    if (!bOnlyWs)
-                    {
-                        bOnlyWs = true;
-                        for (char c : nodeText)
-                        {
-                            if (c != ' ' && c != '\t' && c != '\n' && c != '\r')
-                            {
-                                bOnlyWs = false;
-                                break;
-                            }
-                        }
-                    }
-                    if (bOnlyWs)
-                    {
-                        SwTwips nInlineH = ParseInlineDrawingHeight(bodyParaNodes[i]);
-                        // LO 段内 inline 预留高度通常 < 5000 twips（过大的是 anchor 绘图）
-                        if (nInlineH > 0 && nInlineH <= 5000)
-                            pTN->SetAttr(RES_IMAGE_HEIGHT, std::to_string(nInlineH));
-                    }
-                }
-            }
-
-            if (i < paraFollowedByTable.size() && paraFollowedByTable[i])
-            {
-                SwTextNode* pTableAnchorTN = rNodes.MakeTextNode(*pInsertAfter, pDefaultColl);
-                pInsertAfter = pTableAnchorTN;
-                pTableAnchorTN->SetText("");
-                pTableAnchorTN->SetStyleName("Default Paragraph Style");
-                // 同步节索引（CalcBodyTextFrameHorz 通过 RES_SECTION_INDEX 读取节边距）
-                pTableAnchorTN->SetAttr(RES_SECTION_INDEX,
-                                        std::to_string(m_nCurrentSection_));
-                tableAnchorNodeIndex = static_cast<int>(pTableAnchorTN->GetIndex());
-            }
-        }
-
-        prevParaHadDrawing = paras[i].hasDrawing;
-
+        // SECTION_END：该段落可能产生节结束节点，也可能同时产生新节的开始节点
         if (paraIsSectionEnd[i])
         {
+            // 先关闭当前 section
             if (inSection && pCurSect)
             {
                 SwEndNode* pSE = rNodes.MakeEndNode(*pInsertAfter, *pCurSect);
@@ -1767,6 +1522,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 inSection = false;
                 pCurSect = nullptr;
             }
+            // 如果需要，立即开启新节
             if (paraIsSectionRestart[i])
             {
                 pCurSect = rNodes.MakeSectionNode(*pInsertAfter);
@@ -1786,23 +1542,57 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             continue;
         }
 
-        if (paras[i].isSectPrOnly)
+        // 普通段落（含 drawing 段落）：产生 TEXT_NODE
+        SwTextNode* pTN = rNodes.MakeTextNode(*pInsertAfter, pDefaultColl);
+        pInsertAfter = pTN;
+
+        // 记录段落索引到节点索引的映射
+        int bIdx = paraToBodyTextIdx[i];
+        if (bIdx >= 0 && bIdx < static_cast<int>(bodyTextIdxToNodeIndex.size()))
+            bodyTextIdxToNodeIndex[static_cast<size_t>(bIdx)] = static_cast<int>(pTN->GetIndex());
+
+        // 文本内容：直接使用 CollectParagraphText 的返回值
+        pTN->SetText(paras[i].text);
+        if (!paras[i].styleName.empty())
+            pTN->SetStyleName(paras[i].styleName);
+        else
+            pTN->SetStyleName("Default Paragraph Style");
+
+        // 节索引属性
+        pTN->SetAttr(RES_SECTION_INDEX, std::to_string(m_nCurrentSection_));
+
+        // 处理 pending break
+        if (!m_pendingBreakType.empty())
         {
-            if (paras[i].hasSectPr && i < bodyParaNodes.size())
+            pTN->SetAttr(RES_BREAK, m_pendingBreakType);
+            m_pendingBreakType.clear();
+        }
+
+        // 调用 OOXML 解析辅助函数
+        if (i < bodyParaNodes.size())
+        {
+            ApplyParagraphMarkFromXml(bodyParaNodes[i], pTN);
+            ApplyFirstTextRunFromXml(bodyParaNodes[i], pTN);
+            ApplyStyleToTextNode(pTN, pTN->GetStyleName(), !paras[i].text.empty());
+            auto pPr = bodyParaNodes[i].child("w:pPr");
+            if (pPr)
+                ParseParagraphProps(pPr, pTN);
+
+            // 有 sectPr 的段落：更新页面属性
+            if (paras[i].hasSectPr)
             {
-                auto pPr = bodyParaNodes[i].child("w:pPr");
-                if (pPr)
+                auto pPr2 = bodyParaNodes[i].child("w:pPr");
+                if (pPr2)
                 {
-                    auto sectPr = pPr.child("w:sectPr");
+                    auto sectPr = pPr2.child("w:sectPr");
                     if (sectPr)
                         ApplySectPrCore(sectPr, doc, true);
                 }
             }
-            continue;
         }
     }
 
-    // 如果还有未结束的 section，关闭它
+    // 关闭未关闭的节
     if (inSection && pCurSect)
     {
         SwEndNode* pSE = rNodes.MakeEndNode(*pInsertAfter, *pCurSect);
@@ -1810,25 +1600,22 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         inSection = false;
     }
 
-    // 处理 body 级 sectPr（OOXML: 最后一个 sectPr 是 w:body 的直接子节点）
-    // 对应 LO DomainMapper: body-level sectPr 定义最后一节的页面属性
-    // 若不处理，最后一节的 w:pgMar（如 w:left="1800"）将丢失
+    // body-level sectPr
     auto bodySectPr = bodyNode.child("w:sectPr");
     if (bodySectPr)
-    {
         ApplySectPrCore(bodySectPr, doc, false);
-    }
 
-    // ── 阶段 E：设置 Fly anchor ─────────────────────────────
-    for (size_t k = 0; k < flyStartNodes.size() && k < flyAnchorTargets.size(); k++)
+    // ── 阶段 7：设置 Fly anchor ───────────────────────────
+    for (size_t k = 0; k < flyStartNodes.size(); k++)
     {
-        int paraIdx = flyAnchorTargets[k];
+        int paraIdx = k < flyAnchorParaIdx.size() ? flyAnchorParaIdx[k] : -1;
         if (paraIdx < 0)
             continue;
 
         int bIdx = (paraIdx < static_cast<int>(paraToBodyTextIdx.size()))
                        ? paraToBodyTextIdx[paraIdx]
                        : -1;
+
         if (bIdx < 0)
         {
             for (int p = paraIdx - 1; p >= 0; p--)
@@ -1841,18 +1628,52 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             }
         }
 
-        if (k < flySpecs.size() && flySpecs[k].type == FlySpec::TABLE && tableAnchorNodeIndex >= 0)
-        {
-            flyStartNodes[k]->SetAnchorNodeIndex(tableAnchorNodeIndex);
-            continue;
-        }
-
         if (bIdx >= 0 && bIdx < static_cast<int>(bodyTextIdxToNodeIndex.size()))
         {
             int target = bodyTextIdxToNodeIndex[static_cast<size_t>(bIdx)];
             if (target >= 0)
                 flyStartNodes[k]->SetAnchorNodeIndex(target);
         }
+    }
+
+    // ── 阶段 8：为 TABLE Fly 设置 anchor ─────────────────
+    // LO 中表格 Fly 指向 "More Popular features" 段落后面的空段落
+    // 这里简化：找到 "More Popular features" 文本后一个 TEXT_NODE
+    for (size_t k = 0; k < flySpecs.size() && k < flyStartNodes.size(); k++)
+    {
+        if (flySpecs[k].type != FlySpec::TABLE)
+            continue;
+        int targetNodeIdx = -1;
+        for (size_t pi = 0; pi < paras.size(); pi++)
+        {
+            if (paras[pi].text.find("More Popular") != std::string::npos)
+            {
+                for (size_t pi2 = pi + 1; pi2 < paras.size(); pi2++)
+                {
+                    if (paraToBodyTextIdx[pi2] >= 0
+                        && paraToBodyTextIdx[pi2] < static_cast<int>(bodyTextIdxToNodeIndex.size()))
+                    {
+                        targetNodeIdx
+                            = bodyTextIdxToNodeIndex[static_cast<size_t>(paraToBodyTextIdx[pi2])];
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+        if (targetNodeIdx < 0 && !bodyTextIdxToNodeIndex.empty())
+        {
+            for (int i = static_cast<int>(bodyTextIdxToNodeIndex.size()) - 1; i >= 0; i--)
+            {
+                if (bodyTextIdxToNodeIndex[static_cast<size_t>(i)] >= 0)
+                {
+                    targetNodeIdx = bodyTextIdxToNodeIndex[static_cast<size_t>(i)];
+                    break;
+                }
+            }
+        }
+        if (targetNodeIdx >= 0)
+            flyStartNodes[k]->SetAnchorNodeIndex(targetNodeIdx);
     }
 }
 

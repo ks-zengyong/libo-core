@@ -413,6 +413,10 @@ SwTwips SwTextFrame::EmptyHeight() const
         pFnt->ChgPhysFnt( pSh, *pOut );
         nRet = pFnt->GetHeight( pSh, *pOut );
     }
+    fprintf(stderr, "[LO-EmptyHeight] font=%s actual=%d nRet=%ld\n",
+            pFnt->GetActualFont().GetFamilyName().toUtf8().getStr(),
+            static_cast<int>(pFnt->GetActual()),
+            static_cast<long>(nRet));
     return nRet;
 }
 
@@ -439,14 +443,21 @@ bool SwTextFrame::FormatEmpty()
         nullptr != GetTextNodeForParaProps()->GetNumRule() ||
         GetTextNodeFirst()->HasHiddenCharAttribute(true) ||
          IsInFootnote() || ( HasPara() && GetPara()->IsPrepMustFit() ) )
+    {
+        fprintf(stderr, "[LO-FormatEmpty] return false (early conditions)\n");
         return false;
+    }
     const SwAttrSet& aSet = GetTextNodeForParaProps()->GetSwAttrSet();
     const SvxAdjust nAdjust = aSet.GetAdjust().GetAdjust();
     bool bAdjustInsignificant = (!IsRightToLeft() && (SvxAdjust::Left == nAdjust))
                                 || (IsRightToLeft() && (SvxAdjust::Right == nAdjust))
                                 || (SvxAdjust::ParaStart == nAdjust);
     if (!bCollapse && (!bAdjustInsignificant || aSet.GetRegister().GetValue()))
+    {
+        fprintf(stderr, "[LO-FormatEmpty] return false (adjust/register) adjust=%d register=%d\n",
+                static_cast<int>(nAdjust), static_cast<int>(aSet.GetRegister().GetValue()));
         return false;
+    }
     const SvxLineSpacingItem &rSpacing = aSet.GetLineSpacing();
     if( !bCollapse && ( SvxLineSpaceRule::Min == rSpacing.GetLineSpaceRule() ||
         SvxLineSpaceRule::Fix == rSpacing.GetLineSpaceRule() ||
@@ -454,6 +465,11 @@ bool SwTextFrame::FormatEmpty()
             && rSpacing.GetPropLineSpace() < 100) ||
         aSet.GetFirstLineIndent().IsAutoFirst()))
     {
+        fprintf(stderr, "[LO-FormatEmpty] return false (spacing) rule=%d interRule=%d prop=%d autoFirst=%d\n",
+                static_cast<int>(rSpacing.GetLineSpaceRule()),
+                static_cast<int>(rSpacing.GetInterLineSpaceRule()),
+                static_cast<int>(rSpacing.GetPropLineSpace()),
+                static_cast<int>(aSet.GetFirstLineIndent().IsAutoFirst()));
         return false;
     }
 

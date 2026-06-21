@@ -540,6 +540,14 @@ void FontMetricData::ImplCalcLineSpacing(LogicalFontInstance* pFontInstance)
     mnDescent = round(fDescent);
     mnExtLeading = round(fExtLeading);
 
+    fprintf(stderr, "[LO-FontMetric] font=%s mnHeight=%ld ascent=%.2f descent=%.2f extLead=%.2f "
+            "mnAscent=%ld mnDescent=%ld mnExtLeading=%ld total=%ld\n",
+            pFace->GetFamilyName().toUtf8().getStr(),
+            static_cast<long>(mnHeight), fAscent, fDescent, fExtLeading,
+            static_cast<long>(mnAscent), static_cast<long>(mnDescent),
+            static_cast<long>(mnExtLeading),
+            static_cast<long>(mnAscent + mnDescent + mnExtLeading));
+
     if (mnAscent || mnDescent)
         mnIntLeading = mnAscent + mnDescent - mnHeight;
 

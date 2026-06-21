@@ -63,46 +63,42 @@ SET_TEXT_COLOR	1	0
 TEXT_RUN	1	284	14303	0	0	"\tto help you \t\twrite and understand your Word document"	fony family	20	0	144	0	0	0	
 SET_FONT	1	Calibri	20	144	0
 SET_TEXT_COLOR	1	0
+SET_FONT	1	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	1004	1440	0	0	"WPS AI-generated content"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	1004	1919	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	1004	3495	0	0	"\nWPS AI-based content rewriting"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	1	0
+TEXT_RUN	1	1004	4453	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	0
+SET_FONT	1	Calibri	20	144	0
+SET_TEXT_COLOR	1	2500134
 PAGE_START	2	11906	16838
 PAGE_END	2
-SET_FONT	2	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	18126	0	0	"WPS AI-generated content"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	2	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	18605	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	19843	0	0	" "	Calibri	20	0	144	0	0	0	
-SET_FONT	2	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	24288	0	0	"\nWPS AI-based content rewriting"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	2	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	25246	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	0
-SET_FONT	2	Calibri	20	144	0
-SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	26484	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_FONT	2	Segoe UI Semibold	48	144	0
+SET_TEXT_COLOR	2	2500134
+TEXT_RUN	2	1004	18126	0	0	"For all your document process needs"	Segoe UI Semibold	48	2500134	144	0	0	0	
 PAGE_START	3	11906	16838
 PAGE_END	3
-SET_FONT	3	Segoe UI Semibold	48	144	0
-SET_TEXT_COLOR	3	2500134
-TEXT_RUN	3	1004	35248	0	0	"For all your document process needs"	Segoe UI Semibold	48	2500134	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	0
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	36395	0	0	"\nRestrict Editing"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1004	35248	0	0	"\nRestrict Editing"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	37353	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1004	36206	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	38553	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1004	36806	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
@@ -127,17 +123,18 @@ SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	43471	0	0	"\n"	Calibri	20	0	144	0	0	0	
+TEXT_RUN	3	1004	41124	0	0	"\n"	Calibri	20	0	144	0	0	0	
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	35887	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1004	41612	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	36366	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1004	42091	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
+TEXT_RUN	3	1004	43329	0	0	"\n"	Calibri	20	0	144	0	0	0	
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
@@ -160,79 +157,135 @@ SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	42262	0	0	"\nFormat Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1004	47537	0	0	"\nFormat Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	43220	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1004	48495	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	43820	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1004	48795	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
 PAGE_START	4	11906	16838
 PAGE_END	4
 SET_FONT	4	Calibri	20	144	0
 SET_TEXT_COLOR	4	0
-SET_FONT	4	Segoe UI Semibold	48	144	0
+TEXT_RUN	4	1004	52370	0	0	"\n"	Calibri	20	0	144	0	0	0	
+SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	52858	0	0	"\nFind and Replace"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	53816	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Calibri	20	144	0
 SET_TEXT_COLOR	4	2500134
-TEXT_RUN	4	1004	51742	0	0	"Editing and typesetting"	Segoe UI Semibold	48	2500134	144	0	0	0	
 SET_FONT	4	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	52381	0	0	"\nFind and Replace"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	4	1004	55918	0	0	"\nEfficient Word Typesetting"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	53339	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1004	56876	0	0	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	4	Calibri	20	144	0
 SET_TEXT_COLOR	4	0
 SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	54877	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_TEXT_COLOR	4	2500134
 SET_FONT	4	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	58707	0	0	"\nEfficient Word Typesetting"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	4	1004	59278	0	0	"\nSpell Check"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	59665	0	0	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1004	60236	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	4	Calibri	20	144	0
 SET_TEXT_COLOR	4	0
 SET_FONT	4	Calibri	20	144	0
-SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	61503	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_TEXT_COLOR	4	2500134
 SET_FONT	4	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	65472	0	0	"\nSpell Check"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	4	1004	62338	0	0	"\nTrack Changes"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	4	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	4	0
-TEXT_RUN	4	1004	66430	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	4	1004	63296	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	2500134
 PAGE_START	5	11906	16838
 PAGE_END	5
-SET_FONT	5	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	69492	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	5	Calibri	20	144	0
 SET_TEXT_COLOR	5	0
-SET_FONT	5	Calibri	20	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	71030	0	0	" "	Calibri	20	0	144	0	0	0	
-SET_FONT	5	Segoe UI Semibold	36	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	74999	0	0	"\nTrack Changes"	Segoe UI Semibold	36	0	144	0	0	0	
-SET_FONT	5	Segoe UI Emoji	28	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	75957	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	5	Calibri	20	144	0
-SET_TEXT_COLOR	5	0
-SET_FONT	5	Calibri	20	144	0
-SET_TEXT_COLOR	5	0
-TEXT_RUN	5	1004	78695	0	0	" "	Calibri	20	0	144	0	0	0	
-SET_FONT	5	Calibri	20	144	0
-SET_TEXT_COLOR	5	2500134
+TEXT_RUN	5	1004	69492	0	0	"\n"	Calibri	20	0	144	0	0	0	
 PAGE_START	6	11906	16838
 PAGE_END	6
-SET_FONT	6	Segoe UI Semibold	48	144	0
-SET_TEXT_COLOR	6	2500134
-TEXT_RUN	6	1004	84910	0	0	"More Popular features"	Segoe UI Semibold	48	2500134	144	0	0	0	
-SET_FONT	6	Arial	22	144	0
-SET_TEXT_COLOR	6	0
 PAGE_START	7	11906	16838
 PAGE_END	7
-SET_FONT	7	Calibri	20	144	0
-SET_TEXT_COLOR	7	2500134
+PAGE_START	8	11906	16838
+PAGE_END	8
+PAGE_START	9	11906	16838
+PAGE_END	9
+PAGE_START	10	11906	16838
+PAGE_END	10
+PAGE_START	11	11906	16838
+PAGE_END	11
+PAGE_START	12	11906	16838
+PAGE_END	12
+PAGE_START	13	11906	16838
+PAGE_END	13
+PAGE_START	14	11906	16838
+PAGE_END	14
+PAGE_START	15	11906	16838
+PAGE_END	15
+PAGE_START	16	11906	16838
+PAGE_END	16
+PAGE_START	17	11906	16838
+PAGE_END	17
+PAGE_START	18	11906	16838
+PAGE_END	18
+PAGE_START	19	11906	16838
+PAGE_END	19
+PAGE_START	20	11906	16838
+PAGE_END	20
+PAGE_START	21	11906	16838
+PAGE_END	21
+PAGE_START	22	11906	16838
+PAGE_END	22
+PAGE_START	23	11906	16838
+PAGE_END	23
+PAGE_START	24	11906	16838
+PAGE_END	24
+PAGE_START	25	11906	16838
+PAGE_END	25
+PAGE_START	26	11906	16838
+PAGE_END	26
+PAGE_START	27	11906	16838
+PAGE_END	27
+PAGE_START	28	11906	16838
+PAGE_END	28
+PAGE_START	29	11906	16838
+PAGE_END	29
+PAGE_START	30	11906	16838
+PAGE_END	30
+PAGE_START	31	11906	16838
+PAGE_END	31
+PAGE_START	32	11906	16838
+PAGE_END	32
+PAGE_START	33	11906	16838
+PAGE_END	33
+PAGE_START	34	11906	16838
+PAGE_END	34
+PAGE_START	35	11906	16838
+PAGE_END	35
+PAGE_START	36	11906	16838
+PAGE_END	36
+PAGE_START	37	11906	16838
+PAGE_END	37
+SET_FONT	37	Segoe UI Semibold	48	144	0
+SET_TEXT_COLOR	37	2500134
+TEXT_RUN	37	1004	617396	0	0	"More Popular features"	Segoe UI Semibold	48	2500134	144	0	0	0	
+PAGE_START	38	11906	16838
+PAGE_END	38
+SET_FONT	38	Calibri	20	144	0
+SET_TEXT_COLOR	38	2500134
+PAGE_START	39	11906	16838
+PAGE_END	39
+SET_FONT	39	Calibri	20	144	0
+SET_TEXT_COLOR	39	2500134

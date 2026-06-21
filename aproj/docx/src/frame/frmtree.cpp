@@ -423,7 +423,8 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
         auto* pFrame = new SwTextFrame(pTN, pLeftColBody);
         pFrame->InsertBehind(pLeftColBody, pLeftSibling);
-        SwRect aArea(nLeftColX, nCurY, nColWidth, heights[idx]);
+        // LO 列内 TEXT_FRAME 宽度 = 列宽 - 半个栏间距（对应 lo_frame 5019 vs 5232）
+        SwRect aArea(nLeftColX, nCurY, nColTextWidth, heights[idx]);
         pFrame->setFrameArea(aArea);
         g_nodeToTextFrame[static_cast<int>(pTN->GetIndex())] = pFrame;
         pLeftSibling = pFrame;
@@ -441,12 +442,16 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         nCurY = nBaseY;
         SwFrame* pRightSibling = nullptr;
         SwTwips nRightColWidth = nBodyWidth - nColWidth;
+        // 右列文本宽度 = 右列宽 - 半个栏间距
+        SwTwips nRightColTextWidth
+            = nRightColWidth > nHalfGutter ? nRightColWidth - nHalfGutter : nRightColWidth;
         for (size_t idx : rightColIndices)
         {
             SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
             auto* pFrame = new SwTextFrame(pTN, pRightColBody);
             pFrame->InsertBehind(pRightColBody, pRightSibling);
-            SwRect aArea(nRightColX, nCurY, nRightColWidth, heights[idx]);
+            // LO 列内 TEXT_FRAME 宽度 = 列宽 - 半个栏间距
+            SwRect aArea(nRightColX, nCurY, nRightColTextWidth, heights[idx]);
             pFrame->setFrameArea(aArea);
             g_nodeToTextFrame[static_cast<int>(pTN->GetIndex())] = pFrame;
             pRightSibling = pFrame;
@@ -501,7 +506,13 @@ static SwTwips CalcRealHeight(SwTwips nTextHeight, const std::string* pLineSpaci
     int nLineVal = 240; // 默认单倍行距
     if (pLineSpacing)
     {
-        try { nLineVal = std::stoi(*pLineSpacing); } catch (...) {}
+        try
+        {
+            nLineVal = std::stoi(*pLineSpacing);
+        }
+        catch (...)
+        {
+        }
     }
     std::string sRule = pLineRule ? *pLineRule : "auto";
 
@@ -594,7 +605,8 @@ static int CountTextLines(const std::string& rText, const std::string& sContentF
                 while (nPos < sLine.size())
                 {
                     std::string sRemain = sLine.substr(nPos);
-                    SwTwips nBreakWidth = (nTextLines == 0 && nSubLines == 0) ? nFirstLineWidth : nSubWidth;
+                    SwTwips nBreakWidth
+                        = (nTextLines == 0 && nSubLines == 0) ? nFirstLineWidth : nSubWidth;
                     int nBreak = fontEngine.FindLineBreak(sContentFontName, nContentFontSize,
                                                           sRemain, nBreakWidth);
                     if (nBreak < 0 || nBreak >= static_cast<int>(sRemain.size()))
@@ -863,7 +875,8 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
     int nContentFontSize = pContentSize ? std::stoi(*pContentSize) : 20;
     SwTwips nFirstLineWidth = 0, nSubWidth = 0;
     GetEffectiveTextLineWidths(pTextNode, nColWidth, nFirstLineWidth, nSubWidth);
-    int nLineCount = CountTextLines(rText, sContentFontName, nContentFontSize, nFirstLineWidth, nSubWidth);
+    int nLineCount
+        = CountTextLines(rText, sContentFontName, nContentFontSize, nFirstLineWidth, nSubWidth);
     if (!bEmpty && !rText.empty() && rText.front() == '\n')
         nLineCount += 1;
 
@@ -1786,8 +1799,7 @@ static SwPageFrame* ForceTextFrameToNewPage(SwTextFrame* pFrame, SwDoc& rDoc)
     {
         SwTwips nPageW = pNewPage->getFrameArea().Width();
         SwTwips nPageH = pNewPage->getFrameArea().Height();
-        SwRect aPrtRect(pSM->left, pSM->top,
-                        nPageW - pSM->left - pSM->right,
+        SwRect aPrtRect(pSM->left, pSM->top, nPageW - pSM->left - pSM->right,
                         nPageH - pSM->top - pSM->bottom);
         pNewPage->setFramePrintArea(aPrtRect);
     }
@@ -1802,7 +1814,8 @@ static SwPageFrame* ForceTextFrameToNewPage(SwTextFrame* pFrame, SwDoc& rDoc)
         // 对应 LO: 使用节的实际左边距 (OOXML w:left)，而非硬编码 284
         // 与 ProcessMultiColumnSection/CalcBodyTextFrameHorz 一致
         const SwTwips nDefaultIndent = 284;
-        SwTwips nSectLeft = (pSM ? pSM->left : pNewPage->getFramePrintArea().Left()) + nDefaultIndent;
+        SwTwips nSectLeft
+            = (pSM ? pSM->left : pNewPage->getFramePrintArea().Left()) + nDefaultIndent;
         SwTwips nSectTop = GetFirstOnPageFlowTop(pNewPage, nSec);
         SwTwips nSectWidth = pNewParent->getFramePrintArea().Width();
         pNewSection->setFrameArea(SwRect(nSectLeft, nSectTop, nSectWidth, 0));
@@ -2623,7 +2636,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                             if (c == 0)
                             {
                                 nTextH = 850;
-                                nTextY = nRowY + (nRowHeight > nTextH ? (nRowHeight - nTextH) / 2 : 0);
+                                nTextY
+                                    = nRowY + (nRowHeight > nTextH ? (nRowHeight - nTextH) / 2 : 0);
                             }
                             else
                             {
@@ -2646,7 +2660,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                                 while (nPos < paraText.size())
                                 {
                                     std::string sRemain = paraText.substr(nPos);
-                                    int nBreak = fe.FindLineBreak(paraFont, paraFontSize, sRemain, nContentWidth);
+                                    int nBreak = fe.FindLineBreak(paraFont, paraFontSize, sRemain,
+                                                                  nContentWidth);
                                     // FindLineBreak 返回 -1 表示整段文本 fit，无需换行
                                     if (nBreak <= 0 || nBreak >= static_cast<int>(sRemain.size()))
                                         break;

@@ -2266,6 +2266,11 @@ void SwTextFormatter::CalcRealHeight( bool bNewLine )
     SwTwips nLineHeight = m_pCurr->Height();
     m_pCurr->SetClipping( false );
 
+    fprintf(stderr, "[LO-CalcRealHeight] entry: nLineHeight=%ld textHeight=%ld isParaLine=%d\n",
+            static_cast<long>(nLineHeight),
+            static_cast<long>(m_pCurr->GetTextHeight()),
+            static_cast<int>(IsParaLine()));
+
     SwTextGridItem const*const pGrid(GetGridItem(m_pFrame->FindPageFrame()));
     if ( pGrid && GetInfo().SnapToGrid() )
     {
@@ -2478,6 +2483,8 @@ void SwTextFormatter::CalcRealHeight( bool bNewLine )
         }
     }
     m_pCurr->SetRealHeight( nLineHeight );
+    fprintf(stderr, "[LO-CalcRealHeight] exit: nLineHeight=%ld\n",
+            static_cast<long>(nLineHeight));
 }
 
 void SwTextFormatter::FeedInf( SwTextFormatInfo &rInf ) const

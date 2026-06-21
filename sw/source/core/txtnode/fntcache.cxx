@@ -372,6 +372,14 @@ sal_uInt16 SwFntObj::GetFontHeight( const SwViewShell* pSh, const OutputDevice& 
                + GetFontLeading(pSh, rRefDev);
     }
 
+    fprintf(stderr, "[LO-GetFontHeight] font=%s size=%ld prht=%u ext=%u ret=%u dpiY=%ld\n",
+            m_aFont.GetFamilyName().toUtf8().getStr(),
+            static_cast<long>(m_aFont.GetFontSize().Height()),
+            static_cast<unsigned>(m_nPrtHeight),
+            static_cast<unsigned>(m_nExtLeading),
+            static_cast<unsigned>(nRet),
+            static_cast<long>(rRefDev.GetDPIY()));
+
     OSL_ENSURE( USHRT_MAX != nRet, "GetFontHeight returned USHRT_MAX" );
     return nRet;
 }
