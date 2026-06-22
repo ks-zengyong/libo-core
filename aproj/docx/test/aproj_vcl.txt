@@ -1,225 +1,238 @@
 PAGE_START	1	11906	16838
 PAGE_END	1
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Calibri	20	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	528	0	0	"WPS Office®"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	792	0	0	"WPS Office®"	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Segoe UI Semibold	72	144	0
+SET_TEXT_COLOR	1	2500134
+TEXT_RUN	1	284	1523	0	0	"Welcome to WPS Office - Writer"	Segoe UI Semibold	72	2500134	144	0	0	0	
+SET_FONT	1	Segoe UI Emoji	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	1016	0	0	"Welcome to WPS Office - Writer"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	2481	0	0	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Segoe UI Emoji	24	0	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	1260	0	0	"\nWPS Office is a lightweight, feature-rich comprehensive office suite with high compatibility. As a handy and professional office software, WPS Office allows you to edit files in Writer, Presentation, Spreadsheet, and PDF to improve your work efficiency."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	4017	0	0	"Switch tabs to find different commands to process your document."	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	2236	0	0	"Switch tabs to find different commands to process your document."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	4298	0	0	"Share your documents with others."	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	2480	0	0	"Share your documents with others."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	4859	0	0	"\nFind all of Writer's commands."	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	2724	0	0	"\nFind all of Writer's commands."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	5577	0	0	"\nSearch the Help center for answers when you get stuck."	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	3212	0	0	"\nSearch the Help center for answers when you get stuck."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	6333	0	0	"\nQuickly switch views and adjust the scale of the page display."	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	3700	0	0	"\nQuickly switch views and adjust the scale of the page display."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	7089	0	0	"\n"	Calibri	20	0	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	4188	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	7577	0	0	"Count the number of words and pages in your document in real time."	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	4676	0	0	"Count the number of words and pages in your document in real time."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Segoe UI Semibold	48	144	0
+SET_TEXT_COLOR	1	2500134
+TEXT_RUN	1	284	8366	0	0	"WPS AI+Writer"	Segoe UI Semibold	48	2500134	144	0	0	0	
+SET_FONT	1	Poppins	24	188	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	5164	0	0	"WPS AI+Writer"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	9097	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Poppins	24	0	144	0	0	0	
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	5652	0	0	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Poppins	24	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	Calibri	20	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+SET_FONT	1	fony family	20	144	0
 SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	7604	0	0	"\tto help you \t\twrite and understand your Word document"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	8092	0	0	"WPS AI-generated content"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	8336	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	9068	0	0	" "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	9312	0	0	"\nWPS AI-based content rewriting"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	9800	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	10532	0	0	" "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	10776	0	0	"For all your document process needs"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	1684	0	0	"\nRestrict Editing"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	2172	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	2416	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	5344	0	0	"\n"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	5832	0	0	"Co-Edit with Others"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	6076	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	9492	0	0	"\nFormat Conversion"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	9980	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	10224	0	0	"Effortlessly batch convert multiple files."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	15398	0	0	"Editing and typesetting"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	15642	0	0	"\nFind and Replace"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	16130	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	17106	0	0	" "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	17350	0	0	"\nEfficient Word Typesetting"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	17838	0	0	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	18814	0	0	" "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	19058	0	0	"\nSpell Check"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	19546	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	20278	0	0	" "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	20522	0	0	"\nTrack Changes"	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	21010	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-TEXT_RUN	1	284	22474	0	0	" "	Arial	22	0	144	0	0	0	
-SET_FONT	1	Arial	22	144	0
-SET_TEXT_COLOR	1	0
-SET_FONT	1	Arial	22	144	0
+TEXT_RUN	1	284	12597	0	0	"\tto help you \t\twrite and understand your Word document"	fony family	20	0	144	0	0	0	
+SET_FONT	1	Calibri	20	144	0
 SET_TEXT_COLOR	1	0
 PAGE_START	2	11906	16838
 PAGE_END	2
-SET_FONT	2	Arial	22	144	0
+SET_FONT	2	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	284	18278	0	0	"More Popular features"	Arial	22	0	144	0	0	0	
-SET_FONT	2	Arial	22	144	0
+TEXT_RUN	2	1004	18126	0	0	"WPS AI-generated content"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	2	0
+TEXT_RUN	2	1004	18605	0	0	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	1004	19843	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_FONT	2	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	1004	20087	0	0	"\nWPS AI-based content rewriting"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	2	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	1004	21045	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	0
+SET_FONT	2	Calibri	20	144	0
+SET_TEXT_COLOR	2	0
+TEXT_RUN	2	1004	22283	0	0	" "	Calibri	20	0	144	0	0	0	
+PAGE_START	3	11906	16838
+PAGE_END	3
+SET_FONT	3	Segoe UI Semibold	48	144	0
+SET_TEXT_COLOR	3	2500134
+TEXT_RUN	3	1004	35248	0	0	"For all your document process needs"	Segoe UI Semibold	48	2500134	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	1004	36395	0	0	"\nRestrict Editing"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	1004	37353	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	1004	38553	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	1004	43471	0	0	"\n"	Calibri	20	0	144	0	0	0	
+SET_FONT	3	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	6236	35887	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	6236	36366	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Calibri	20	144	0
+SET_TEXT_COLOR	3	0
+SET_FONT	3	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	6236	42262	0	0	"\nFormat Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	6236	43220	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	3	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	3	0
+TEXT_RUN	3	6236	43820	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
+PAGE_START	4	11906	16838
+PAGE_END	4
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Segoe UI Semibold	48	144	0
+SET_TEXT_COLOR	4	2500134
+TEXT_RUN	4	1004	51742	0	0	"Editing and typesetting"	Segoe UI Semibold	48	2500134	144	0	0	0	
+SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	52381	0	0	"\nFind and Replace"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	53339	0	0	"Use the Find and Replace function to quickly modify text in your documents, enhancing productivity. You can also search for specific formats to meet complex requirements.\nClick on Home > Find and Replace, with the shortcut key being Ctrl+F."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	54877	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	55121	0	0	"\nEfficient Word Typesetting"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	56079	0	0	"Using WPS saves time on document layout and leaves more room for creativity. \nClick on Home > Word Typesetting. With just one click, you can quickly adjust the document format and bulk delete document content such as blank pages, separators, text formatting, and objects."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	0
+SET_FONT	4	Calibri	20	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	57917	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_FONT	4	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	58161	0	0	"\nSpell Check"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	4	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	4	0
+TEXT_RUN	4	1004	59119	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Segoe UI Emoji	28	0	144	0	0	0	
+PAGE_START	5	11906	16838
+PAGE_END	5
+SET_FONT	5	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	69492	0	0	"Finish and submit documents faster while ensuring they are free of spelling mistakes and grammatical errors. \nClick on Review > Spell Check to receive suggestions for corrections. This feature supports multiple languages."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	5	Calibri	20	144	0
+SET_TEXT_COLOR	5	0
+SET_FONT	5	Calibri	20	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	71030	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_FONT	5	Segoe UI Semibold	36	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	71274	0	0	"\nTrack Changes"	Segoe UI Semibold	36	0	144	0	0	0	
+SET_FONT	5	Segoe UI Emoji	28	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	72232	0	0	"Click on Review > Track Changes to assist the original author in identifying changes made during document editing. \nYou can filter changes based on the date range or reviser, allowing you to focus on viewing revision records from specific individuals or time periods. \nAdditionally, you can easily switch between the per-revision and post-revision states with a single click, facilitating easy comparison of changes."	Segoe UI Emoji	28	0	144	0	0	0	
+SET_FONT	5	Calibri	20	144	0
+SET_TEXT_COLOR	5	0
+SET_FONT	5	Calibri	20	144	0
+SET_TEXT_COLOR	5	0
+TEXT_RUN	5	1004	74970	0	0	" "	Calibri	20	0	144	0	0	0	
+SET_FONT	5	Calibri	20	144	0
+SET_TEXT_COLOR	5	2500134
+PAGE_START	6	11906	16838
+PAGE_END	6
+SET_FONT	6	Segoe UI Semibold	48	144	0
+SET_TEXT_COLOR	6	2500134
+TEXT_RUN	6	1004	84910	0	0	"More Popular features"	Segoe UI Semibold	48	2500134	144	0	0	0	
+SET_FONT	6	Arial	22	144	0
+SET_TEXT_COLOR	6	0
+PAGE_START	7	11906	16838
+PAGE_END	7
+SET_FONT	7	Calibri	20	144	0
+SET_TEXT_COLOR	7	2500134

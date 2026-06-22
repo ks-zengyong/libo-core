@@ -39,6 +39,42 @@ static bool NodeHasFlyAnchor(SwDoc& rDoc, SwNodes& rNodes, SwNodeOffset nIdx)
     return false;
 }
 
+static std::vector<SwTextNode*> GetTableCellTextNodes(SwTableNode* pTableNode, size_t nCellIndex)
+{
+    std::vector<SwTextNode*> aResult;
+    if (!pTableNode)
+        return aResult;
+
+    SwNodes& rNodes = pTableNode->GetDoc().GetNodes();
+    SwNodeOffset idx = pTableNode->GetIndex() + SwNodeOffset(1);
+
+    for (size_t ci = 0; ci < nCellIndex; ++ci)
+    {
+        SwNode* pBox = rNodes[idx];
+        if (!pBox || !pBox->IsStartNode())
+            return aResult;
+        SwEndNode* pBoxEnd = static_cast<SwStartNode*>(pBox)->GetEndOfSection();
+        if (!pBoxEnd)
+            return aResult;
+        idx = pBoxEnd->GetIndex() + SwNodeOffset(1);
+    }
+
+    SwNode* pBox = rNodes[idx];
+    if (!pBox || !pBox->IsStartNode())
+        return aResult;
+    SwEndNode* pBoxEnd = static_cast<SwStartNode*>(pBox)->GetEndOfSection();
+    if (!pBoxEnd)
+        return aResult;
+
+    for (SwNodeOffset tIdx = idx + SwNodeOffset(1); tIdx < pBoxEnd->GetIndex(); ++tIdx)
+    {
+        SwNode* pN = rNodes[tIdx];
+        if (pN && pN->IsTextNode())
+            aResult.push_back(static_cast<SwTextNode*>(pN));
+    }
+    return aResult;
+}
+
 static int GetTextNodeSectionIndex(SwTextNode* pTextNode);
 static SwTwips GetFirstOnPageFlowTop(SwPageFrame* pPage, int nSection);
 
@@ -341,7 +377,7 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     if (colNodes.empty())
         return true;
 
-    // LO 报纸分栏：左右列并行，分割点使 max(leftH,rightH) 最小（非填满左列再溢出）
+    // LO 报纸分栏：左右列并行，分割点使 max(leftH,rightH) 最小
     std::vector<size_t> leftColIndices, rightColIndices;
     size_t nSplitAt = colNodes.size();
     if (colNodes.size() >= 2)
@@ -361,7 +397,6 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
                 nSplitAt = split;
             }
         }
-        // 若平衡后仍超页高，回退到左列先填至页底
         SwTwips nLeftH = 0;
         for (size_t j = 0; j < nSplitAt; ++j)
             nLeftH += heights[j];
@@ -2605,8 +2640,9 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                 const auto& paras = cellData.paragraphs;
                 if (!paras.empty())
                 {
-                    SwTextFormatColl* pColl = pTableNode->GetDoc().GetDefaultTextFormatColl();
-                    SwNodes& rNodes = pTableNode->GetDoc().GetNodes();
+                    const size_t nCellIndex = r * rowData.cells.size() + c;
+                    std::vector<SwTextNode*> cellTextNodes
+                        = GetTableCellTextNodes(pTableNode, nCellIndex);
 
                     const SwTwips nCellMargin = 108;
                     SwTwips nContentWidth = nCellWidth - 2 * nCellMargin;
@@ -2621,9 +2657,11 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                         const std::string& paraText = paras[pi].text;
                         const std::string& paraFont = paras[pi].fontName;
                         int paraFontSize = paras[pi].fontSizeHalfPt;
-                        SwTextNode* pCellTextNode = rNodes.MakeTextNode(*pTableNode, pColl);
-                        pCellTextNode->SetText(paraText);
-                        pCellTextNode->SetStyleName("Default Paragraph Style");
+                        SwTextNode* pCellTextNode = (pi < cellTextNodes.size())
+                                                        ? cellTextNodes[pi]
+                                                        : nullptr;
+                        if (!pCellTextNode)
+                            continue;
 
                         auto* pTextFrame = new SwTextFrame(pCellTextNode, pCellFrame);
                         pTextFrame->InsertBehind(pCellFrame, pPrevTextFrame);
