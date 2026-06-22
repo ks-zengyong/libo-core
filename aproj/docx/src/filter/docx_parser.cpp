@@ -836,7 +836,84 @@ struct ParagraphFlyInfo
     bool isPicture = false;
     std::vector<std::string> txbxTexts;
     std::vector<std::string> txbxStyles;
+    SwDoc::FlyLayoutInfo layout;
 };
+
+static SwTwips EmuToTwips(long long nEmu) { return static_cast<SwTwips>(nEmu * 1440 / 914400); }
+
+// 解析段落内 wp:inline 绘图高度（对应 LO 段内行高预留）
+static SwTwips ParseInlineDrawingHeight(pugi::xml_node pNode)
+{
+    if (!pNode)
+        return 0;
+    SwTwips nMaxH = 0;
+    std::function<void(pugi::xml_node)> scan;
+    scan = [&](pugi::xml_node n) {
+        for (auto& c : n.children())
+        {
+            std::string cn = c.name();
+            if (cn == "wp:inline" || cn == "inline")
+            {
+                auto ext = c.child("wp:extent");
+                if (!ext)
+                    ext = c.child("extent");
+                if (ext)
+                {
+                    SwTwips h = EmuToTwips(ext.attribute("cy").as_llong(0));
+                    if (h > nMaxH)
+                        nMaxH = h;
+                }
+            }
+            scan(c);
+        }
+    };
+    scan(pNode);
+    return nMaxH;
+}
+
+static void ParseFlyAnchorLayout(pugi::xml_node anchorNode, SwDoc::FlyLayoutInfo& out)
+{
+    out = SwDoc::FlyLayoutInfo{};
+    std::string name = anchorNode.name();
+    if (name.find("anchor") == std::string::npos && name.find("inline") == std::string::npos)
+        return;
+
+    auto posH = anchorNode.child("wp:positionH");
+    if (!posH)
+        posH = anchorNode.child("positionH");
+    if (posH)
+    {
+        out.relFromH = posH.attribute("relativeFrom").as_string("column");
+        auto off = posH.child("wp:posOffset");
+        if (!off)
+            off = posH.child("posOffset");
+        if (off)
+            out.offsetX = EmuToTwips(off.text().as_llong(0));
+    }
+
+    auto posV = anchorNode.child("wp:positionV");
+    if (!posV)
+        posV = anchorNode.child("positionV");
+    if (posV)
+    {
+        out.relFromV = posV.attribute("relativeFrom").as_string("paragraph");
+        auto off = posV.child("wp:posOffset");
+        if (!off)
+            off = posV.child("posOffset");
+        if (off)
+            out.offsetY = EmuToTwips(off.text().as_llong(0));
+    }
+
+    auto ext = anchorNode.child("wp:extent");
+    if (!ext)
+        ext = anchorNode.child("extent");
+    if (ext)
+    {
+        out.width = EmuToTwips(ext.attribute("cx").as_llong(0));
+        out.height = EmuToTwips(ext.attribute("cy").as_llong(0));
+    }
+    out.bValid = true;
+}
 
 static std::string CollectParagraphText(pugi::xml_node pNode)
 {
@@ -880,6 +957,8 @@ static void AnalyzeParagraphFlyContent(pugi::xml_node pNode, ParagraphFlyInfo& o
 {
     out = ParagraphFlyInfo{};
     out.hasDrawing = forceScan || ParagraphHasDrawing(pNode);
+    if (forceScan)
+        ParseFlyAnchorLayout(pNode, out.layout);
     if (!out.hasDrawing)
         return;
 
@@ -1231,6 +1310,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
         std::vector<std::string> textStyles;
         TableInfo table;
         int anchorParaIdx = -1;
+        SwDoc::FlyLayoutInfo layout;
     };
 
     std::vector<FlySpec> flySpecs;
@@ -1312,6 +1392,7 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                         fs.type = info.isTextbox ? FlySpec::TEXT : FlySpec::GRF;
                         fs.texts = info.txbxTexts;
                         fs.textStyles = info.txbxStyles;
+                        fs.layout = info.layout;
                         fs.anchorParaIdx = currentParaIdx;
                         flySpecs.push_back(fs);
                     }
@@ -1372,6 +1453,8 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
     for (auto& fs : flySpecs)
     {
         SwStartNode* pFlyStt = rNodes.InsertFlySection(SwFlyStartNode, -1);
+        if (fs.layout.bValid)
+            doc.SetFlyLayout(static_cast<int>(pFlyStt->GetIndex()), fs.layout);
         SwNode& flyAnchor = *pFlyStt;
 
         if (fs.type == FlySpec::GRF)
@@ -1639,6 +1722,29 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 auto pPr = bodyParaNodes[i].child("w:pPr");
                 if (pPr)
                     ParseParagraphProps(pPr, pTN);
+                if (paras[i].hasDrawing)
+                {
+                    bool bOnlyWs = nodeText.empty();
+                    if (!bOnlyWs)
+                    {
+                        bOnlyWs = true;
+                        for (char c : nodeText)
+                        {
+                            if (c != ' ' && c != '\t' && c != '\n' && c != '\r')
+                            {
+                                bOnlyWs = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (bOnlyWs)
+                    {
+                        SwTwips nInlineH = ParseInlineDrawingHeight(bodyParaNodes[i]);
+                        // LO 段内 inline 预留高度通常 < 5000 twips（过大的是 anchor 绘图）
+                        if (nInlineH > 0 && nInlineH <= 5000)
+                            pTN->SetAttr(RES_IMAGE_HEIGHT, std::to_string(nInlineH));
+                    }
+                }
             }
 
             if (i < paraFollowedByTable.size() && paraFollowedByTable[i])

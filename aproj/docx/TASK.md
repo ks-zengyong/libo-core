@@ -11,7 +11,7 @@
 | 指标 | LO | aproj | 状态 |
 |------|----|-------|------|
 | Node diff | — | **0** | ✅ PASS（不可劣化） |
-| Frame diff | — | **148** | 🔄 进行中 |
+| Frame diff | — | **146** | 🔄 进行中（较 148 ↓2） |
 | Frame 指令总数 | 207 | 207 | ✅ 结构数量一致 |
 | 页数 (PAGE_START) | 7 | 7 | ✅ 一致 |
 
@@ -23,6 +23,7 @@
 | `render_log.cpp` | `fontColor` 默认 16777215；`fontWeight` 默认 144；仅解析 6 位 hex RGB | 消除部分 fontColor 差异 |
 | `frmtree.cpp` | 移除 `GetEffectiveTextLineWidths` 对 9000–11000 误扣 1440；栏宽扣 213 | 节内 ~10466 不再被二次扣边距 |
 | `layact.cpp` | `InternalAction` 格式化后 `pPage->Validate()` | 消除 `loop limit reached` 死循环 |
+| `docx_parser.cpp` | 迁移 `ParseFlyAnchorLayout`/`SetFlyLayout`/`ParseInlineDrawingHeight` | page4 fly **957,55048,5119×3306**；spacer 段高 **3830** |
 
 ### 关键发现
 
@@ -68,23 +69,27 @@
 |------|------|------|
 | A2.1 | ✅ | 移除 9000–11000 误扣 1440；栏宽扣 213；全页 11906 不扣 pgMar |
 | A2.2 | ✅ | `layact.cpp` 页格式化后 `pPage->Validate()`，消除死循环 |
-| A2.3 | ⏳ | Reflow 溢出换页与 LO `MoveFwd` 对齐（Y 级联偏差仍存） |
+| A2.3 | ⏳ | 页内续排节首帧 Y 须跟节顶（`GetSectionFirstLineTop`），须与 Reflow 分页联动一并迁移 |
 
-### 阶段 B：行距与段间距（下一步）
+### 阶段 B：行距与段间距 — ⏳ 待做（本轮试探未收敛）
 
-| 步骤 | 操作 | LO 参考 |
-|------|------|---------|
-| B.1 | 迁移 `PROP_LINE_SPACING_SHRINKS_FIRST_LINE` | `itrform2.cxx:2368` |
-| B.2 | `CalcUpperSpace`：高度仅含 `spaceAfter`，Y 落点加 `max(prev.after, curr.before)` | `flowfrm.cxx:1582` |
-| 验证 | ref@109 空格段高 3830 |
+| 步骤 | 状态 | 说明 |
+|------|------|------|
+| B.1 | ⏳ | `PROP_LINE_SPACING_SHRINKS_FIRST_LINE` 待接入文档设置 |
+| B.2 | ⏳ | `CalcUpperSpace` 须与 fly 前驱帧联动，不能简单拆 height/Y |
+| B.3 | ⏳ | `ADD_EXT_LEADING` 须从 `settings.xml` 解析且与分页联动验证 |
 
-### 阶段 C：浮动对象
+**本轮试探结论**：
+- ref@6：aproj 355 = HarfBuzz 276 + spaceBefore 79；LO 336 = 258 + 78 → 需 `ADD_EXT_LEADING=false` 但单独切换会引发 page3 分栏结构劣化（diff 151）
+- B.2 拆分 spaceBefore 会在 fly 后续段落误加 Y（+79），须迁移 LO `GetPrevFrameForUpperSpaceCalc_`
 
-| 步骤 | 操作 | LO 参考 |
-|------|------|---------|
-| C.1 | 补全 `objectformatter.cpp` `DoFormatObj` | `objectformatter.cxx` |
-| C.2 | 栏内 Fly 宽度限制为 Column 打印区 | `anchoreddrawobject.cxx` |
-| 验证 | ref@24-26、ref@56-57 |
+### 阶段 C：浮动对象 — 🔄 部分完成
+
+| 步骤 | 状态 | 说明 |
+|------|------|------|
+| C.1 | ✅ | `ParseFlyAnchorLayout` + `doc.SetFlyLayout`（`docx_parser.cpp`） |
+| C.2 | ✅ | `ParseInlineDrawingHeight` → `RES_IMAGE_HEIGHT`（spacer 段 3830/3969） |
+| C.3 | ⏳ | 栏内 TEXT fly 位置（ref@24-26）；page4 长节 Y 级联（ref@105-113） |
 
 ### 阶段 D：分栏/分节
 
@@ -127,4 +132,4 @@ ref@6, @9, @24, @56, @68, @119, @133
 
 ---
 
-*最后验证：Node=0, Frame diff=148, 指令=207/207*
+*最后验证：Node=0, Frame diff=146, 指令=207/207, 页数=7/7*
