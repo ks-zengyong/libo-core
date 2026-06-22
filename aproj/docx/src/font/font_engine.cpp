@@ -4,7 +4,7 @@
 
 #include "font_engine.h"
 
-// stb_truetype 实现（只在一个 .cpp 中定义，保留用于 LoadFromFile 初始化）
+// stb_truetype 实现（保留用于 LoadFromFile 初始化验证）
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "../../third_party/stb_truetype.h"
 
@@ -33,20 +33,16 @@
 
 bool FontInstance::LoadFromFile(const std::string& path, int fontIndex)
 {
-    ClearHbFont(); // 清除旧 HB 缓存
-
+    ClearHbFont();
     FILE* f = fopen(path.c_str(), "rb");
     if (!f)
         return false;
-
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
     fseek(f, 0, SEEK_SET);
-
     m_data.resize(sz);
     fread(m_data.data(), 1, sz, f);
     fclose(f);
-
     m_info = new stbtt_fontinfo();
     if (!stbtt_InitFont(m_info, m_data.data(),
                         stbtt_GetFontOffsetForIndex(m_data.data(), fontIndex)))
@@ -57,7 +53,6 @@ bool FontInstance::LoadFromFile(const std::string& path, int fontIndex)
         m_valid = false;
         return false;
     }
-
     m_valid = true;
     return true;
 }
@@ -88,26 +83,19 @@ void FontInstance::ClearHbFont()
 }
 
 // 对应 LO LogicalFontInstance::GetHbFont()
-// 创建 HarfBuzz 字体（带正确缩放，与 GetTextHeight 中的缩放一致）
 hb_font_t* FontInstance::GetHbFont() const
 {
     if (m_hbFont)
         return m_hbFont;
-
     if (m_data.empty())
         return nullptr;
-
-    // 创建 HarfBuzz blob（共享 m_data，只读模式）
     m_hbBlob = hb_blob_create(reinterpret_cast<const char*>(m_data.data()),
                               static_cast<unsigned int>(m_data.size()), HB_MEMORY_MODE_READONLY,
                               nullptr, nullptr);
     if (!m_hbBlob)
         return nullptr;
-
-    // TTC 文件可能包含多个字体，选择正确的字体索引
     unsigned int nFaceCount = hb_face_count(m_hbBlob);
-    unsigned int nBestFaceIndex = 0;
-    unsigned int nBestUpem = 0;
+    unsigned int nBestFaceIndex = 0, nBestUpem = 0;
     if (nFaceCount > 1)
     {
         for (unsigned int i = 0; i < nFaceCount; ++i)
@@ -122,29 +110,12 @@ hb_font_t* FontInstance::GetHbFont() const
             hb_face_destroy(tmpFace);
         }
     }
-
     m_hbFace = hb_face_create(m_hbBlob, nBestFaceIndex);
     if (!m_hbFace)
         return nullptr;
-
     m_hbFont = hb_font_create(m_hbFace);
     if (!m_hbFont)
         return nullptr;
-
-    // 设置默认缩放 — 调用方在使用前会通过 GetTextHeight 的缩放逻辑来设置
-    // 这里先设置一个合理的默认值（对应 LO DPI=8640, 1/10 像素精度）
-    unsigned int upem = hb_face_get_upem(m_hbFace);
-    if (upem > 0)
-    {
-        // 默认 20pt = 400 half-pt → pixelHeight10 = 400*60 = 24000
-        // x_scale = pixelHeight10 * 65536 / upem (16.16 fixed point)
-        // 但实际使用时会重新设置, 所以这里设一个合理的初始值
-        int defaultPixelHeight10 = 24000; // 20pt default
-        int x_scale = static_cast<int>((static_cast<long long>(defaultPixelHeight10) << 16) / upem);
-        int y_scale = x_scale;
-        hb_font_set_scale(m_hbFont, x_scale, y_scale);
-    }
-
     return m_hbFont;
 }
 
@@ -178,149 +149,94 @@ SwTwips FontInstance::GetTextWidth(const std::string& text, int fontSizeHalfPt) 
 {
     if (!m_valid || text.empty())
         return 0;
-
     hb_font_t* hbFont = GetHbFont();
     if (!hbFont)
         return 0;
-
-    // 设置 HarfBuzz 字体缩放（对应 LO 的 1/10 像素精度，DPI=8640）
-    // pixelHeight10 = fontSizeHalfPt * 60（halfPt → 1/10 像素）
-    // 参考: LO LogicHeightToDeviceSubPixel(DPI=8640): twips * 6 = 1/10 pixel
-    //       fontSizeTwips = fontSizeHalfPt * 10
-    //       pixelHeight10 = fontSizeTwips * 6 = fontSizeHalfPt * 60
     float pixelHeight10 = static_cast<float>(fontSizeHalfPt) * 60.0f;
     hb_face_t* hbFace = hb_font_get_face(hbFont);
     unsigned int upem = hb_face_get_upem(hbFace);
     if (upem == 0)
         return 0;
-
-    // hb_font_set_scale: scale = pixels_per_em * 65536
-    // pixels_per_em = pixelHeight10
     int x_scale = static_cast<int>((static_cast<long long>(pixelHeight10) * 65536) / upem);
     hb_font_set_scale(hbFont, x_scale, x_scale);
-
-    // 创建 HB buffer，添加 UTF-8 文本
     hb_buffer_t* buf = hb_buffer_create();
     hb_buffer_add_utf8(buf, text.c_str(), static_cast<int>(text.size()), 0,
                        static_cast<int>(text.size()));
     hb_buffer_guess_segment_properties(buf);
-
-    // 字形塑形（对应 LO SalLayout::LayoutText + OutputDevice::GetTextArray）
     hb_shape(hbFont, buf, nullptr, 0);
-
-    // 获取字形位置信息，累加 x_advance
     unsigned int glyphCount = 0;
     hb_glyph_position_t* glyphPositions = hb_buffer_get_glyph_positions(buf, &glyphCount);
-
     double totalAdvance10 = 0.0;
     for (unsigned int i = 0; i < glyphCount; ++i)
-    {
         totalAdvance10 += static_cast<double>(glyphPositions[i].x_advance);
-    }
-
     hb_buffer_destroy(buf);
-
-    // 1/10 像素 → twips: twips = advance10 / 6（参考 LO DPI=8640: nTwips = n10thPx / 6）
-    SwTwips twips = static_cast<SwTwips>(std::round(totalAdvance10 / 6.0));
-    return twips;
+    return static_cast<SwTwips>(std::round(totalAdvance10 / 6.0));
 }
 
 SwTwips FontInstance::GetCharWidth(char c, int fontSizeHalfPt) const
 {
     if (!m_valid)
         return 0;
-
     hb_font_t* hbFont = GetHbFont();
     if (!hbFont)
         return 0;
-
-    // 设置缩放
     float pixelHeight10 = static_cast<float>(fontSizeHalfPt) * 60.0f;
     hb_face_t* hbFace = hb_font_get_face(hbFont);
     unsigned int upem = hb_face_get_upem(hbFace);
     if (upem == 0)
         return 0;
-
     int x_scale = static_cast<int>((static_cast<long long>(pixelHeight10) * 65536) / upem);
     hb_font_set_scale(hbFont, x_scale, x_scale);
-
-    // 获取字形（对应 LO hb_font_get_glyph + hb_font_get_glyph_h_advance）
     hb_codepoint_t glyph = 0;
     if (!hb_font_get_glyph(hbFont, static_cast<hb_codepoint_t>(static_cast<unsigned char>(c)), 0,
                            &glyph))
         return 0;
-
-    // x_advance 已按缩放因子转换（1/10 像素单位）
     hb_position_t advance10 = hb_font_get_glyph_h_advance(hbFont, glyph);
-
-    // 1/10 像素 → twips
-    SwTwips twips = static_cast<SwTwips>(std::round(static_cast<double>(advance10) / 6.0));
-    return twips;
+    return static_cast<SwTwips>(std::round(static_cast<double>(advance10) / 6.0));
 }
 
 int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTwips maxWidth) const
 {
     if (!m_valid || text.empty())
         return 0;
-
-    // 检查换行符：遇到 newline 必须在此处强制换行
     for (size_t i = 0; i < text.size(); ++i)
     {
         char c = text[i];
         if (c == '\n' || c == '\f' || c == '\v')
             return static_cast<int>(i) + 1;
     }
-
     hb_font_t* hbFont = GetHbFont();
     if (!hbFont)
         return -1;
-
-    // 设置 HarfBuzz 缩放（与 GetTextWidth 一致）
     float pixelHeight10 = static_cast<float>(fontSizeHalfPt) * 60.0f;
     hb_face_t* hbFace = hb_font_get_face(hbFont);
     unsigned int upem = hb_face_get_upem(hbFace);
     if (upem == 0)
         return -1;
-
     int x_scale = static_cast<int>((static_cast<long long>(pixelHeight10) * 65536) / upem);
     hb_font_set_scale(hbFont, x_scale, x_scale);
-
-    // 塑形整个文本（对应 LO SalLayout::LayoutText）
     hb_buffer_t* buf = hb_buffer_create();
     hb_buffer_add_utf8(buf, text.c_str(), static_cast<int>(text.size()), 0,
                        static_cast<int>(text.size()));
     hb_buffer_guess_segment_properties(buf);
     hb_shape(hbFont, buf, nullptr, 0);
-
     unsigned int glyphCount = 0;
     hb_glyph_info_t* glyphInfos = hb_buffer_get_glyph_infos(buf, &glyphCount);
     hb_glyph_position_t* glyphPositions = hb_buffer_get_glyph_positions(buf, &glyphCount);
-
-    // maxWidth 是 twips，转换为 1/10 像素
     double maxAdvance10 = static_cast<double>(maxWidth) * 6.0;
-
     double accumulated10 = 0.0;
-    int lastBreakGlyph = -1; // 最后一个词边界处的字形索引
-
+    int lastBreakGlyph = -1;
     for (unsigned int i = 0; i < glyphCount; ++i)
     {
-        // 检查累积宽度是否超限
         if (accumulated10 > maxAdvance10)
         {
             hb_buffer_destroy(buf);
-
-            // 回退到词边界
             if (lastBreakGlyph > 0)
             {
-                // 找到词边界字形对应的 UTF-8 字节位置
                 unsigned int breakCluster = glyphInfos[lastBreakGlyph].cluster;
-                // cluster 是字符索引（UTF-8 字节偏移）
                 if (breakCluster > 0 && breakCluster < text.size())
                     return static_cast<int>(breakCluster);
             }
-
-            // 没有词边界或词边界在开头：至少返回 1 个字符
-            // 找到累计宽度刚好超过 threshold 的字形，返回其 cluster
             if (i > 0)
             {
                 unsigned int cluster = glyphInfos[i].cluster;
@@ -328,25 +244,15 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
             }
             return 1;
         }
-
-        // 检查是否在词边界（空格/制表符后）
-        // 通过检查当前字形对应的原始字符来判断
         if (glyphInfos[i].cluster < text.size())
         {
             char originalChar = text[glyphInfos[i].cluster];
             if (originalChar == ' ' || originalChar == '\t')
-            {
-                // 空格后的位置（下一个 cluster）是断点
                 lastBreakGlyph = static_cast<int>(i) + 1;
-            }
         }
-
         accumulated10 += static_cast<double>(glyphPositions[i].x_advance);
     }
-
     hb_buffer_destroy(buf);
-
-    // 整个文本都能放下
     return -1;
 }
 
@@ -768,9 +674,10 @@ void FontEngine::InitPathCache()
     m_pathCache["DejaVu Sans"] = "DejaVuSans.ttf";
 
     // OOXML fontTable altName fallbacks (word/fontTable.xml)
-    // LO 对缺失字体的回退策略（匹配 LO 的 PhysicalFontCollection::FindFontFamily）:
-    //   Poppins (sans-serif) → Liberation Sans (sans-serif, metric-compatible, LO 自带)
+    // LO 对缺失字体的回退策略（通过 LO debug 输出确认）:
+    //   Poppins (sans-serif) → DejaVu Sans (sans-serif, LO instdir/share/fonts/truetype/)
     //   fony family → Liberation Serif (serif, 用于空段落 CJK slot)
+    // 对应 LO 的 PhysicalFontCollection::FindFontFamily 替代逻辑
     // 注：ParseFontTable 会在解析时覆盖为文档 fontTable 中的 altName
     m_altNameCache["fony family"] = "Liberation Serif";
     m_altNameCache["Poppins"] = "Liberation Sans";

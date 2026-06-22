@@ -230,12 +230,8 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         return false;
 
     // 计算 Body 宽度和列参数
-    // LO: 分栏宽度 = 页面正文宽（页面宽 - 标准左右边距），不使用 BodyFrame 的打印区域宽
-    // 打印区域可能因 sectPr pgMar 而变窄，但 TEXT_FRAME 坐标是页面绝对的
-    SwTwips nPageWidth = pPage->getFrameArea().Width();
-    SwTwips nStandardLeftMargin = (pSectM->left > 0) ? 720 : 720;
-    SwTwips nStandardRightMargin = (pSectM->right > 0) ? 720 : 720;
-    SwTwips nBodyWidth = nPageWidth - nStandardLeftMargin - nStandardRightMargin;
+    SwLayoutFrame* pBody = static_cast<SwLayoutFrame*>(pPage->GetLower());
+    SwTwips nBodyWidth = pBody ? pBody->getFramePrintArea().Width() : pPage->getFrameArea().Width();
     SwTwips nColSpace;
     nColSpace = pSectM->colSpace > 0 ? pSectM->colSpace : 708;
 
@@ -243,17 +239,16 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     // LO 等宽分栏算法:
     //   nGutter = colSpace (栏间距，OOXML w:space)
     //   nInnerWidth = (nBodyWidth - nGutter) / numCols（整除截断）
-    //   左列宽 = nInnerWidth + (nGutter+1)/2（ceil 半间距，左列含较多栏间距）
-    //   右列宽 = nBodyWidth - 左列宽（取余，保证总宽 = nBodyWidth）
+    //   左列宽 = nInnerWidth + nGutter/2（floor 半间距）
+    //   右列宽 = nBodyWidth - 左列宽（取余）
     //   左列文本宽 = 左列宽 - (nGutter+1)/2（ceil，得 5019）
     // 示例: nBodyWidth=10466, colSpace=425 → 左列=5232, 右列=5234, 左文本=5019
     const SwTwips nGutter = nColSpace;
-    const SwTwips nHalfGutterFloor = nGutter / 2; // floor, 用于列宽计算
-    const SwTwips nHalfGutterCeil = (nGutter + 1) / 2; // ceil, 用于文本缩进
+    const SwTwips nHalfGutterFloor = nGutter / 2;
+    const SwTwips nHalfGutterCeil = (nGutter + 1) / 2;
     const SwTwips nInnerWidth = (nBodyWidth - nGutter) / pSectM->numCols;
-    SwTwips nColWidth = nInnerWidth + nHalfGutterFloor; // 左列宽 = 5020+212=5232
-    SwTwips nRightColWidth = nBodyWidth - nColWidth; // 右列宽 = 10466-5232=5234
-    // LO 列内文本区 = 列宽 - ceil(nGutter/2)（5232-213=5019, 5234-212=5022）
+    SwTwips nColWidth = nInnerWidth + nHalfGutterFloor;
+    SwTwips nRightColWidth = nBodyWidth - nColWidth;
     const SwTwips nColTextWidth
         = nColWidth > nHalfGutterCeil ? nColWidth - nHalfGutterCeil : nColWidth;
     const SwTwips nRightColTextWidth
@@ -339,8 +334,8 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
 
         if (bFirstIsHeading && !pFirst->GetText().empty())
         {
-            // 将第一个节点作为全宽 Frame 渲染（使用与分栏一致的 Body 宽度）
-            SwTwips nFullWidth = nBodyWidth;
+            // 将第一个节点作为全宽 Frame 渲染
+            SwTwips nFullWidth = pBody ? pBody->getFramePrintArea().Width() : nBodyWidth;
             SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[0]]);
             auto* pFrame = new SwTextFrame(pTN, pParent);
             pFrame->InsertBehind(pParent, pSibling);
@@ -2391,13 +2386,7 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
             }
         }
 
-        // 先计算 Frame 的水平位置和宽度（与 frameArea 一致，避免 PreCalcNodeHeight 使用错误的窄宽度）
-        SwTwips nFrameX = 284;
-        SwTwips nFrameWidth = nPageWidth;
-        CalcBodyTextFrameHorz(pTextNode, pPage, nSection, bInColumn, bInFly, pParent, nFrameX,
-                              nFrameWidth);
-
-        SwTwips nTotalHeight = PreCalcNodeHeight(pTextNode, nSection, nFrameWidth);
+        SwTwips nTotalHeight = PreCalcNodeHeight(pTextNode, nSection, nPageWidth);
 
         // 计算 Y 位置：紧跟在前一个 Frame 之后
         // LibreOffice 的 TextFrame frameArea 从页面顶部开始（不是从边距开始）
@@ -2420,6 +2409,11 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         {
             nY = GetFirstOnPageFlowTop(pPage, nSection);
         }
+
+        SwTwips nFrameX = 284;
+        SwTwips nFrameWidth = nPageWidth;
+        CalcBodyTextFrameHorz(pTextNode, pPage, nSection, bInColumn, bInFly, pParent, nFrameX,
+                              nFrameWidth);
 
         SwRect aFrameArea(nFrameX, nY, nFrameWidth, nTotalHeight);
         pFrame->setFrameArea(aFrameArea);

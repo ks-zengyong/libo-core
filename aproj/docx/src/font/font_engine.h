@@ -29,7 +29,6 @@ struct FontMetric
 // 对应 VCL 的 LogicalFontInstance + sw 的 SwFntObj
 //===----------------------------------------------------------------------===//
 
-// 前向声明 HarfBuzz 类型
 struct hb_font_t;
 struct hb_face_t;
 struct hb_blob_t;
@@ -49,20 +48,17 @@ public:
     // 获取字体度量（指定像素高度）
     FontMetric GetMetric(float pixelHeight) const;
 
-    // 测量文本宽度（返回 twips）
-    // 对应 VCL 的 OutputDevice::GetTextWidth（使用 HarfBuzz 字形测量）
+    // 测量文本宽度（返回 twips）— 使用 HarfBuzz 字形测量，与 LO 一致
     SwTwips GetTextWidth(const std::string& text, int fontSizeHalfPt) const;
 
     // 测量单个字符宽度（返回 twips）
     SwTwips GetCharWidth(char c, int fontSizeHalfPt) const;
 
-    // 找到在给定宽度内能容纳的最多字符数
-    // 对应 VCL 的 OutputDevice::GetTextBreak（使用 HarfBuzz 字形测量）
+    // 找到在给定宽度内能容纳的最多字符数 — 使用 HarfBuzz 字形测量
     // 返回 -1: 全部容纳; 正数: 断点位置（UTF-8 字节偏移）
     int GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTwips maxWidth) const;
 
     // 获取行高（ascent + descent, twips）
-    // 对应 VCL 的 OutputDevice::GetTextHeight
     int GetTextHeight(int fontSizeHalfPt) const;
 
     // 设置逻辑字体名（用于 Windows API）
@@ -72,19 +68,15 @@ private:
     bool m_valid = false;
     struct stbtt_fontinfo* m_info = nullptr;
     std::vector<unsigned char> m_data;
-    std::string m_fontName; // 逻辑字体名（用于 Windows API）
+    std::string m_fontName;
 
-    // HarfBuzz 字体缓存（懒加载，与 LO LogicalFontInstance::GetHbFont 对应）
-    // 使用 mutable 允许在 const 方法中懒加载
+    // HarfBuzz 字体缓存（懒加载，对应 LO LogicalFontInstance::GetHbFont）
     mutable hb_font_t* m_hbFont = nullptr;
     mutable hb_face_t* m_hbFace = nullptr;
     mutable hb_blob_t* m_hbBlob = nullptr;
 
-    // 创建/获取 HarfBuzz 字体（对应 LO LogicalFontInstance::GetHbFont）
     hb_font_t* GetHbFont() const;
     void ClearHbFont();
-
-    // 获取 stbtt_fontinfo（懒加载）
     struct stbtt_fontinfo* GetInfo() const;
 };
 
