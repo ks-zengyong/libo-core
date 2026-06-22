@@ -901,6 +901,13 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
     GetEffectiveTextLineWidths(pTextNode, nColWidth, nFirstLineWidth, nSubWidth);
     int nLineCount
         = CountTextLines(rText, sContentFontName, nContentFontSize, nFirstLineWidth, nSubWidth);
+    fprintf(stderr,
+            "[DEBUG-CalcHeight] nColWidth=%ld text='%s' bEmpty=%d front=%d(\\n=%d) "
+            "fw=%ld sw=%ld cntFont=%s cntSize=%d nLineCount_before=%d\n",
+            static_cast<long>(nColWidth), rText.substr(0, 60).c_str(), static_cast<int>(bEmpty),
+            static_cast<int>(rText.empty() ? 0 : rText.front()), static_cast<int>('\n'),
+            static_cast<long>(nFirstLineWidth), static_cast<long>(nSubWidth),
+            sContentFontName.c_str(), nContentFontSize, nLineCount);
     if (!bEmpty && !rText.empty() && rText.front() == '\n')
         nLineCount += 1;
 
@@ -957,6 +964,12 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
     // LO CalcUpperSpace 的取大逻辑在 frame dump 中体现为高度内含 max(prev.after, curr.before)，
     // 但 aproj 暂按累加实现，待 Task 1.4 字体度量修正后重新评估。
     SwTwips nTotal = nFirstLineHeight + (nLineCount - 1) * nSubseqLineHeight;
+    fprintf(stderr,
+            "[DEBUG-CalcHeight] nTextHeight=%ld firstH=%ld subH=%ld nLineCount=%d "
+            "nSpaceB=%ld nSpaceA=%ld nTotal_before_spacing=%ld\n",
+            static_cast<long>(nTextHeight), static_cast<long>(nFirstLineHeight),
+            static_cast<long>(nSubseqLineHeight), nLineCount, static_cast<long>(nSpaceBefore),
+            static_cast<long>(nSpaceAfter), static_cast<long>(nTotal));
     if (nSpaceBefore > 0)
         nTotal += nSpaceBefore;
     if (nSpaceAfter > 0)
@@ -2646,9 +2659,8 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
                         const std::string& paraText = paras[pi].text;
                         const std::string& paraFont = paras[pi].fontName;
                         int paraFontSize = paras[pi].fontSizeHalfPt;
-                        SwTextNode* pCellTextNode = (pi < cellTextNodes.size())
-                                                        ? cellTextNodes[pi]
-                                                        : nullptr;
+                        SwTextNode* pCellTextNode
+                            = (pi < cellTextNodes.size()) ? cellTextNodes[pi] : nullptr;
                         if (!pCellTextNode)
                             continue;
 
