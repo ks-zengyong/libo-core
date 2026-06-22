@@ -67,26 +67,26 @@ PAGE_START	3	11906	16838
           TEXT_FRAME	3	1004	43471	5020	488	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
       COLUMN_END	3
       COLUMN_START	3	6236	35887	5234	13907
-          TEXT_FRAME	3	6236	35887	5022	479	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	36366	5022	1500	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	37866	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	38204	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	38542	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	38880	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	35887	5022	479	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	36366	5022	1500	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	37866	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	38204	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	38542	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	38880	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
             FLY_START	3	296	33960	11878	16812
               IMAGE_FRAME	3	296	33960	11878	16812
             FLY_END	3
-          TEXT_FRAME	3	6236	39218	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	39556	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	39894	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	40232	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	40570	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	40908	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	41246	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	41754	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	42262	5022	958	"\nFormat Conversion"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	43220	5022	600	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6236	43820	5022	600	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	39218	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	39556	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	39894	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	40232	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	40570	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	40908	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	41246	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	41754	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	42262	5022	958	"\nFormat Conversion"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	43220	5022	600	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	43820	5022	600	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
       COLUMN_END	3
     SECTION_END	3
 PAGE_END	3

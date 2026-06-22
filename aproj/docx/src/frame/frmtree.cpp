@@ -377,7 +377,7 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     if (colNodes.empty())
         return true;
 
-    // LO 报纸分栏：左右列并行，分割点使 max(leftH,rightH) 最小
+    // LO 报纸分栏（Ortho 并行列）：左右列同一起始 Y，按段落顺序分割使 max(leftH,rightH) 最小
     std::vector<size_t> leftColIndices, rightColIndices;
     size_t nSplitAt = colNodes.size();
     if (colNodes.size() >= 2)
@@ -397,39 +397,12 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
                 nSplitAt = split;
             }
         }
-        SwTwips nLeftH = 0;
-        for (size_t j = 0; j < nSplitAt; ++j)
-            nLeftH += heights[j];
-        SwTwips nRightH = 0;
-        for (size_t j = nSplitAt; j < colNodes.size(); ++j)
-            nRightH += heights[j];
-        if (nLeftH > nPageAvailHeight || nRightH > nPageAvailHeight)
-        {
-            nSplitAt = colNodes.size();
-            SwTwips nAccumLeft = 0;
-            for (size_t j = 0; j < colNodes.size(); ++j)
-            {
-                if (nAccumLeft + heights[j] <= nPageAvailHeight || leftColIndices.empty())
-                {
-                    leftColIndices.push_back(j);
-                    nAccumLeft += heights[j];
-                }
-                else
-                {
-                    nSplitAt = j;
-                    break;
-                }
-            }
-        }
     }
 
-    if (leftColIndices.empty())
-    {
-        for (size_t j = 0; j < nSplitAt; ++j)
-            leftColIndices.push_back(j);
-        for (size_t j = nSplitAt; j < colNodes.size(); ++j)
-            rightColIndices.push_back(j);
-    }
+    for (size_t j = 0; j < nSplitAt; ++j)
+        leftColIndices.push_back(j);
+    for (size_t j = nSplitAt; j < colNodes.size(); ++j)
+        rightColIndices.push_back(j);
 
     SwTwips nLeftHeight = 0, nRightHeight = 0;
     for (size_t idx : leftColIndices)
@@ -480,13 +453,15 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         // 右列文本宽度 = 右列宽 - 半个栏间距
         SwTwips nRightColTextWidth
             = nRightColWidth > nHalfGutter ? nRightColWidth - nHalfGutter : nRightColWidth;
+        // LO 右列 TEXT x = COLUMN x + 半个栏间距（6449 = 6236 + 213）
+        SwTwips nRightTextX = nRightColX + nHalfGutter;
         for (size_t idx : rightColIndices)
         {
             SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[idx]]);
             auto* pFrame = new SwTextFrame(pTN, pRightColBody);
             pFrame->InsertBehind(pRightColBody, pRightSibling);
             // LO 列内 TEXT_FRAME 宽度 = 列宽 - 半个栏间距
-            SwRect aArea(nRightColX, nCurY, nRightColTextWidth, heights[idx]);
+            SwRect aArea(nRightTextX, nCurY, nRightColTextWidth, heights[idx]);
             pFrame->setFrameArea(aArea);
             g_nodeToTextFrame[static_cast<int>(pTN->GetIndex())] = pFrame;
             pRightSibling = pFrame;

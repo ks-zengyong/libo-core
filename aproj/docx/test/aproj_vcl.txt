@@ -130,10 +130,10 @@ SET_TEXT_COLOR	3	0
 TEXT_RUN	3	1004	43471	0	0	"\n"	Calibri	20	0	144	0	0	0	
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	35887	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	6448	35887	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	36366	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	6448	36366	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
@@ -160,13 +160,13 @@ SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	42262	0	0	"\nFormat Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	6448	42262	0	0	"\nFormat Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	43220	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	6448	43220	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6236	43820	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	6448	43820	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
 PAGE_START	4	11906	16838
 PAGE_END	4
 SET_FONT	4	Calibri	20	144	0
