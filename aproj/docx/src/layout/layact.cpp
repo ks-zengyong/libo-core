@@ -290,6 +290,11 @@ void SwLayAction::InternalAction(OutputDevice* pRenderContext)
                         m_bInterrupt = true;
                 }
             }
+
+            // 对应 LO：SwLayoutFrame::Format 完成后位置/尺寸/打印区均应有效；
+            // 简化版未在 SwPageFrame::Format 内设置 mbFrameAreaPositionValid，避免死循环。
+            if (pPage->IsInvalid())
+                pPage->Validate();
         }
 
         // === 查找下一个无效页面 ===

@@ -214,12 +214,35 @@ private:
             pSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE);
         const std::string* pWeight = pTextNode->GetAttr(RES_CHRATR_WEIGHT);
         const std::string* pItalic = pTextNode->GetAttr(RES_CHRATR_POSTURE);
+        const std::string* pColor = pTextNode->GetAttr(RES_CHRATR_COLOR);
+        if (!pColor && pTextNode->GetFormatColl())
+        {
+            if (const std::string* pCollColor
+                = pTextNode->GetFormatColl()->ResolveAttr(RES_CHRATR_COLOR))
+                if (!pCollColor->empty())
+                    pColor = pCollColor;
+        }
 
         m_fontBuf = (pFont && !pFont->empty()) ? *pFont : "Calibri";
         m_fontSize = pSize ? std::stoi(*pSize) : 20;
-        m_fontWeight = (pWeight && *pWeight == "bold") ? 700 : 400;
+        // LO frame log 字重为 FontWeight 枚举刻度（144=NORMAL，188=SEMIBOLD）
+        m_fontWeight = 144;
+        if (pWeight && *pWeight == "bold")
+            m_fontWeight = 188;
         m_fontItalic = (pItalic && *pItalic == "italic") ? 1 : 0;
-        m_fontColor = 0xFFFFFF; // 无头模式默认白色
+        // LO frame log 颜色格式：(R<<16)|(G<<8)|B，默认 16777215（白）
+        m_fontColor = 16777215;
+        if (pColor && pColor->size() == 6)
+        {
+            try
+            {
+                uint32_t rgb = static_cast<uint32_t>(std::stoul(*pColor, nullptr, 16));
+                m_fontColor = ((rgb >> 16) & 0xFF) << 16 | ((rgb >> 8) & 0xFF) << 8 | (rgb & 0xFF);
+            }
+            catch (...)
+            {
+            }
+        }
 
         m_styleBuf = pTextNode->GetStyleName();
         if (m_styleBuf.empty() || m_styleBuf == "Normal" || m_styleBuf == "1")

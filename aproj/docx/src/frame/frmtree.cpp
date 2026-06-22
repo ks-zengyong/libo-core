@@ -668,11 +668,10 @@ static void GetEffectiveTextLineWidths(SwTextNode* pTextNode, SwTwips nColWidth,
     SwTwips nRight = ParseTwipsAttr(pTextNode, RES_PARATR_RIGHT_INDENT);
     SwTwips nFirstLineOfst = ParseTwipsAttr(pTextNode, RES_PARATR_FIRSTLINE);
 
-    // LO 换行宽度：节内正文（~10466）扣除左右 pgMar（各 720 twips）；栏内扣除栏间距 213
+    // LO 换行宽度：nColWidth 由 CalcBodyTextFrameHorz 传入，节内正文（~10466）已扣 pgMar，
+    // 全页宽（11906）不再扣 pgMar；仅栏宽（~5232）扣栏间距 213。
     SwTwips nWrapBase = nColWidth;
-    if (nColWidth >= 9000 && nColWidth <= 11000)
-        nWrapBase = nColWidth - 1440;
-    else if (nColWidth > 2000 && nColWidth < 9000)
+    if (nColWidth > 2000 && nColWidth < 5500)
         nWrapBase = nColWidth - 213;
 
     // 对应 LO SwTextFormatInfo::GetLineWidth = Width() - X()
@@ -953,10 +952,6 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
     }
 
     // LO: 段落 Frame 高度 = 首行高 + (行数-1) * 非首行高 + 段前 + 段后
-    // 注意：LO frame dump 中 frameArea.Height 包含段前/段后间距，
-    // 相邻帧 Y 紧接前一帧底部（无额外间距），间距已含在高度内。
-    // LO CalcUpperSpace 的取大逻辑在 frame dump 中体现为高度内含 max(prev.after, curr.before)，
-    // 但 aproj 暂按累加实现，待 Task 1.4 字体度量修正后重新评估。
     SwTwips nTotal = nFirstLineHeight + (nLineCount - 1) * nSubseqLineHeight;
     if (nSpaceBefore > 0)
         nTotal += nSpaceBefore;
@@ -2389,7 +2384,6 @@ void MakeFramesForNode(SwNode& rNode, SwLayoutFrame* pParent, SwFrame* pSibling,
         SwTwips nTotalHeight = PreCalcNodeHeight(pTextNode, nSection, nPageWidth);
 
         // 计算 Y 位置：紧跟在前一个 Frame 之后
-        // LibreOffice 的 TextFrame frameArea 从页面顶部开始（不是从边距开始）
         SwTwips nY = 0;
         if (pSibling)
         {

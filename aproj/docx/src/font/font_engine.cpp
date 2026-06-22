@@ -21,11 +21,129 @@
 #include <vector>
 #include <string>
 
+// 对应 LO DocumentSettingId::ADD_EXT_LEADING / MS_WORD_COMP_GRID_METRICS
+static bool g_bMsWordCompGridMetrics = true;
+static bool g_bAddExtLeading = true;
+
 #ifdef _WIN32
 #include <windows.h>
 #pragma comment(lib, "gdi32.lib")
 #undef GetCharWidth
 #endif
+
+namespace
+{
+#ifdef _WIN32
+// GDI 96dpi 像素 → twips（1440/96=15），与 LO VCL Windows 路径一致
+static SwTwips GdiPixelsToTwips(int nPixels) { return static_cast<SwTwips>(nPixels * 15); }
+
+static int GdiHalfPtToLogPixels(int nFontSizeHalfPt)
+{
+    return static_cast<int>(std::round(nFontSizeHalfPt * 2.0 / 3.0));
+}
+
+static int GdiFontWeightFromName(const std::string& rName)
+{
+    std::string lower = rName;
+    for (auto& c : lower)
+        c = static_cast<char>(tolower(static_cast<unsigned char>(c)));
+    if (lower.find("semibold") != std::string::npos || lower.find("semi bold") != std::string::npos
+        || lower.find("demibold") != std::string::npos)
+        return FW_SEMIBOLD;
+    if (lower.find("bold") != std::string::npos)
+        return FW_BOLD;
+    if (lower.find("light") != std::string::npos)
+        return FW_LIGHT;
+    if (lower.find("medium") != std::string::npos)
+        return FW_MEDIUM;
+    return FW_NORMAL;
+}
+
+static std::wstring Utf8ToWide(const std::string& text)
+{
+    if (text.empty())
+        return {};
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr,
+                                   0);
+    if (wlen <= 0)
+        return {};
+    std::wstring wide(static_cast<size_t>(wlen), L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), wide.data(), wlen);
+    return wide;
+}
+
+static int WidePrefixToUtf8Bytes(const std::wstring& wide, int nWideChars)
+{
+    if (nWideChars <= 0)
+        return 0;
+    if (nWideChars >= static_cast<int>(wide.size()))
+        return static_cast<int>(
+            WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), static_cast<int>(wide.size()), nullptr, 0,
+                                nullptr, nullptr));
+    return static_cast<int>(WideCharToMultiByte(CP_UTF8, 0, wide.c_str(), nWideChars, nullptr, 0,
+                                                nullptr, nullptr));
+}
+
+// RAII GDI font context — 对应 LO VCL OutputDevice 字体选入 DC
+struct GdiFontContext
+{
+    HDC hdc = nullptr;
+    HFONT hFont = nullptr;
+    HFONT hOld = nullptr;
+
+    GdiFontContext(const std::string& rFontName, int nFontSizeHalfPt)
+    {
+        hdc = CreateCompatibleDC(nullptr);
+        if (!hdc)
+            return;
+        int nPixels = GdiHalfPtToLogPixels(nFontSizeHalfPt);
+        int nWeight = GdiFontWeightFromName(rFontName);
+        hFont = CreateFontA(-nPixels, 0, 0, 0, nWeight, FALSE, FALSE, FALSE, DEFAULT_CHARSET,
+                            OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, CLEARTYPE_QUALITY,
+                            DEFAULT_PITCH | FF_DONTCARE, rFontName.c_str());
+        if (hFont)
+            hOld = static_cast<HFONT>(SelectObject(hdc, hFont));
+    }
+
+    ~GdiFontContext()
+    {
+        if (hdc)
+        {
+            if (hOld)
+                SelectObject(hdc, hOld);
+            if (hFont)
+                DeleteObject(hFont);
+            DeleteDC(hdc);
+        }
+    }
+
+    bool IsValid() const { return hdc != nullptr && hFont != nullptr; }
+
+    SwTwips MeasureTextWidthTwips(const std::wstring& wide, int nChars) const
+    {
+        if (!IsValid() || nChars <= 0)
+            return 0;
+        SIZE size{};
+        if (!GetTextExtentPoint32W(hdc, wide.c_str(), nChars, &size))
+            return 0;
+        return GdiPixelsToTwips(size.cx);
+    }
+
+    int MeasureLineHeightTwips() const
+    {
+        if (!IsValid())
+            return 0;
+        TEXTMETRICA tm{};
+        if (!GetTextMetricsA(hdc, &tm))
+            return 0;
+        int nH = tm.tmHeight;
+        if (g_bAddExtLeading)
+            nH += tm.tmExternalLeading;
+        return GdiPixelsToTwips(nH);
+    }
+};
+#endif
+} // namespace
 
 //===----------------------------------------------------------------------===//
 // FontInstance 实现
@@ -149,6 +267,17 @@ SwTwips FontInstance::GetTextWidth(const std::string& text, int fontSizeHalfPt) 
 {
     if (!m_valid || text.empty())
         return 0;
+
+#ifdef _WIN32
+    GdiFontContext ctx(m_fontName.empty() ? "Calibri" : m_fontName, fontSizeHalfPt);
+    if (ctx.IsValid())
+    {
+        std::wstring wide = Utf8ToWide(text);
+        if (!wide.empty())
+            return ctx.MeasureTextWidthTwips(wide, static_cast<int>(wide.size()));
+    }
+#endif
+
     hb_font_t* hbFont = GetHbFont();
     if (!hbFont)
         return 0;
@@ -168,7 +297,7 @@ SwTwips FontInstance::GetTextWidth(const std::string& text, int fontSizeHalfPt) 
     hb_glyph_position_t* glyphPositions = hb_buffer_get_glyph_positions(buf, &glyphCount);
     double totalAdvance10 = 0.0;
     for (unsigned int i = 0; i < glyphCount; ++i)
-        totalAdvance10 += static_cast<double>(glyphPositions[i].x_advance);
+        totalAdvance10 += static_cast<double>(glyphPositions[i].x_advance) / 65536.0;
     hb_buffer_destroy(buf);
     return static_cast<SwTwips>(std::round(totalAdvance10 / 6.0));
 }
@@ -177,6 +306,16 @@ SwTwips FontInstance::GetCharWidth(char c, int fontSizeHalfPt) const
 {
     if (!m_valid)
         return 0;
+
+#ifdef _WIN32
+    GdiFontContext ctx(m_fontName.empty() ? "Calibri" : m_fontName, fontSizeHalfPt);
+    if (ctx.IsValid())
+    {
+        wchar_t wc[2] = {static_cast<wchar_t>(static_cast<unsigned char>(c)), 0};
+        return ctx.MeasureTextWidthTwips(wc, 1);
+    }
+#endif
+
     hb_font_t* hbFont = GetHbFont();
     if (!hbFont)
         return 0;
@@ -192,7 +331,7 @@ SwTwips FontInstance::GetCharWidth(char c, int fontSizeHalfPt) const
                            &glyph))
         return 0;
     hb_position_t advance10 = hb_font_get_glyph_h_advance(hbFont, glyph);
-    return static_cast<SwTwips>(std::round(static_cast<double>(advance10) / 6.0));
+    return static_cast<SwTwips>(std::round(static_cast<double>(advance10) / 65536.0 / 6.0));
 }
 
 int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTwips maxWidth) const
@@ -201,10 +340,52 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
         return 0;
     for (size_t i = 0; i < text.size(); ++i)
     {
-        char c = text[i];
-        if (c == '\n' || c == '\f' || c == '\v')
+        char ch = text[i];
+        if (ch == '\n' || ch == '\f' || ch == '\v')
             return static_cast<int>(i) + 1;
     }
+
+#ifdef _WIN32
+    GdiFontContext ctx(m_fontName.empty() ? "Calibri" : m_fontName, fontSizeHalfPt);
+    if (ctx.IsValid())
+    {
+        std::wstring wide = Utf8ToWide(text);
+        const int wlen = static_cast<int>(wide.size());
+        if (wlen == 0)
+            return -1;
+
+        int lo = 0, hi = wlen + 1;
+        int nFitChars = 0;
+        while (lo < hi)
+        {
+            int mid = (lo + hi) / 2;
+            if (mid > wlen)
+                mid = wlen;
+            if (ctx.MeasureTextWidthTwips(wide, mid) <= maxWidth)
+            {
+                nFitChars = mid;
+                lo = mid + 1;
+            }
+            else
+            {
+                hi = mid;
+            }
+        }
+
+        if (nFitChars >= wlen)
+            return -1;
+
+        int nWordBreak = nFitChars;
+        while (nWordBreak > 0 && wide[static_cast<size_t>(nWordBreak - 1)] != L' '
+               && wide[static_cast<size_t>(nWordBreak - 1)] != L'\t')
+            --nWordBreak;
+
+        int nBreakChars = nWordBreak > 0 ? nWordBreak : (nFitChars > 0 ? nFitChars : 1);
+        int nUtf8Break = WidePrefixToUtf8Bytes(wide, nBreakChars);
+        return nUtf8Break > 0 ? nUtf8Break : 1;
+    }
+#endif
+
     hb_font_t* hbFont = GetHbFont();
     if (!hbFont)
         return -1;
@@ -228,7 +409,8 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
     int lastBreakGlyph = -1;
     for (unsigned int i = 0; i < glyphCount; ++i)
     {
-        if (accumulated10 > maxAdvance10)
+        double nextAdvance = static_cast<double>(glyphPositions[i].x_advance) / 65536.0;
+        if (accumulated10 + nextAdvance > maxAdvance10 && accumulated10 > 0.0)
         {
             hb_buffer_destroy(buf);
             if (lastBreakGlyph > 0)
@@ -250,7 +432,7 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
             if (originalChar == ' ' || originalChar == '\t')
                 lastBreakGlyph = static_cast<int>(i) + 1;
         }
-        accumulated10 += static_cast<double>(glyphPositions[i].x_advance);
+        accumulated10 += nextAdvance;
     }
     hb_buffer_destroy(buf);
     return -1;
@@ -259,8 +441,6 @@ int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTw
 // 对应 LO DocumentSettingId::MS_WORD_COMP_GRID_METRICS
 // DOCX 中 <w:useFELayout/> 触发此标志。aproj 暂默认 true（DOCX 常见设置）
 // 后续 Task 可从 settings.xml 解析此标志。
-static bool g_bMsWordCompGridMetrics = true;
-
 void FontEngine::SetMsWordCompGridMetrics(bool bSet) { g_bMsWordCompGridMetrics = bSet; }
 bool FontEngine::GetMsWordCompGridMetrics() { return g_bMsWordCompGridMetrics; }
 
@@ -299,8 +479,6 @@ static bool ShouldUseWinMetrics(const std::string& rFamilyName, int nAscent, int
 
 // 对应 LO DocumentSettingId::ADD_EXT_LEADING
 // DOCX 默认启用 ext leading（LO GetFontLeading 在 ADD_EXT_LEADING=true 时返回 m_nExtLeading）
-static bool g_bAddExtLeading = true;
-
 void FontEngine::SetAddExtLeading(bool bSet) { g_bAddExtLeading = bSet; }
 
 // 对应 LO lcl_ApplyCjkHeightAdjustment (fntcache.cxx:272-293)
@@ -802,7 +980,6 @@ int FontEngine::MeasureTextHeight(const std::string& fontName, int fontSizeHalfP
     if (font && font->IsValid())
         nHeight = font->GetTextHeight(fontSizeHalfPt);
 
-    // 备用字体也通过 HarfBuzz 度量（与 LO 一致，不使用 GDI Win 度量）
     auto altIt = m_altNameCache.find(fontName);
     if (altIt != m_altNameCache.end() && altIt->second != fontName)
     {
