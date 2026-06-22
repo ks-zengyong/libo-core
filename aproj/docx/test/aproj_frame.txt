@@ -46,25 +46,25 @@ PAGE_START	3	11906	16838
     TEXT_FRAME	3	1004	35248	10466	639	"For all your document process needs"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
     SECTION_START	3	1004	35887	10466	15398
       COLUMN_START	3	1004	35887	5232	13907
-          TEXT_FRAME	3	1004	35887	5020	508	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	36395	5020	958	"\nRestrict Editing"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	37353	5020	300	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	37653	5020	300	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	37953	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	38291	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	38629	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	35887	5019	508	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	36395	5019	958	"\nRestrict Editing"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	37353	5019	300	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	37653	5019	300	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	37953	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	38291	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	38629	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
             FLY_START	3	296	33960	11878	16812
               IMAGE_FRAME	3	296	33960	11878	16812
             FLY_END	3
-          TEXT_FRAME	3	1004	38967	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	39305	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	39643	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	39981	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	40319	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	40657	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	40995	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	41333	5020	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	41671	5020	488	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	38967	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	39305	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	39643	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	39981	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	40319	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	40657	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	40995	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	41333	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	41671	5019	488	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
       COLUMN_END	3
       COLUMN_START	3	6236	35887	5234	13907
           TEXT_FRAME	3	6448	35887	5022	479	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
