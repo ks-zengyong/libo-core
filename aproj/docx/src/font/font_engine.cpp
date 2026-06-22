@@ -725,7 +725,6 @@ void FontEngine::InitPathCache()
     m_pathCache["Segoe UI Semibold"] = "seguisb.ttf";
     m_pathCache["Segoe UI Light"] = "segoeuisl.ttf";
     m_pathCache["Segoe UI Emoji"] = "seguiemj.ttf";
-    m_pathCache["Segoe Print"] = "segoepr.ttf";
     m_pathCache["Arial"] = "arial.ttf";
     m_pathCache["Arial Bold"] = "arialbd.ttf";
     m_pathCache["Times New Roman"] = "times.ttf";
@@ -776,6 +775,7 @@ void FontEngine::InitPathCache()
     //   Poppins (sans-serif) → DejaVu Sans (sans-serif, LO instdir/share/fonts/truetype/)
     //   fony family → Liberation Serif (serif, 用于空段落 CJK slot)
     // 对应 LO 的 PhysicalFontCollection::FindFontFamily 替代逻辑
+    // 注：ParseFontTable 会在解析时覆盖为文档 fontTable 中的 altName
     m_altNameCache["fony family"] = "Liberation Serif";
     m_altNameCache["Poppins"] = "DejaVu Sans";
     m_altNameCache["Poppins Medium"] = "DejaVu Sans";
@@ -912,6 +912,15 @@ bool FontEngine::HasAltName(const std::string& fontName)
 {
     InitPathCache();
     return m_altNameCache.find(fontName) != m_altNameCache.end();
+}
+
+void FontEngine::RegisterAltName(const std::string& fontName, const std::string& altName)
+{
+    if (fontName.empty() || altName.empty())
+        return;
+    InitPathCache();
+    m_altNameCache[fontName] = altName;
+    m_cache.erase(fontName);
 }
 
 int FontEngine::FindLineBreak(const std::string& fontName, int fontSizeHalfPt,

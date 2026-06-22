@@ -97,6 +97,7 @@ public:
 
     // fontTable altName 映射（OOXML 嵌入/链接字体）
     bool HasAltName(const std::string& fontName);
+    void RegisterAltName(const std::string& fontName, const std::string& altName);
 
     // 找到换行位置（便捷方法）
     int FindLineBreak(const std::string& fontName, int fontSizeHalfPt, const std::string& text,

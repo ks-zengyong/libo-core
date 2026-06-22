@@ -2,6 +2,7 @@
 
 #include "docx_parser.h"
 #include "../core/ndarr.h"
+#include "../font/font_engine.h"
 
 // miniz
 #include "miniz.h"
@@ -366,6 +367,7 @@ void DocxParser::ParseStyles(SwDoc& doc)
                     def.spacingAfter = attrAfterLines.as_int(0) * 240 / 100;
 
                 def.spacingLine = spacing.attribute("w:line").as_int(240);
+                def.spacingLineRule = spacing.attribute("w:lineRule").as_string("auto");
             }
 
             auto ind = pPr.child("w:ind");
@@ -374,6 +376,7 @@ void DocxParser::ParseStyles(SwDoc& doc)
                 def.indentLeft = ind.attribute("w:left").as_int(0);
                 def.indentRight = ind.attribute("w:right").as_int(0);
                 def.indentFirstLine = ind.attribute("w:firstLine").as_int(0);
+                def.indentHanging = ind.attribute("w:hanging").as_int(0);
             }
 
             auto pageBreakBefore = pPr.child("w:pageBreakBefore");
@@ -486,7 +489,7 @@ void DocxParser::ParseStyles(SwDoc& doc)
             if (def.indentFirstLine != 0)
                 pColl->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(def.indentFirstLine));
             if (def.indentHanging != 0)
-                pColl->SetAttr(RES_PARATR_HANGING, std::to_string(def.indentHanging));
+                pColl->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(-def.indentHanging));
         }
     }
 
@@ -526,6 +529,10 @@ void DocxParser::ParseStyles(SwDoc& doc)
             def.indentRight = parent.indentRight;
         if (def.indentFirstLine == 0 && parent.indentFirstLine != 0)
             def.indentFirstLine = parent.indentFirstLine;
+        if (def.indentHanging == 0 && parent.indentHanging != 0)
+            def.indentHanging = parent.indentHanging;
+        if (def.spacingLineRule == "auto" && parent.spacingLineRule != "auto")
+            def.spacingLineRule = parent.spacingLineRule;
         if (!def.pageBreakBefore && parent.pageBreakBefore)
             def.pageBreakBefore = parent.pageBreakBefore;
         if (!def.keepNext && parent.keepNext)
@@ -588,8 +595,37 @@ void DocxParser::ParseStyles(SwDoc& doc)
 
 void DocxParser::ParseFontTable(SwDoc& doc)
 {
-    // 字体表主要用于字体替换，这里简单存储
     (void)doc;
+    auto it = entries_.find("word/fontTable.xml");
+    if (it == entries_.end())
+        return;
+
+    std::string xml(it->second.data.begin(), it->second.data.end());
+    pugi::xml_document xmlDoc;
+    if (!xmlDoc.load_string(xml.c_str()))
+        return;
+
+    auto root = xmlDoc.child("w:fonts");
+    if (!root)
+        return;
+
+    FontEngine& fe = FontEngine::Instance();
+    for (auto fontNode : root.children("w:font"))
+    {
+        std::string name = fontNode.attribute("w:name").as_string();
+        if (name.empty())
+            continue;
+        auto alt = fontNode.child("w:altName");
+        if (!alt)
+            continue;
+        std::string altVal = alt.attribute("w:val").as_string();
+        if (!altVal.empty())
+        {
+            // 暂不在运行时切换 altName 度量：Segoe Print 行高与 LO 参考 Poppins 不一致，
+            // 会导致分页/节结构崩溃。待字体度量对齐后再启用 RegisterAltName。
+            (void)fe;
+        }
+    }
 }
 
 //===----------------------------------------------------------------------===//
@@ -2148,10 +2184,13 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
     if (spacing)
     {
         int line = spacing.attribute("w:line").as_int(240);
+        std::string lineRule = spacing.attribute("w:lineRule").as_string("auto");
         // 只在行间距不是默认值 240 时才设置，否则让样式继承链处理
         // 否则会阻止样式中的行间距被继承
         if (line != 240)
             pNode->SetAttr(RES_PARATR_LINESPACING, std::to_string(line));
+        if (lineRule != "auto")
+            pNode->SetAttr(RES_PARATR_LINE_RULE, lineRule);
 
         // before / beforeLines / after / afterLines
         // LO: before 优先于 beforeLines，after 优先于 afterLines
@@ -2180,15 +2219,23 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
             pNode->SetAttr(RES_UL_SPACE_AFTER, std::to_string(nAfter));
     }
 
-    // 缩进
+    // 缩进（对应 LO SvxLRSpaceItem / DomainMapper w:ind）
     auto ind = pPrNode.child("w:ind");
     if (ind)
     {
         int left = ind.attribute("w:left").as_int(0);
         int right = ind.attribute("w:right").as_int(0);
         int firstLine = ind.attribute("w:firstLine").as_int(0);
-        // 存储左缩进
-        pNode->SetAttr(RES_PARATR_INDENT, std::to_string(left));
+        int hanging = ind.attribute("w:hanging").as_int(0);
+        if (left != 0)
+            pNode->SetAttr(RES_PARATR_INDENT, std::to_string(left));
+        if (right != 0)
+            pNode->SetAttr(RES_PARATR_RIGHT_INDENT, std::to_string(right));
+        if (firstLine != 0)
+            pNode->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(firstLine));
+        // LO DomainMapper: w:hanging → 负首行缩进（SvxLRSpaceItem::TextFirstLineOfst）
+        if (hanging != 0)
+            pNode->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(-hanging));
     }
 
     // 分页（w:val="0" 表示不分页，缺少 w:val 或 w:val="1" 表示分页）
@@ -2381,8 +2428,8 @@ void DocxParser::ApplyStyleToTextNode(SwTextNode* pTN, const std::string& styleN
             pTN->SetAttr(RES_PARATR_RIGHT_INDENT, std::to_string(def.indentRight));
         if (def.indentFirstLine != 0 && !hasDirect(RES_PARATR_FIRSTLINE))
             pTN->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(def.indentFirstLine));
-        if (def.indentHanging != 0 && !hasDirect(RES_PARATR_HANGING))
-            pTN->SetAttr(RES_PARATR_HANGING, std::to_string(def.indentHanging));
+        if (def.indentHanging != 0 && !hasDirect(RES_PARATR_FIRSTLINE))
+            pTN->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(-def.indentHanging));
         break;
     }
 }

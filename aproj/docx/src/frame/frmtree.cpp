@@ -670,21 +670,27 @@ static int CountTextLines(const std::string& rText, const std::string& sContentF
     return nTextLines > 0 ? nTextLines : 1;
 }
 
+static SwTwips ParseTwipsAttr(SwTextNode* pTextNode, sal_uInt16 nWhich)
+{
+    const std::string* pVal = pTextNode->GetAttr(nWhich);
+    if (!pVal)
+        return 0;
+    try
+    {
+        return std::stoi(*pVal);
+    }
+    catch (...)
+    {
+        return 0;
+    }
+}
+
 static void GetEffectiveTextLineWidths(SwTextNode* pTextNode, SwTwips nColWidth,
                                        SwTwips& nFirstLineWidth, SwTwips& nSubWidth)
 {
-    SwTwips nLeft = 0;
-    const std::string* pIndent = pTextNode->GetAttr(RES_PARATR_INDENT);
-    if (pIndent)
-    {
-        try
-        {
-            nLeft = std::stoi(*pIndent);
-        }
-        catch (...)
-        {
-        }
-    }
+    SwTwips nLeft = ParseTwipsAttr(pTextNode, RES_PARATR_INDENT);
+    SwTwips nRight = ParseTwipsAttr(pTextNode, RES_PARATR_RIGHT_INDENT);
+    SwTwips nFirstLineOfst = ParseTwipsAttr(pTextNode, RES_PARATR_FIRSTLINE);
 
     // LO 换行宽度：节内正文（~10466）扣除左右 pgMar（各 720 twips）；栏内扣除栏间距 213
     SwTwips nWrapBase = nColWidth;
@@ -693,10 +699,18 @@ static void GetEffectiveTextLineWidths(SwTextNode* pTextNode, SwTwips nColWidth,
     else if (nColWidth > 2000 && nColWidth < 9000)
         nWrapBase = nColWidth - 213;
 
-    SwTwips nEffective = nWrapBase - nLeft;
-    nEffective = nEffective > 0 ? nEffective : nColWidth;
-    nFirstLineWidth = nEffective;
-    nSubWidth = nEffective;
+    // 对应 LO SwTextFormatInfo::GetLineWidth = Width() - X()
+    // w:hanging 已映射为负 RES_PARATR_FIRSTLINE（DomainMapper PROP_PARA_FIRST_LINE_INDENT）
+    // 首行起始 = Left + FirstLineOfst；后续行起始 = Left
+    SwTwips nFirstStart = nLeft + nFirstLineOfst;
+    SwTwips nFirst = nWrapBase - nFirstStart - nRight;
+    SwTwips nSub = nWrapBase - nLeft - nRight;
+    if (nFirst <= 0)
+        nFirst = nWrapBase > 0 ? nWrapBase : nColWidth;
+    if (nSub <= 0)
+        nSub = nFirst;
+    nFirstLineWidth = nFirst;
+    nSubWidth = nSub;
 }
 
 static bool IsFirstTextInCurrentSection(SwTextNode* pTextNode)
