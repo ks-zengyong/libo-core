@@ -19,7 +19,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // 查找包含 "Share" 的段落
     SwNodeOffset idx(0);
     SwNodes& nodes = doc.GetNodes();
     int paraCount = 0;

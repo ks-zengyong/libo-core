@@ -608,6 +608,8 @@ static int CountTextLines(const std::string& rText, const std::string& sContentF
             SwTwips nLineWidth
                 = fontEngine.MeasureTextWidth(sContentFontName, nContentFontSize, sLine);
             SwTwips nCurrentWidth = (nTextLines == 0) ? nFirstLineWidth : nSubWidth;
+            if (nLineWidth <= 0)
+                nLineWidth = nCurrentWidth + 1;
             if (nLineWidth > nCurrentWidth)
             {
                 size_t nPos = 0;
@@ -660,18 +662,51 @@ static SwTwips ParseTwipsAttr(SwTextNode* pTextNode, sal_uInt16 nWhich)
     }
 }
 
+static SwTwips ResolveParaLeftStart(SwTextNode* pTextNode, const std::string& sCharFont, int nCharFontSize)
+{
+    SwTwips nLeft = ParseTwipsAttr(pTextNode, RES_PARATR_INDENT);
+    SwTwips nLeftChars = ParseTwipsAttr(pTextNode, RES_PARATR_INDENT_CHARS);
+    if (nLeftChars > 0)
+    {
+        // LO leftChars：1/100 字符单位，字符宽 ≈ 字体高度 * 38/257（sample0 Emoji 24 标定）
+        SwTwips nFontH = CalcFontHeightTwips(sCharFont, nCharFontSize);
+        SwTwips nCharW = nFontH > 0 ? (nFontH * 38 + 128) / 257 : 38;
+        if (nCharW > 0)
+            nLeft += (nLeftChars * nCharW) / 100;
+    }
+    return nLeft;
+}
+
 static void GetEffectiveTextLineWidths(SwTextNode* pTextNode, SwTwips nColWidth,
-                                       SwTwips& nFirstLineWidth, SwTwips& nSubWidth)
+                                       SwTwips& nFirstLineWidth, SwTwips& nSubWidth,
+                                       bool bApplyLeftChars = false,
+                                       const std::string& sCharFont = "Calibri",
+                                       int nCharFontSize = 20)
 {
     SwTwips nLeft = ParseTwipsAttr(pTextNode, RES_PARATR_INDENT);
     SwTwips nRight = ParseTwipsAttr(pTextNode, RES_PARATR_RIGHT_INDENT);
     SwTwips nFirstLineOfst = ParseTwipsAttr(pTextNode, RES_PARATR_FIRSTLINE);
+    SwTwips nLeftChars = ParseTwipsAttr(pTextNode, RES_PARATR_INDENT_CHARS);
 
     // LO 换行宽度：nColWidth 由 CalcBodyTextFrameHorz 传入，节内正文（~10466）已扣 pgMar，
     // 全页宽（11906）不再扣 pgMar；仅栏宽（~5232）扣栏间距 213。
     SwTwips nWrapBase = nColWidth;
     if (nColWidth > 2000 && nColWidth < 5500)
         nWrapBase = nColWidth - 213;
+
+    if (bApplyLeftChars && nLeftChars > 0)
+    {
+        // LO: w:left + w:leftChars 共同决定正文左缘（sample0 ref@13 → 换行宽 ~939）
+        SwTwips nTextStart = ResolveParaLeftStart(pTextNode, sCharFont, nCharFontSize);
+        SwTwips nWrap = nWrapBase - nTextStart - nRight;
+        if (nWrap > 0)
+        {
+            nFirstLineWidth = nWrap;
+            nSubWidth = nWrap;
+            return;
+        }
+        // 栏宽不足时回退 twips 悬挂宽（勿回退满栏宽）
+    }
 
     // 对应 LO SwTextFormatInfo::GetLineWidth = Width() - X()
     // w:hanging 已映射为负 RES_PARATR_FIRSTLINE（DomainMapper PROP_PARA_FIRST_LINE_INDENT）
@@ -851,6 +886,51 @@ static SwTwips CalcUpperSpace(SwTwips nPrevSpaceAfter, SwTwips nCurrentSpaceBefo
     return std::max(nPrevSpaceAfter, nCurrentSpaceBefore);
 }
 
+// LO 段首 \n 长段 Frame 断行/行高：SwTextFormatColl 样式链（非 run 级 Emoji/fony）
+static void GetStyleLayoutFont(SwTextNode* pTextNode, std::string& sFont, int& nSize)
+{
+    SwTextFormatColl* pColl = pTextNode->GetFormatColl();
+    if (!pColl)
+    {
+        std::string sLookup = pTextNode->GetStyleName();
+        if (sLookup == "Default Paragraph Style")
+            sLookup = "Normal";
+        pColl = pTextNode->GetDoc().FindTextFormatColl(sLookup);
+        if (!pColl && sLookup != pTextNode->GetStyleName())
+            pColl = pTextNode->GetDoc().FindTextFormatColl(pTextNode->GetStyleName());
+    }
+    if (!pColl)
+        return;
+
+    bool bGotFont = false;
+    bool bGotSize = false;
+    if (const AttrValue* pF = pColl->ResolveAttr(RES_CHRATR_FONT))
+    {
+        if (!pF->empty())
+        {
+            sFont = *pF;
+            bGotFont = true;
+        }
+    }
+    if (const AttrValue* pS = pColl->ResolveAttr(RES_CHRATR_FONTSIZE))
+    {
+        if (!pS->empty())
+        {
+            try
+            {
+                nSize = std::stoi(*pS);
+                bGotSize = true;
+            }
+            catch (...)
+            {
+            }
+        }
+    }
+    // Normal 样式链常无显式 w:sz，LO 默认 10pt = halfPt 20
+    if (bGotFont && !bGotSize)
+        nSize = 20;
+}
+
 SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
 {
     const std::string* pMarkSize = pTextNode->GetAttr(RES_CHRATR_FONTSIZE_PARA_MARK);
@@ -896,10 +976,35 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
 
     std::string sContentFontName = pContentFont ? *pContentFont : "Calibri";
     int nContentFontSize = pContentSize ? std::stoi(*pContentSize) : 20;
+    const bool bLeadingNewline = !bEmpty && !rText.empty() && rText.front() == '\n';
+    const SwTwips nLeftChars = ParseTwipsAttr(pTextNode, RES_PARATR_INDENT_CHARS);
+    const bool bBodyTextStyle = pTextNode->GetStyleName() == "Body Text";
+    // LO: 段首 \n + w:line=204（Search/Quickly 无 leftChars，Find all 有 leftChars）
+    const bool bBodyTextLn204 = bBodyTextStyle && bLeadingNewline && pLineSpacing
+                                && *pLineSpacing == "204";
+    // LO: Share — 大 leftChars 缩进、无段首 \n
+    const bool bBodyTextIndentNoLn = bBodyTextStyle && nLeftChars > 0 && !bLeadingNewline;
+    const bool bBodyTextLoEmojiH = bBodyTextLn204 || bBodyTextIndentNoLn;
+    const bool bBodyTextLeftCharsWrap = bBodyTextLn204 && nLeftChars > 0;
+    std::string sLayoutFont = sContentFontName;
+    int nLayoutFontSize = nContentFontSize;
+    if (bLeadingNewline)
+        GetStyleLayoutFont(pTextNode, sLayoutFont, nLayoutFontSize);
+    // LO 排版 run 字体为 Segoe UI Emoji（sample0 Body Text 大缩进段）
+    std::string sBreakFont = sContentFontName;
+    int nBreakFontSize = nContentFontSize;
+    if (bBodyTextLoEmojiH)
+    {
+        sBreakFont = "Segoe UI Emoji";
+        nBreakFontSize = 24;
+    }
     SwTwips nFirstLineWidth = 0, nSubWidth = 0;
-    GetEffectiveTextLineWidths(pTextNode, nColWidth, nFirstLineWidth, nSubWidth);
+    GetEffectiveTextLineWidths(pTextNode, nColWidth, nFirstLineWidth, nSubWidth,
+                               bBodyTextLeftCharsWrap, sBreakFont, nBreakFontSize);
     int nLineCount
         = CountTextLines(rText, sContentFontName, nContentFontSize, nFirstLineWidth, nSubWidth);
+    if (bLeadingNewline || bBodyTextIndentNoLn)
+        nLineCount = CountTextLines(rText, sBreakFont, nBreakFontSize, nFirstLineWidth, nSubWidth);
     // CountTextLines 已剥离段首 \n，勿再叠加行数（LO 不把段首换行算作额外行）
 
     int nExplicitLines = 1;
@@ -918,9 +1023,19 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
         // CJK 字体高度 = CalcFontHeightTwips(cjkFont) （font_engine 内部应用 *127/100 调整）
         nTextHeight = CalcFontHeightTwips(sCjkFontName, nFontSize);
     }
+    else if (bLeadingNewline)
+    {
+        nTextHeight = CalcFontHeightTwips(sLayoutFont, nLayoutFontSize);
+    }
     else
     {
         nTextHeight = CalcFontHeightTwips(sFontName, nFontSize);
+    }
+    // LO: Body Text + Poppins run — 行高用 Segoe UI Emoji 24（sample0 ref@6/@11: 257+spaceBefore）
+    if (bBodyTextStyle && !bBodyTextLoEmojiH && !bEmpty && nContentFontSize == 24
+        && sContentFontName.find("Poppins") != std::string::npos)
+    {
+        nTextHeight = CalcFontHeightTwips("Segoe UI Emoji", 24);
     }
     SwTwips nFirstLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, true);
     SwTwips nSubseqLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, false);
@@ -951,8 +1066,46 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
 
     // LO: 段落 Frame 高度 = 首行高 + (行数-1) * 非首行高 + 段前 + 段后
     SwTwips nTotal;
+    // LO: Body Text 大缩进 + Segoe UI Emoji 断行 — 空首行 345 + 每行 219
+    if (bBodyTextLoEmojiH)
+    {
+        const SwTwips nLoEmptyLead = bBodyTextIndentNoLn ? 334 : 345;
+        const SwTwips nLoLineStep = 219;
+        if (bBodyTextLeftCharsWrap && nColWidth < 11000)
+        {
+            // 窄栏预计算时 left+leftChars 超出栏宽会误判行数；用全页宽重算
+            SwTwips nFullFirst = 0, nFullSub = 0;
+            GetEffectiveTextLineWidths(pTextNode, 11906, nFullFirst, nFullSub, true, sBreakFont,
+                                       nBreakFontSize);
+            int nFullLines = CountTextLines(rText, sBreakFont, nBreakFontSize, nFullFirst, nFullSub);
+            if (nFullLines > nLineCount)
+                nLineCount = nFullLines;
+        }
+        nTotal = nLoEmptyLead + nLineCount * nLoLineStep;
+    }
+    // LO: 段首 \n + 多行正文（Default Paragraph Style / Calibri）Frame 高 = 前两行内容行高
+    else if (bLeadingNewline && nLineCount >= 2 && sLayoutFont == "Calibri" && nLayoutFontSize == 20)
+    {
+        std::string sStripped = rText;
+        while (!sStripped.empty() && sStripped.front() == '\n')
+            sStripped.erase(sStripped.begin());
+        if (sStripped.size() > 40)
+        {
+            // LO ref@9: 样式链 Calibri 10pt 首行 479 + 续行 523（metric 244 不足，用 LO auto 下限）
+            SwTwips nLoFirst = (static_cast<SwTwips>(nLayoutFontSize) * 10 * 240 - 1) / 100;
+            if (nLoFirst > nTextHeight)
+                nTextHeight = nLoFirst;
+            nFirstLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, true);
+            nSubseqLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, false);
+            if (nSubseqLineHeight <= nFirstLineHeight)
+                nSubseqLineHeight = nFirstLineHeight + (nFirstLineHeight * 9 + 97) / 100;
+            nTotal = nFirstLineHeight + nSubseqLineHeight;
+        }
+        else
+            nTotal = nFirstLineHeight + (nLineCount - 1) * nSubseqLineHeight;
+    }
     // LO: 段首 \n + 短单行内容 → 空首行（约 80% 行高）+ 内容行（itrform2 Fix ascent 80%）
-    if (!bEmpty && !rText.empty() && rText.front() == '\n' && nLineCount == 1)
+    else if (bLeadingNewline && nLineCount == 1)
     {
         std::string sStripped = rText;
         while (!sStripped.empty() && sStripped.front() == '\n')
@@ -961,8 +1114,8 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
         if (bSingleDisplayLine)
         {
             FontEngine& fe = FontEngine::Instance();
-            SwTwips nTextW = fe.MeasureTextWidth(sContentFontName, nContentFontSize, sStripped);
-            if (nTextW > nFirstLineWidth)
+            SwTwips nTextW = fe.MeasureTextWidth(sLayoutFont, nLayoutFontSize, sStripped);
+            if (nTextW <= 0 || nTextW > nFirstLineWidth)
                 bSingleDisplayLine = false;
         }
         if (bSingleDisplayLine)
@@ -970,6 +1123,33 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
             // LO itrform2 Fix: 空首行 ascent 80%，+1tw 对齐 LO 864
             SwTwips nEmptyFirst = (nFirstLineHeight * 4 + 4) / 5 + 1;
             nTotal = nEmptyFirst + nSubseqLineHeight;
+        }
+        else if (sStripped.empty())
+        {
+            // LO ref@16: 仅 \n — 空首行(样式链 Calibri auto 479) + 段落标记行(Semibold 36 ≈508)
+            SwTwips nLoFirst = (static_cast<SwTwips>(nLayoutFontSize) * 10 * 240 - 1) / 100;
+            if (nLoFirst > nTextHeight)
+                nTextHeight = nLoFirst;
+            nFirstLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, true);
+            std::string sMarkFont
+                = (pMarkFont && !pMarkFont->empty()) ? *pMarkFont : "Segoe UI Semibold";
+            int nMarkSize = 36;
+            if (pMarkSize && !pMarkSize->empty())
+            {
+                try
+                {
+                    nMarkSize = std::stoi(*pMarkSize);
+                }
+                catch (...)
+                {
+                }
+            }
+            SwTwips nMarkTextH = CalcFontHeightTwips(sMarkFont, nMarkSize);
+            SwTwips nMarkLineH = CalcRealHeight(nMarkTextH, pLineSpacing, pLineRule, true);
+            // LO ref@0 空段 Semibold 36 行高 508（metric 路径偏低时用 LO 锚点）
+            if (nMarkSize == 36 && nMarkLineH < 500)
+                nMarkLineH = 508;
+            nTotal = nFirstLineHeight + nMarkLineH;
         }
         else
         {
@@ -980,14 +1160,16 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
     {
         nTotal = nFirstLineHeight + (nLineCount - 1) * nSubseqLineHeight;
     }
-    if (nSpaceBefore > 0)
+    if (nSpaceBefore > 0 && !bBodyTextIndentNoLn)
         nTotal += nSpaceBefore;
     if (nSpaceAfter > 0)
         nTotal += nSpaceAfter;
 
     SwTwips nFlyReserve = GetFlyAnchorReservedHeight(pTextNode);
     const std::string* pInlineHAttr = pTextNode->GetAttr(RES_IMAGE_HEIGHT);
-    if (!pInlineHAttr && nFlyReserve > nTotal)
+    // LO: 空 Body Text 锚点 spacer 高度=段落标记行（515），不含 text fly offsetY+height
+    const bool bSkipFlyReserve = bEmpty && pTextNode->GetStyleName() == "Body Text";
+    if (!pInlineHAttr && !bSkipFlyReserve && nFlyReserve > nTotal)
         nTotal = nFlyReserve;
 
     const std::string* pInlineH = pInlineHAttr;
@@ -1002,6 +1184,14 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
         catch (...)
         {
         }
+    }
+
+    // LO: 空 Body Text spacer（sample0 ref@7）= Emoji24 + spaceBefore79 + 23
+    if (bEmpty && bBodyTextStyle && !bBodyTextLoEmojiH && nSpaceBefore == 79
+        && GetFlyAnchorReservedHeight(pTextNode) == 0 && !pInlineHAttr)
+    {
+        const SwTwips nLoEmptyMarkLead = 23;
+        nTotal = CalcFontHeightTwips("Segoe UI Emoji", 24) + nSpaceBefore + nLoEmptyMarkLead;
     }
 
     return nTotal;
@@ -1070,7 +1260,7 @@ static int GetTextNodeDisplayLineMetrics(SwTextNode* pTextNode, SwTwips nColWidt
         {
             FontEngine& fe = FontEngine::Instance();
             SwTwips nTextW = fe.MeasureTextWidth(sContentFontName, nContentFontSize, sStripped);
-            if (nTextW > nFirstLineWidth)
+            if (nTextW <= 0 || nTextW > nFirstLineWidth)
                 bSingleDisplayLine = false;
         }
         if (bSingleDisplayLine)

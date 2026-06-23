@@ -265,7 +265,7 @@ FontMetric FontInstance::GetMetric(float pixelHeight) const
 
 SwTwips FontInstance::GetTextWidth(const std::string& text, int fontSizeHalfPt) const
 {
-    if (!m_valid || text.empty())
+    if (text.empty())
         return 0;
 
 #ifdef _WIN32
@@ -277,6 +277,9 @@ SwTwips FontInstance::GetTextWidth(const std::string& text, int fontSizeHalfPt) 
             return ctx.MeasureTextWidthTwips(wide, static_cast<int>(wide.size()));
     }
 #endif
+
+    if (!m_valid)
+        return 0;
 
     hb_font_t* hbFont = GetHbFont();
     if (!hbFont)
@@ -336,7 +339,7 @@ SwTwips FontInstance::GetCharWidth(char c, int fontSizeHalfPt) const
 
 int FontInstance::GetTextBreak(const std::string& text, int fontSizeHalfPt, SwTwips maxWidth) const
 {
-    if (!m_valid || text.empty())
+    if (text.empty())
         return 0;
     for (size_t i = 0; i < text.size(); ++i)
     {
@@ -583,6 +586,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                 {
                     double fAscent = 0, fDescent = 0, fExtLeading = 0;
                     hb_position_t nWinAscent = 0, nWinDescent = 0;
+                    hb_position_t nHheaLineGap = 0;
                     bool bHheaValid = false;
 
                     // 检查是否为可变字体（有 fvar 表）
@@ -630,6 +634,7 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                                 fAscent = nAscent;
                                 fDescent = -nDescent;
                                 fExtLeading = nLineGap;
+                                nHheaLineGap = nLineGap;
                                 bHheaValid = true;
                             }
                         }
@@ -701,6 +706,10 @@ int FontInstance::GetTextHeight(int fontSizeHalfPt) const
                                 fAscent = nTypoAscent;
                                 fDescent = -nTypoDescent;
                                 fExtLeading = nTypoLineGap;
+                                // Calibri 等字体 USE_TYPO_METRICS 时 typo line gap 常为 0，
+                                // LO FontMetric external leading 仍取 hhea line gap（479≈244+235）
+                                if (fExtLeading == 0.0 && bHheaValid && nHheaLineGap > 0)
+                                    fExtLeading = nHheaLineGap;
                             }
                         }
                     }
@@ -967,7 +976,7 @@ SwTwips FontEngine::MeasureTextWidth(const std::string& fontName, int fontSizeHa
                                      const std::string& text)
 {
     FontInstance* font = GetFont(fontName);
-    if (!font || !font->IsValid())
+    if (!font)
         return -1;
     return font->GetTextWidth(text, fontSizeHalfPt);
 }
@@ -977,14 +986,14 @@ int FontEngine::MeasureTextHeight(const std::string& fontName, int fontSizeHalfP
     InitPathCache();
     int nHeight = 0;
     FontInstance* font = GetFont(fontName);
-    if (font && font->IsValid())
+    if (font)
         nHeight = font->GetTextHeight(fontSizeHalfPt);
 
     auto altIt = m_altNameCache.find(fontName);
     if (altIt != m_altNameCache.end() && altIt->second != fontName)
     {
         FontInstance* altFont = GetFont(altIt->second);
-        if (altFont && altFont->IsValid())
+        if (altFont)
         {
             int nAlt = altFont->GetTextHeight(fontSizeHalfPt);
             if (nAlt > nHeight)
@@ -1013,7 +1022,7 @@ int FontEngine::FindLineBreak(const std::string& fontName, int fontSizeHalfPt,
                               const std::string& text, SwTwips maxWidth)
 {
     FontInstance* font = GetFont(fontName);
-    if (!font || !font->IsValid())
+    if (!font)
         return -1;
     return font->GetTextBreak(text, fontSizeHalfPt, maxWidth);
 }

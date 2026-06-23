@@ -2342,6 +2342,12 @@ void DocxParser::ParseParagraphProps(pugi::xml_node pPrNode, SwTextNode* pNode)
         // LO DomainMapper: w:hanging → 负首行缩进（SvxLRSpaceItem::TextFirstLineOfst）
         if (hanging != 0)
             pNode->SetAttr(RES_PARATR_FIRSTLINE, std::to_string(-hanging));
+        int leftChars = ind.attribute("w:leftChars").as_int(0);
+        int rightChars = ind.attribute("w:rightChars").as_int(0);
+        if (leftChars != 0)
+            pNode->SetAttr(RES_PARATR_INDENT_CHARS, std::to_string(leftChars));
+        if (rightChars != 0)
+            pNode->SetAttr(RES_PARATR_RIGHT_INDENT_CHARS, std::to_string(rightChars));
     }
 
     // 分页（w:val="0" 表示不分页，缺少 w:val 或 w:val="1" 表示分页）
@@ -2600,7 +2606,12 @@ void DocxParser::ApplyFirstTextRunFromXml(pugi::xml_node pNode, SwTextNode* pTN)
         for (auto c : rNode.children())
         {
             std::string n = c.name();
-            if (n == "w:t" || n == "w:sym")
+            if (n == "w:t")
+            {
+                if (!c.text().empty())
+                    return true;
+            }
+            else if (n == "w:sym")
                 return true;
         }
         return false;

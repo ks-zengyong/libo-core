@@ -17,7 +17,8 @@ int main(int argc, char* argv[])
     string testTexts[] = {
         "Share your documents with others.",
         "Find all of Writer's commands.",
-        "Share your documents with others",
+        "Search the Help center for answers when you get stuck.",
+        "Quickly switch views and adjust the scale of the page display.",
     };
     
     // 字号（half-pt）
@@ -33,12 +34,21 @@ int main(int argc, char* argv[])
     int para8Hanging = 198;
     
     int para7Effective = colWidth - para7Left;  // = 3306
-    int para8FirstLine = colWidth - para8Left - para8Right;  // = 2555
-    int para8Subseq = colWidth - para8Left - para8Right - para8Hanging;  // = 2357
+    int para7Right = 0;
+    int para8FirstLine = colWidth - para8Left + para8Hanging - para8Right; // hanging firstLine=-198
+    int para8Subseq = colWidth - para8Left - para8Right;
+    int para9Left = 8600;
+    int para9Right = 93;
+    int para9Width = colWidth - para9Left - para9Right;
+    int para10Left = 8600;
+    int para10Right = 388;
+    int para10Width = colWidth - para10Left - para10Right;
     
     cout << "Para7 effective width: " << para7Effective << " twips" << endl;
     cout << "Para8 firstLine width: " << para8FirstLine << " twips" << endl;
     cout << "Para8 subseq width: " << para8Subseq << " twips" << endl;
+    cout << "Para9 (Search) width: " << para9Width << " twips" << endl;
+    cout << "Para10 (Quickly) width: " << para10Width << " twips" << endl;
     cout << endl;
     
     // 测试每种字体
@@ -71,22 +81,34 @@ int main(int argc, char* argv[])
                 cout << "    Lines(para7 effective): " << lines;
                 cout << "  EstHeight: " << lines * h << " twips" << endl;
                 
-                // 用 para8 first/subseq width 计算
-                pos = 0;
-                lines = 0;
-                curW = para8FirstLine;
-                while (pos < (int)t.size()) {
-                    int brk = fe.FindLineBreak(f, s, t.substr(pos), curW);
-                    curW = para8Subseq;
-                    if (brk <= 0 || brk >= (int)t.size() - pos) {
+                // 用 para8/9/10 宽度计算
+                auto countLines = [&](int firstW, int subW) {
+                    int pos = 0;
+                    int lines = 0;
+                    int curW = firstW;
+                    while (pos < (int)t.size()) {
+                        int brk = fe.FindLineBreak(f, s, t.substr(pos), curW);
+                        curW = subW;
+                        if (brk <= 0 || brk >= (int)t.size() - pos) {
+                            lines++;
+                            break;
+                        }
+                        pos += brk;
                         lines++;
-                        break;
                     }
-                    pos += brk;
-                    lines++;
+                    return lines;
+                };
+                int n8 = countLines(para8FirstLine, para8Subseq);
+                cout << "    Lines(para8 widths): " << n8;
+                cout << "  EstHeight: " << n8 * h << " twips" << endl;
+                if (t.find("Search the Help") == 0) {
+                    int n9 = countLines(para9Width, para9Width);
+                    cout << "    Lines(para9 widths): " << n9 << endl;
                 }
-                cout << "    Lines(para8 widths): " << lines;
-                cout << "  EstHeight: " << lines * h << " twips" << endl;
+                if (t.find("Quickly switch") == 0) {
+                    int n10 = countLines(para10Width, para10Width);
+                    cout << "    Lines(para10 widths): " << n10 << endl;
+                }
             }
         }
     }
