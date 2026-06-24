@@ -1,7 +1,7 @@
 PAGE_START	1	11906	16838
     TEXT_FRAME	1	284	284	11906	508	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
-      FLY_START	1	296	284	11878	16812
-        IMAGE_FRAME	1	296	284	11878	16812
+      FLY_START	1	296	792	11878	16812
+        IMAGE_FRAME	1	296	792	11878	16812
       FLY_END	1
     TEXT_FRAME	1	284	792	11906	336	"WPS Office®"	Poppins	24	16777215	144	0	0	0	Body Text
     TEXT_FRAME	1	284	1128	11906	359	""	fony family	24	16777215	144	0	0	0	Body Text
@@ -21,9 +21,9 @@ PAGE_START	1	11906	16838
     TEXT_FRAME	1	284	10894	11906	635	"WPS AI can help you create and enhance your inspiration in writing stuff. You can use WPS AI to help you write and understand your Word document."	Poppins	24	16777215	144	0	0	0	Body Text
     TEXT_FRAME	1	284	11529	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
     TEXT_FRAME	1	284	12044	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
-      FLY_START	1	1399	12527	9764	1775
-        TEXT_FRAME	1	1399	12527	9764	244	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-        TEXT_FRAME	1	1399	12771	9764	488	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+      FLY_START	1	1399	13042	9764	1775
+        TEXT_FRAME	1	1399	13042	9764	244	""	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+        TEXT_FRAME	1	1399	13286	9764	488	"WPS AI, fully embedded with ChatGPT capabilities, is coming soon. WPS Pro members have the opportunity to secure seats for internal testing and enjoy a special discount."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
       FLY_END	1
     TEXT_FRAME	1	284	12559	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
     TEXT_FRAME	1	284	13074	11906	515	""	Segoe UI Emoji	28	16777215	144	0	0	0	Body Text
@@ -37,56 +37,55 @@ PAGE_START	2	11906	16838
     TEXT_FRAME	2	1004	18605	10466	900	"Just @AI, input a prompt and it will instantly generate text content in a professional format, such as brainstorming, to-do lists, working emails, social media posts, and more. The possibilities are endless."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
     TEXT_FRAME	2	1004	19505	10466	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
     TEXT_FRAME	2	1004	19843	10466	4445	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	2	1004	24288	10466	441	"\nWPS AI-based content rewriting"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	2	1004	24729	10466	900	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	2	1004	25629	10466	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-    TEXT_FRAME	2	1004	25967	10466	4378	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	1004	24288	10466	958	"\nWPS AI-based content rewriting"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	1004	25246	10466	900	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	1004	26146	10466	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+    TEXT_FRAME	2	1004	26484	10466	4378	" "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
 PAGE_END	2
 PAGE_START	3	11906	16838
     TEXT_FRAME	3	1004	35248	10466	639	"For all your document process needs"	Calibri	20	2500134	144	0	0	0	Default Paragraph Style
     SECTION_START	3	1004	35887	10466	15398
       COLUMN_START	3	1004	35887	5232	13907
-          TEXT_FRAME	3	1004	35887	5019	508	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	36395	5019	441	"\nRestrict Editing"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	36836	5019	1200	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	38036	5019	1200	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	39236	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	39574	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	39912	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-            FLY_START	3	687	39954	5113	3446
-              IMAGE_FRAME	3	687	39954	5113	3446
+          TEXT_FRAME	3	1004	35887	5019	479	""	Segoe UI Semibold	36	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	36366	5019	958	"\nRestrict Editing"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	37324	5019	1200	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	38524	5019	1200	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	39724	5019	276	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	40000	5019	276	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	40276	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+            FLY_START	3	687	40656	5113	3446
+              IMAGE_FRAME	3	687	40656	5113	3446
             FLY_END	3
-          TEXT_FRAME	3	1004	40250	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	40588	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	40926	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	41264	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	41602	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	41940	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	42278	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	42616	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	1004	42954	5019	987	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	40614	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	40952	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	41290	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	41628	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	41966	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	42304	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	42642	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	42980	5019	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	43318	5019	922	"\n"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	44240	5019	479	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	44719	5019	1500	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	1004	46219	5019	276	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
       COLUMN_END	3
       COLUMN_START	3	6236	35887	5234	13907
-          TEXT_FRAME	3	6448	35887	5022	479	"Co-Edit with Others"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	36366	5022	1500	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	37866	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	38204	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	38542	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	38880	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-            FLY_START	3	6742	39121	5106	3474
-              IMAGE_FRAME	3	6742	39121	5106	3474
+          TEXT_FRAME	3	6448	35887	5022	276	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	36163	5022	276	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+            FLY_START	3	6742	36680	5106	3474
+              IMAGE_FRAME	3	6742	36680	5106	3474
             FLY_END	3
-          TEXT_FRAME	3	6448	39218	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	39556	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	39894	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	40232	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	40570	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	40908	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	41246	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	41754	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	42262	5022	441	"\nFormat Conversion"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	42703	5022	600	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
-          TEXT_FRAME	3	6448	43303	5022	600	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	36439	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	36777	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	37115	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	37453	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	37791	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	38129	5022	338	""	Poppins	24	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	38467	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	38975	5022	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	39483	5022	891	"\nFormat Conversion"	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	40374	5022	600	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
+          TEXT_FRAME	3	6448	40974	5022	300	"Effortlessly batch convert multiple files."	Calibri	20	16777215	144	0	0	0	Default Paragraph Style
       COLUMN_END	3
     SECTION_END	3
 PAGE_END	3
@@ -94,8 +93,8 @@ PAGE_START	4	11906	16838
     SECTION_START	4	1004	52370	10466	508
       COLUMN_START	4	1004	52370	5232	508
           TEXT_FRAME	4	1004	52370	5020	508	""	Poppins Medium	36	16777215	144	0	0	0	Default Paragraph Style
-            FLY_START	4	957	55048	5119	3306
-              IMAGE_FRAME	4	957	55048	5119	3306
+            FLY_START	4	957	55556	5119	3306
+              IMAGE_FRAME	4	957	55556	5119	3306
             FLY_END	4
       COLUMN_END	4
       COLUMN_START	4	6236	52370	5234	508
@@ -193,15 +192,15 @@ PAGE_START	6	11906	16838
 PAGE_END	6
 PAGE_START	7	11906	16838
     TEXT_FRAME	7	2084	104456	8306	1174	""	Poppins SemiBold	40	2500134	144	0	0	0	Default Paragraph Style
-      FLY_START	7	701	104687	10530	943
-        TEXT_FRAME	7	701	104687	10530	244	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Heading 1
-        TEXT_FRAME	7	701	104931	10530	244	""	Calibri	20	16777215	144	0	0	0	Frame Contents
+      FLY_START	7	701	105861	10530	943
+        TEXT_FRAME	7	701	105861	10530	244	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Heading 1
+        TEXT_FRAME	7	701	106105	10530	244	""	Calibri	20	16777215	144	0	0	0	Frame Contents
       FLY_END	7
-      FLY_START	7	2229	103687	8303	1140
-        TEXT_FRAME	7	2229	103687	8303	244	"Free ALL-IN-ONE Office Suite"	Calibri	20	16777215	144	0	0	0	Heading 1
-        TEXT_FRAME	7	2229	103931	8303	244	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Frame Contents
+      FLY_START	7	2229	104861	8303	1140
+        TEXT_FRAME	7	2229	104861	8303	244	"Free ALL-IN-ONE Office Suite"	Calibri	20	16777215	144	0	0	0	Heading 1
+        TEXT_FRAME	7	2229	105105	8303	244	"Install free WPS Office to enjoy the same benefits on Android & ios!"	Calibri	20	16777215	144	0	0	0	Frame Contents
       FLY_END	7
-      FLY_START	7	274	102996	11926	16877
-        IMAGE_FRAME	7	274	102996	11878	16812
+      FLY_START	7	274	104170	11926	16877
+        IMAGE_FRAME	7	274	104170	11878	16812
       FLY_END	7
 PAGE_END	7

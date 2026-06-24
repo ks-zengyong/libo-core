@@ -81,12 +81,12 @@ SET_TEXT_COLOR	2	0
 TEXT_RUN	2	1004	24288	0	0	"\nWPS AI-based content rewriting"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	2	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	24729	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	2	1004	25246	0	0	"If you already have your text and content. WPS AI can also help you improve it. Whether you need to make it shorter, longer, or change format, I've got you covered."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	2	Calibri	20	144	0
 SET_TEXT_COLOR	2	0
 SET_FONT	2	Calibri	20	144	0
 SET_TEXT_COLOR	2	0
-TEXT_RUN	2	1004	25967	0	0	" "	Calibri	20	0	144	0	0	0	
+TEXT_RUN	2	1004	26484	0	0	" "	Calibri	20	0	144	0	0	0	
 PAGE_START	3	11906	16838
 PAGE_END	3
 SET_FONT	3	Segoe UI Semibold	48	144	0
@@ -96,13 +96,13 @@ SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	36395	0	0	"\nRestrict Editing"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1004	36366	0	0	"\nRestrict Editing"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	36836	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1004	37324	0	0	"Sometimes at work, you may need to send documents to colleagues but want to prevent unauthorized changes by others. "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	38036	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	1004	38524	0	0	"Click on Review > Restrict Editing to set permissions for editing, reading, commenting, and other actions to enhance document security."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
@@ -127,15 +127,13 @@ SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	1004	42954	0	0	"\n"	Calibri	20	0	144	0	0	0	
+TEXT_RUN	3	1004	43318	0	0	"\n"	Calibri	20	0	144	0	0	0	
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6448	35887	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	1004	44240	0	0	"Co-Edit with Others"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6448	36366	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Segoe UI Emoji	28	0	144	0	0	0	
-SET_FONT	3	Calibri	20	144	0
-SET_TEXT_COLOR	3	0
+TEXT_RUN	3	1004	44719	0	0	"Share your work with others through links, QR codes, emails, and more. Everyone can simultaneously edit the same document, enabling seamless collaboration."	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Calibri	20	144	0
@@ -160,13 +158,13 @@ SET_FONT	3	Calibri	20	144	0
 SET_TEXT_COLOR	3	0
 SET_FONT	3	Segoe UI Semibold	36	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6448	42262	0	0	"\nFormat Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
+TEXT_RUN	3	6448	39483	0	0	"\nFormat Conversion"	Segoe UI Semibold	36	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6448	42703	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	6448	40374	0	0	"Easily convert Word to PDF, PDF to Word, PNG, JPG, TXT, and more. "	Segoe UI Emoji	28	0	144	0	0	0	
 SET_FONT	3	Segoe UI Emoji	28	144	0
 SET_TEXT_COLOR	3	0
-TEXT_RUN	3	6448	43303	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
+TEXT_RUN	3	6448	40974	0	0	"Effortlessly batch convert multiple files."	Segoe UI Emoji	28	0	144	0	0	0	
 PAGE_START	4	11906	16838
 PAGE_END	4
 SET_FONT	4	Calibri	20	144	0

@@ -9,7 +9,7 @@
 #include "../src/core/doc.h"
 
 int main(int argc, char* argv[]) {
-    const char* path = (argc > 1) ? argv[1] : "e:/lo/libo-core/aproj/docx/samples/sample0.docx";
+    const char* path = (argc > 1) ? argv[1] : "../samples/sample0.docx";
     std::cout << "Parsing: " << path << std::endl;
 
     SwDoc doc;

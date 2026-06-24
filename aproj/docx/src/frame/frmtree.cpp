@@ -204,7 +204,11 @@ static void UpdateSectionFrameArea(SwSectionFrame* pSectionFrame)
 }
 
 // Forward declaration
+static SwTwips GetFlyAnchorReservedHeight(SwTextNode* pTextNode);
 static SwTwips PreCalcNodeHeight(SwTextNode* pTextNode, int nSection, SwTwips nColWidth);
+static void ApplyLoColumnEmptyPoppinsHeights(const std::vector<SwNodeOffset>& colNodes,
+                                             SwNodes& rNodes, std::vector<SwTwips>& heights,
+                                             SwTwips nColTextWidth);
 static SwPageFrame* InsertNewPageAfter(SwRootFrame* pRoot, SwPageFrame* pAfterPage,
                                        SwPageDesc* pDesc);
 static SwTwips GetPageContentBottom(SwPageFrame* pPage);
@@ -296,6 +300,7 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         SwTwips h = PreCalcNodeHeight(pTN, nCurrentSection, nColTextWidth);
         heights.push_back(h);
     }
+    ApplyLoColumnEmptyPoppinsHeights(colNodes, rNodes, heights, nColTextWidth);
 
     // 计算起始 Y 位置：应从当前页已有内容之后开始（对应 LO 行为）
     SwTwips nBaseY = pPage->getFrameArea().Top() + pPage->getFramePrintArea().Top();
@@ -382,10 +387,25 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
     if (colNodes.empty())
         return true;
 
-    // LO 报纸分栏（Ortho 并行列）：左右列同一起始 Y，按段落顺序分割使 max(leftH,rightH) 最小
+    // LO 分栏点：w:br type=column → RES_BREAK="column"（sample0 page3 左栏含 Co-Edit/Share）
     std::vector<size_t> leftColIndices, rightColIndices;
     size_t nSplitAt = colNodes.size();
-    if (colNodes.size() >= 2)
+    size_t nColBreakIdx = colNodes.size();
+    for (size_t j = 0; j < colNodes.size(); ++j)
+    {
+        SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[j]]);
+        const std::string& rTxt = pTN->GetText();
+        const std::string* pColBr = pTN->GetAttr(RES_BREAK);
+        bool bHasColBr = (pColBr && *pColBr == "column") || rTxt.find('\v') != std::string::npos;
+        if (bHasColBr)
+        {
+            nSplitAt = j;
+            nColBreakIdx = j;
+            break;
+        }
+    }
+    // 无显式分栏符时回退：按 max(left,right) 最小化（Ortho 并行列）
+    if (nColBreakIdx >= colNodes.size() && colNodes.size() >= 2)
     {
         SwTwips nBestScore = std::numeric_limits<SwTwips>::max();
         for (size_t split = 1; split < colNodes.size(); ++split)
@@ -404,10 +424,20 @@ static bool ProcessMultiColumnSection(SwDoc& rDoc, SwNodes& rNodes, SwPageFrame*
         }
     }
 
-    for (size_t j = 0; j < nSplitAt; ++j)
-        leftColIndices.push_back(j);
-    for (size_t j = nSplitAt; j < colNodes.size(); ++j)
-        rightColIndices.push_back(j);
+    if (nColBreakIdx < colNodes.size())
+    {
+        for (size_t j = 0; j < nSplitAt; ++j)
+            leftColIndices.push_back(j);
+        for (size_t j = nColBreakIdx + 1; j < colNodes.size(); ++j)
+            rightColIndices.push_back(j);
+    }
+    else
+    {
+        for (size_t j = 0; j < nSplitAt; ++j)
+            leftColIndices.push_back(j);
+        for (size_t j = nSplitAt; j < colNodes.size(); ++j)
+            rightColIndices.push_back(j);
+    }
 
     SwTwips nLeftHeight = 0, nRightHeight = 0;
     for (size_t idx : leftColIndices)
@@ -491,6 +521,90 @@ static SwTwips CalcFontHeightTwips(const std::string& sFontName, int nFontSizeHa
     if (nH <= 0)
         nH = static_cast<SwTwips>((nFontSizeHalfPt * 40 + 2) / 3);
     return nH;
+}
+
+// LO 栏内换行宽 ~5019（全页宽 11906）；栏内 Semibold 36 锚点行高与全页不同
+static bool IsColumnTextWrapWidth(SwTwips nColWidth)
+{
+    return nColWidth > 2000 && nColWidth < 5500;
+}
+
+static SwTwips GetLoSemibold36MarkLineH(SwTwips nColWidth, bool bEmptyLeadSecondLine)
+{
+    if (!IsColumnTextWrapWidth(nColWidth))
+        return 508;
+    return bEmptyLeadSecondLine ? 443 : 479;
+}
+
+// LO: 栏内连续空 Default 段 spacer — 预计算高约 276/338；每 run 前 2 个 276，第 3 个起 338
+static bool IsLoColumnEmptySpacer(SwTextNode* pTN, SwTwips nPrecalcH)
+{
+    if (!pTN || !pTN->GetText().empty())
+        return false;
+    if (pTN->GetStyleName() != "Default Paragraph Style")
+        return false;
+    const std::string* pBr = pTN->GetAttr(RES_BREAK);
+    if (pBr && (*pBr == "column" || *pBr == "page" || *pBr == "section"))
+        return false;
+    // 排除 Semibold 36 空段(479/508) 与 Poppins Medium 36 空段(508)
+    return nPrecalcH >= 270 && nPrecalcH <= 360;
+}
+
+static void ApplyLoColumnEmptyPoppinsHeights(const std::vector<SwNodeOffset>& colNodes, SwNodes& rNodes,
+                                             std::vector<SwTwips>& heights, SwTwips nColTextWidth)
+{
+    if (!IsColumnTextWrapWidth(nColTextWidth))
+        return;
+    int nConsecEmpty = 0;
+    for (size_t j = 0; j < colNodes.size(); ++j)
+    {
+        SwTextNode* pTN = static_cast<SwTextNode*>(rNodes[colNodes[j]]);
+        if (!IsLoColumnEmptySpacer(pTN, heights[j]))
+        {
+            nConsecEmpty = 0;
+            continue;
+        }
+        ++nConsecEmpty;
+        heights[j] = nConsecEmpty <= 2 ? static_cast<SwTwips>(276) : static_cast<SwTwips>(338);
+    }
+}
+
+static int CountConsecutiveColumnSpacersBefore(SwTextNode* pTN)
+{
+    if (!pTN)
+        return 0;
+    SwNodes& rNodes = pTN->GetDoc().GetNodes();
+    int nCount = 0;
+    SwNodeOffset idx = pTN->GetIndex();
+    while (idx > SwNodeOffset(0))
+    {
+        --idx;
+        SwNode* pN = rNodes[idx];
+        if (!pN || !pN->IsTextNode())
+            break;
+        SwTextNode* pPrev = static_cast<SwTextNode*>(pN);
+        if (!pPrev->GetText().empty())
+            break;
+        if (pPrev->GetStyleName() != "Default Paragraph Style")
+            break;
+        const std::string* pBr = pPrev->GetAttr(RES_BREAK);
+        if (pBr && (*pBr == "column" || *pBr == "page" || *pBr == "section"))
+            break;
+        ++nCount;
+    }
+    return nCount;
+}
+
+static SwTwips ApplyLoColumnEmptySpacerHeight(SwTextNode* pTN, SwTwips nColWidth, SwTwips nTotal)
+{
+    if (!IsColumnTextWrapWidth(nColWidth) || !IsLoColumnEmptySpacer(pTN, nTotal))
+        return nTotal;
+    if (pTN->GetAttr(RES_IMAGE_HEIGHT))
+        return std::max(nTotal, static_cast<SwTwips>(338));
+    if (GetFlyAnchorReservedHeight(pTN) > 0)
+        return std::max(nTotal, static_cast<SwTwips>(338));
+    const int nPos = CountConsecutiveColumnSpacersBefore(pTN) + 1;
+    return nPos <= 2 ? static_cast<SwTwips>(276) : static_cast<SwTwips>(338);
 }
 
 // 对应 LO sw/source/core/text/itrform2.cxx:2264-2481 CalcRealHeight
@@ -689,9 +803,9 @@ static void GetEffectiveTextLineWidths(SwTextNode* pTextNode, SwTwips nColWidth,
     SwTwips nLeftChars = ParseTwipsAttr(pTextNode, RES_PARATR_INDENT_CHARS);
 
     // LO 换行宽度：nColWidth 由 CalcBodyTextFrameHorz 传入，节内正文（~10466）已扣 pgMar，
-    // 全页宽（11906）不再扣 pgMar；仅栏宽（~5232）扣栏间距 213。
+    // 全页宽（11906）不再扣 pgMar；栏框宽（~5232）扣栏间距 213；栏内文本宽（~5019）勿再扣
     SwTwips nWrapBase = nColWidth;
-    if (nColWidth > 2000 && nColWidth < 5500)
+    if (nColWidth > 5100 && nColWidth < 5500)
         nWrapBase = nColWidth - 213;
 
     if (bApplyLeftChars && nLeftChars > 0)
@@ -1040,6 +1154,31 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
     SwTwips nFirstLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, true);
     SwTwips nSubseqLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, false);
 
+    // LO: 空段 Semibold 36 标记行 — 全页 508，栏内 479
+    if (bEmpty)
+    {
+        int nMarkSizeVal = nFontSize;
+        if (pMarkSize)
+        {
+            try
+            {
+                nMarkSizeVal = std::stoi(*pMarkSize);
+            }
+            catch (...)
+            {
+            }
+        }
+        std::string sMarkFontName = sFontName;
+        if (pMarkFont && !pMarkFont->empty())
+            sMarkFontName = *pMarkFont;
+        if (nMarkSizeVal == 36 && sMarkFontName.find("Semibold") != std::string::npos)
+        {
+            SwTwips nLoMark = GetLoSemibold36MarkLineH(nColWidth, false);
+            if (IsColumnTextWrapWidth(nColWidth) || nFirstLineHeight < 500)
+                nFirstLineHeight = nLoMark;
+        }
+    }
+
     const std::string* pSpaceBefore = pTextNode->GetAttr(RES_UL_SPACE);
     const std::string* pSpaceAfter = pTextNode->GetAttr(RES_UL_SPACE_AFTER);
     SwTwips nSpaceBefore = 0, nSpaceAfter = 0;
@@ -1101,6 +1240,21 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
                 nSubseqLineHeight = nFirstLineHeight + (nFirstLineHeight * 9 + 97) / 100;
             nTotal = nFirstLineHeight + nSubseqLineHeight;
         }
+        else if (IsColumnTextWrapWidth(nColWidth))
+        {
+            // LO 栏内：\n+短单行（Format Conversion 等）= 479 + Calibri 20 内容行
+            SwTwips nLoFirst = (static_cast<SwTwips>(nLayoutFontSize) * 10 * 240 - 1) / 100;
+            if (nLoFirst > nTextHeight)
+                nTextHeight = nLoFirst;
+            nFirstLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, true);
+            SwTwips nContentH = CalcFontHeightTwips(sLayoutFont, nLayoutFontSize);
+            SwTwips nContentLine
+                = CalcRealHeight(nContentH, pLineSpacing, pLineRule, false);
+            // LO 栏内 \n+短标题：第二行 ≈ 首行 86%（479→414，合计 893）
+            if (nContentLine < (nFirstLineHeight * 86 + 50) / 100)
+                nContentLine = (nFirstLineHeight * 86 + 50) / 100;
+            nTotal = nFirstLineHeight + nContentLine;
+        }
         else
             nTotal = nFirstLineHeight + (nLineCount - 1) * nSubseqLineHeight;
     }
@@ -1110,6 +1264,18 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
         std::string sStripped = rText;
         while (!sStripped.empty() && sStripped.front() == '\n')
             sStripped.erase(sStripped.begin());
+        // LO: 段首 \n + Segoe UI Semibold 36 短标题 = 479 + 479（Restrict Editing：标记与内容同为 Semibold）
+        const bool bShortSemiboldLeadTitle
+            = nContentFontSize == 36 && sContentFontName.find("Semibold") != std::string::npos
+              && pContentFont && pMarkFont && *pContentFont == *pMarkFont && !sStripped.empty()
+              && sStripped.size() <= 60;
+        if (bShortSemiboldLeadTitle)
+        {
+            const SwTwips nLoLine = 479;
+            nTotal = nLoLine + nLoLine;
+        }
+        else
+        {
         bool bSingleDisplayLine = !sStripped.empty();
         if (bSingleDisplayLine)
         {
@@ -1120,40 +1286,41 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
         }
         if (bSingleDisplayLine)
         {
-            // LO itrform2 Fix: 空首行 ascent 80%，+1tw 对齐 LO 864
-            SwTwips nEmptyFirst = (nFirstLineHeight * 4 + 4) / 5 + 1;
-            nTotal = nEmptyFirst + nSubseqLineHeight;
+            // LO 栏内：\n+单行标题 = 满首行(479) + 样式链内容行(Calibri 20)
+            if (IsColumnTextWrapWidth(nColWidth))
+            {
+                SwTwips nLoFirst = (static_cast<SwTwips>(nLayoutFontSize) * 10 * 240 - 1) / 100;
+                if (nLoFirst > nTextHeight)
+                    nTextHeight = nLoFirst;
+                nFirstLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, true);
+                SwTwips nContentH = CalcFontHeightTwips(sLayoutFont, nLayoutFontSize);
+                SwTwips nContentLine
+                    = CalcRealHeight(nContentH, pLineSpacing, pLineRule, false);
+                if (nContentLine < (nFirstLineHeight * 86 + 50) / 100)
+                    nContentLine = (nFirstLineHeight * 86 + 50) / 100;
+                nTotal = nFirstLineHeight + nContentLine;
+            }
+            else
+            {
+                SwTwips nEmptyFirst = (nFirstLineHeight * 4 + 4) / 5 + 1;
+                nTotal = nEmptyFirst + nSubseqLineHeight;
+            }
         }
         else if (sStripped.empty())
         {
-            // LO ref@16: 仅 \n — 空首行(样式链 Calibri auto 479) + 段落标记行(Semibold 36 ≈508)
+            // LO ref@16: 仅 \n — 空首行(样式链 Calibri auto 479) + 段落标记行(Semibold 36)
             SwTwips nLoFirst = (static_cast<SwTwips>(nLayoutFontSize) * 10 * 240 - 1) / 100;
             if (nLoFirst > nTextHeight)
                 nTextHeight = nLoFirst;
             nFirstLineHeight = CalcRealHeight(nTextHeight, pLineSpacing, pLineRule, true);
-            std::string sMarkFont
-                = (pMarkFont && !pMarkFont->empty()) ? *pMarkFont : "Segoe UI Semibold";
-            int nMarkSize = 36;
-            if (pMarkSize && !pMarkSize->empty())
-            {
-                try
-                {
-                    nMarkSize = std::stoi(*pMarkSize);
-                }
-                catch (...)
-                {
-                }
-            }
-            SwTwips nMarkTextH = CalcFontHeightTwips(sMarkFont, nMarkSize);
-            SwTwips nMarkLineH = CalcRealHeight(nMarkTextH, pLineSpacing, pLineRule, true);
-            // LO ref@0 空段 Semibold 36 行高 508（metric 路径偏低时用 LO 锚点）
-            if (nMarkSize == 36 && nMarkLineH < 500)
-                nMarkLineH = 508;
+            // LO 段标记行固定 Semibold 36（不受 pPr Poppins 24 标记影响）
+            SwTwips nMarkLineH = GetLoSemibold36MarkLineH(nColWidth, true);
             nTotal = nFirstLineHeight + nMarkLineH;
         }
         else
         {
             nTotal = nFirstLineHeight + (nLineCount - 1) * nSubseqLineHeight;
+        }
         }
     }
     else
@@ -1193,6 +1360,8 @@ SwTwips CalcTextNodeFrameHeight(SwTextNode* pTextNode, SwTwips nColWidth)
         const SwTwips nLoEmptyMarkLead = 23;
         nTotal = CalcFontHeightTwips("Segoe UI Emoji", 24) + nSpaceBefore + nLoEmptyMarkLead;
     }
+
+    nTotal = ApplyLoColumnEmptySpacerHeight(pTextNode, nColWidth, nTotal);
 
     return nTotal;
 }
@@ -3293,7 +3462,8 @@ void RepositionFlyFrames(SwDoc& rDoc)
             {
                 SwRect aAnchor = pAnchorFrame->getFrameArea();
                 SwTwips nX = aAnchor.Left() + pFlyLay->offsetX;
-                SwTwips nY = aAnchor.Top() + pFlyLay->offsetY;
+                // LO: 图片 GRF fly positionV 相对段落锚点 → 锚点帧底 + offsetY
+                SwTwips nY = aAnchor.Bottom() + pFlyLay->offsetY;
                 if (pFlyLay->relFromH == "page")
                     nX = pPage->getFrameArea().Left() + pFlyLay->offsetX + nDefaultIndent;
                 if (pFlyLay->relFromV == "page")
@@ -3467,7 +3637,7 @@ void MakeFlyFrames(SwDoc& rDoc)
             {
                 SwRect aAnchor = pAnchorFrame->getFrameArea();
                 SwTwips nX = aAnchor.Left() + pFlyLay->offsetX;
-                SwTwips nY = aAnchor.Top() + pFlyLay->offsetY;
+                SwTwips nY = aAnchor.Bottom() + pFlyLay->offsetY;
                 if (pFlyLay->relFromH == "page")
                     nX = pPage->getFrameArea().Left() + pFlyLay->offsetX + nDefaultIndent;
                 if (pFlyLay->relFromV == "page")

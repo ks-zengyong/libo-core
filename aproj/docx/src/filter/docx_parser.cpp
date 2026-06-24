@@ -927,7 +927,17 @@ static std::string CollectParagraphText(pugi::xml_node pNode)
                 text += child.text().as_string();
             else if (cn == "w:tab")
                 text += '\t';
-            else if (cn == "w:br" || cn == "w:cr")
+            else if (cn == "w:br")
+            {
+                std::string brType = child.attribute("w:type").as_string();
+                if (brType == "page")
+                    text += '\f';
+                else if (brType == "column")
+                    text += '\v';
+                else
+                    text += '\n';
+            }
+            else if (cn == "w:cr")
                 text += '\n';
         }
     }
@@ -1702,6 +1712,21 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
             }
             else
                 nodeText = pi.text;
+
+            // LO: w:br type=column/page → RES_BREAK；节点文本不保留 \v/\f
+            const bool bHasColumnBreak = pi.text.find('\v') != std::string::npos;
+            const bool bHasPageBreak = pi.text.find('\f') != std::string::npos;
+            if (bHasColumnBreak)
+            {
+                nodeText.erase(std::remove(nodeText.begin(), nodeText.end(), '\v'),
+                                 nodeText.end());
+            }
+            if (bHasPageBreak)
+            {
+                nodeText.erase(std::remove(nodeText.begin(), nodeText.end(), '\f'),
+                                 nodeText.end());
+            }
+
             pTN->SetText(nodeText);
             if (!pi.styleName.empty())
                 pTN->SetStyleName(pi.styleName);
@@ -1714,6 +1739,9 @@ void DocxParser::ParseBody(pugi::xml_node bodyNode, SwDoc& doc)
                 pTN->SetAttr(RES_BREAK, m_pendingBreakType);
                 m_pendingBreakType.clear();
             }
+            if (bHasColumnBreak)
+                pTN->SetAttr(RES_BREAK, "column");
+            // 节内 w:br type=page 仅清空文本；不设 RES_BREAK（避免 MakeFrames 无限分页）
             if (i < bodyParaNodes.size())
             {
                 ApplyParagraphMarkFromXml(bodyParaNodes[i], pTN);
