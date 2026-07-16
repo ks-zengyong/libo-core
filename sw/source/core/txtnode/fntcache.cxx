@@ -61,6 +61,12 @@
 #include <memory>
 #include "justify.hxx"
 #include <svtools/colorcfg.hxx>
+#include <textboxhelper.hxx>
+#include <flyfrm.hxx>
+#include <svx/svdobj.hxx>
+#include <svx/xdef.hxx>
+#include <svx/xfillit0.hxx>
+#include <com/sun/star/drawing/FillStyle.hpp>
 
 using namespace ::com::sun::star;
 
@@ -2412,6 +2418,25 @@ bool SwDrawTextInfo::ApplyAutoColor( vcl::Font* pFont )
             // no user defined color at paragraph or font background
             if ( ! pCol )
                 pCol = aGlobalRetoucheColor;
+
+            // Transparent (noFill) textboxes: Word resolves COL_AUTO to black on a light
+            // page. Do not treat a dark sibling shape underneath (e.g. WPS FreeForm behind
+            // a noFill textbox in the same group) as the text background.
+            if (const SwFlyFrame* pFly = GetFrame() ? GetFrame()->FindFlyFrame() : nullptr)
+            {
+                if (SwFrameFormat* pShapeFmt = SwTextBoxHelper::getOtherTextBoxFormat(
+                        pFly->GetFormat(), RES_FLYFRMFMT))
+                {
+                    if (SdrObject* pObj = pShapeFmt->FindRealSdrObject())
+                    {
+                        if (pObj->GetMergedItemSet().Get(XATTR_FILLSTYLE).GetValue()
+                            == drawing::FillStyle_NONE)
+                        {
+                            pCol = COL_WHITE;
+                        }
+                    }
+                }
+            }
 
             if (pVSh && bOutputToWindow)
             {

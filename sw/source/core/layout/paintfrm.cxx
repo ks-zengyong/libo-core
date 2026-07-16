@@ -8087,11 +8087,18 @@ bool SwFrame::GetBackgroundBrush(
                     SdrObject* pObject = pShape->FindRealSdrObject();
                     if (pObject)
                     {
-                        // Work with the fill attributes of the shape of the fly frame.
-                        rFillAttributes =
-                            std::make_shared<drawinglayer::attribute::SdrAllFillAttributesHelper>(
+                        // Only use the shape fill when it actually has a fill. noFill textboxes
+                        // sit on top of sibling shapes (e.g. WPS FreeForm); using those as the
+                        // auto-font-color background makes COL_AUTO paint white and vanish.
+                        const drawing::FillStyle eShapeFill
+                            = pObject->GetMergedItemSet().Get(XATTR_FILLSTYLE).GetValue();
+                        if (eShapeFill != drawing::FillStyle_NONE)
+                        {
+                            rFillAttributes = std::make_shared<
+                                drawinglayer::attribute::SdrAllFillAttributesHelper>(
                                 pObject->GetMergedItemSet());
-                        bHandledTextBox = true;
+                            bHandledTextBox = true;
+                        }
                     }
                 }
             }

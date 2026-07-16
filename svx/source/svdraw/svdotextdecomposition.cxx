@@ -334,11 +334,24 @@ void SdrTextObj::impDecomposeAutoFitTextPrimitive(
 // is one. Check the shape itself, then the host page, then that page's master page.
 bool SdrObject::setSuitableOutlinerBg(::Outliner& rOutliner) const
 {
+    const bool bObjectNoFill
+        = GetObjectItemSet().Get(XATTR_FILLSTYLE).GetValue() == drawing::FillStyle_NONE;
+
     const SfxItemSet* pBackgroundFillSet = getBackgroundFillSet();
     if (drawing::FillStyle_NONE != pBackgroundFillSet->Get(XATTR_FILLSTYLE).GetValue())
     {
         Color aColor(GetDraftFillColor(*pBackgroundFillSet).value_or(rOutliner.GetBackgroundColor()));
         rOutliner.SetBackgroundColor(aColor);
+        return true;
+    }
+
+    // noFill shape (and no page fill either): do not keep a stale dark background from a
+    // previously processed sibling. Common with WPS groups (solid FreeForm + transparent
+    // textbox); COL_AUTO would otherwise paint as white and vanish on a light page.
+    // Match Word: auto color on a transparent textbox resolves to black on a white page.
+    if (bObjectNoFill)
+    {
+        rOutliner.SetBackgroundColor(COL_WHITE);
         return true;
     }
     return false;

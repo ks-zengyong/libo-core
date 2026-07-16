@@ -524,11 +524,18 @@ void DomainMapper::lcl_attribute(Id nName, const Value & val)
             break;
         case NS_ooxml::LN_CT_Spacing_beforeLines:
                 m_pImpl->appendGrabBag(m_pImpl->m_aSubInteropGrabBag, u"beforeLines"_ustr, OUString::number(nIntValue));
-                // We would need to make sure that this doesn't overwrite any
-                // NS_ooxml::LN_CT_Spacing_before in parent styles before style
-                // sheet support can be enabled.
+                // Word: when both before and beforeLines are present on the same
+                // element, beforeLines takes effect for layout (see also
+                // afterLines / testAfterlines). Must overwrite a prior 'before'
+                // (including before="0"), otherwise zero absolute spacing wins
+                // and beforeLines is lost — causing ~12pt vertical drift vs MSO
+                // for afterLines="100" (100*240/100 twips).
                 if (m_pImpl->GetTopContext() && !IsStyleSheetImport())
-                    m_pImpl->GetTopContext()->Insert(PROP_PARA_TOP_MARGIN, uno::Any(ConversionHelper::convertTwipToMm100_Limited(nIntValue * nSingleLineSpacing / 100)), false);
+                    m_pImpl->GetTopContext()->Insert(
+                        PROP_PARA_TOP_MARGIN,
+                        uno::Any(ConversionHelper::convertTwipToMm100_Limited(
+                            nIntValue * nSingleLineSpacing / 100)),
+                        true);
             break;
         case NS_ooxml::LN_CT_Spacing_after:
             m_pImpl->appendGrabBag(m_pImpl->m_aSubInteropGrabBag, u"after"_ustr, OUString::number(nIntValue));
@@ -546,11 +553,14 @@ void DomainMapper::lcl_attribute(Id nName, const Value & val)
             break;
         case NS_ooxml::LN_CT_Spacing_afterLines:
             m_pImpl->appendGrabBag(m_pImpl->m_aSubInteropGrabBag, u"afterLines"_ustr, OUString::number(nIntValue));
-            // We would need to make sure that this doesn't overwrite any
-            // NS_ooxml::LN_CT_Spacing_after in parent styles before style
-            // sheet support can be enabled.
+            // See beforeLines: overwrite so afterLines wins over after="0" on the
+            // same w:spacing element (MSO layout uses the line-based value).
             if (m_pImpl->GetTopContext() && !IsStyleSheetImport())
-                m_pImpl->GetTopContext()->Insert(PROP_PARA_BOTTOM_MARGIN, uno::Any(ConversionHelper::convertTwipToMm100_Limited(nIntValue * nSingleLineSpacing / 100)), false);
+                m_pImpl->GetTopContext()->Insert(
+                    PROP_PARA_BOTTOM_MARGIN,
+                    uno::Any(ConversionHelper::convertTwipToMm100_Limited(
+                        nIntValue * nSingleLineSpacing / 100)),
+                    true);
             break;
         case NS_ooxml::LN_CT_Spacing_line: //91434
         case NS_ooxml::LN_CT_Spacing_lineRule: //91435
@@ -603,13 +613,44 @@ void DomainMapper::lcl_attribute(Id nName, const Value & val)
         case NS_ooxml::LN_CT_Ind_leftChars:
             if (m_pImpl->GetTopContext())
             {
+                m_pImpl->appendGrabBag(m_pImpl->m_aSubInteropGrabBag, u"leftChars"_ustr,
+                                       OUString::number(nIntValue));
+
+                const PropertyIds eId = PROP_PARA_LEFT_MARGIN;
+                const css::beans::Pair<double, sal_Int16> stZero{
+                    0.0, css::util::MeasureUnit::FONT_CJK_ADVANCE
+                };
+
+                // Direct paragraph *Chars with a paired w:left: keep the twip
+                // margin. WPS/Word emit left/leftChars as equivalents under a
+                // fixed 200-twip character unit; resolving FONT_CJK_ADVANCE via
+                // CJK font height (often 12pt from w:sz) yields 43*12=516pt
+                // instead of 430pt and collapses side-column layouts.
+                if (!IsStyleSheetImport() && nIntValue != 0)
+                {
+                    sal_Int32 nLeft = 0;
+                    m_pImpl->GetAnyProperty(eId, m_pImpl->GetTopContext()) >>= nLeft;
+                    if (nLeft != 0)
+                    {
+                        m_pImpl->GetTopContext()->Insert(PROP_PARA_LEFT_MARGIN_UNIT,
+                                                         uno::Any(stZero), true);
+                        break;
+                    }
+                    // No absolute left: convert with Word's 200-twip character unit.
+                    const sal_Int32 nMm100 = ConversionHelper::convertTwipToMm100_Limited(
+                        static_cast<sal_Int32>(nIntValue) * 2);
+                    m_pImpl->GetTopContext()->Insert(eId, uno::Any(nMm100), true);
+                    m_pImpl->GetTopContext()->Insert(PROP_PARA_LEFT_MARGIN_UNIT,
+                                                     uno::Any(stZero), true);
+                    break;
+                }
+
                 css::beans::Pair<double, sal_Int16> stVal{
                     static_cast<double>(nIntValue) / 100.0, css::util::MeasureUnit::FONT_CJK_ADVANCE
                 };
                 m_pImpl->GetTopContext()->Insert(PROP_PARA_LEFT_MARGIN_UNIT, uno::Any(stVal));
 
                 // w:leftChars=0 disables leftChars, so w:left is used instead.
-                const PropertyIds eId = PROP_PARA_LEFT_MARGIN;
                 sal_Int32 nFallback = 0; // use default value if no w:left is inherited.
                 if (IsStyleSheetImport())
                 {
@@ -712,6 +753,35 @@ void DomainMapper::lcl_attribute(Id nName, const Value & val)
         case NS_ooxml::LN_CT_Ind_hangingChars:
             if (m_pImpl->GetTopContext())
             {
+                m_pImpl->appendGrabBag(m_pImpl->m_aSubInteropGrabBag, u"hangingChars"_ustr,
+                                       OUString::number(nIntValue));
+
+                const PropertyIds eId = PROP_PARA_FIRST_LINE_INDENT;
+                const css::beans::Pair<double, sal_Int16> stZero{
+                    0.0, css::util::MeasureUnit::FONT_CJK_ADVANCE
+                };
+
+                // Prefer paired w:hanging twips on direct paragraphs (same reason
+                // as left/leftChars). Also avoids finishParagraph re-adding
+                // hangingChars into leftChars and wiping an absolute left margin.
+                if (!IsStyleSheetImport() && nIntValue != 0)
+                {
+                    sal_Int32 nFirst = 0;
+                    m_pImpl->GetAnyProperty(eId, m_pImpl->GetTopContext()) >>= nFirst;
+                    if (nFirst != 0)
+                    {
+                        m_pImpl->GetTopContext()->Insert(PROP_PARA_FIRST_LINE_INDENT_UNIT,
+                                                         uno::Any(stZero), true);
+                        break;
+                    }
+                    const sal_Int32 nMm100 = ConversionHelper::convertTwipToMm100_Limited(
+                        static_cast<sal_Int32>(nIntValue) * 2);
+                    m_pImpl->GetTopContext()->Insert(eId, uno::Any(-nMm100), true);
+                    m_pImpl->GetTopContext()->Insert(PROP_PARA_FIRST_LINE_INDENT_UNIT,
+                                                     uno::Any(stZero), true);
+                    break;
+                }
+
                 css::beans::Pair<double, sal_Int16> stVal{
                     static_cast<double>(nIntValue) / -100.0,
                     css::util::MeasureUnit::FONT_CJK_ADVANCE
@@ -720,7 +790,6 @@ void DomainMapper::lcl_attribute(Id nName, const Value & val)
                 m_pImpl->GetTopContext()->Insert(PROP_PARA_FIRST_LINE_INDENT_UNIT, uno::Any(stVal));
 
                 // Insert fall-back w:hanging in case none is provided by this style/paragraph
-                const PropertyIds eId = PROP_PARA_FIRST_LINE_INDENT;
                 sal_Int32 nFallback = 0;
                 if (IsStyleSheetImport())
                 {
@@ -767,13 +836,38 @@ void DomainMapper::lcl_attribute(Id nName, const Value & val)
         case NS_ooxml::LN_CT_Ind_firstLineChars:
             if (m_pImpl->GetTopContext())
             {
+                m_pImpl->appendGrabBag(m_pImpl->m_aSubInteropGrabBag, u"firstLineChars"_ustr,
+                                       OUString::number(nIntValue));
+
+                const PropertyIds eId = PROP_PARA_FIRST_LINE_INDENT;
+                const css::beans::Pair<double, sal_Int16> stZero{
+                    0.0, css::util::MeasureUnit::FONT_CJK_ADVANCE
+                };
+
+                if (!IsStyleSheetImport() && nIntValue != 0)
+                {
+                    sal_Int32 nFirst = 0;
+                    m_pImpl->GetAnyProperty(eId, m_pImpl->GetTopContext()) >>= nFirst;
+                    if (nFirst != 0)
+                    {
+                        m_pImpl->GetTopContext()->Insert(PROP_PARA_FIRST_LINE_INDENT_UNIT,
+                                                         uno::Any(stZero), true);
+                        break;
+                    }
+                    const sal_Int32 nMm100 = ConversionHelper::convertTwipToMm100_Limited(
+                        static_cast<sal_Int32>(nIntValue) * 2);
+                    m_pImpl->GetTopContext()->Insert(eId, uno::Any(nMm100), true);
+                    m_pImpl->GetTopContext()->Insert(PROP_PARA_FIRST_LINE_INDENT_UNIT,
+                                                     uno::Any(stZero), true);
+                    break;
+                }
+
                 css::beans::Pair<double, sal_Int16> stVal{
                     static_cast<double>(nIntValue) / 100.0, css::util::MeasureUnit::FONT_CJK_ADVANCE
                 };
                 m_pImpl->GetTopContext()->Insert(PROP_PARA_FIRST_LINE_INDENT_UNIT, uno::Any(stVal));
 
                 // Insert fall-back w:firstLine in case none is provided by this style/paragraph
-                const PropertyIds eId = PROP_PARA_FIRST_LINE_INDENT;
                 sal_Int32 nFallback = 0;
                 if (IsStyleSheetImport())
                 {

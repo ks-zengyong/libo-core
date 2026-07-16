@@ -504,15 +504,10 @@ void FontMetricData::ImplCalcLineSpacing(LogicalFontInstance* pFontInstance)
             && hb_ot_metrics_get_position(pHbFont, HB_OT_METRICS_TAG_HORIZONTAL_CLIPPING_DESCENT,
                                           &nWinDescent))
         {
-            if ((fAscent == 0.0 && fDescent == 0.0)
-                || ShouldUseWinMetrics(nAscent, nDescent, nTypoAscent, nTypoDescent, nWinAscent,
-                                       nWinDescent))
-            {
-                fAscent = nWinAscent * fScale;
-                fDescent = nWinDescent * fScale;
-                fExtLeading = 0;
-            }
-
+            // OpenType / Word (GDI TEXTMETRIC) line-spacing selection:
+            // - Prefer Win metrics when available (matches MS Word on Windows).
+            // - Prefer Typo metrics when USE_TYPO_METRICS (fsSelection bit 7) is set.
+            // - FontsUseWinMetrics still forces Win even when USE_TYPO_METRICS is set.
             bool bUseTypoMetrics = false;
             {
                 // TODO: Use HarfBuzz API instead of raw access
@@ -527,11 +522,62 @@ void FontMetricData::ImplCalcLineSpacing(LogicalFontInstance* pFontInstance)
                     aStream.ReadUInt16(fsSelection);
                 bUseTypoMetrics = fsSelection & (1 << 7);
             }
-            if (bUseTypoMetrics && nTypoAscent >= 0 && nTypoDescent <= 0)
+
+            const bool bForceWinMetrics
+                = (fAscent == 0.0 && fDescent == 0.0)
+                  || ShouldUseWinMetrics(nAscent, nDescent, nTypoAscent, nTypoDescent, nWinAscent,
+                                         nWinDescent);
+
+            if (bUseTypoMetrics && !bForceWinMetrics && nTypoAscent >= 0 && nTypoDescent <= 0)
             {
                 fAscent = nTypoAscent * fScale;
                 fDescent = -nTypoDescent * fScale;
                 fExtLeading = nTypoLineGap * fScale;
+            }
+            else
+            {
+                // Default: Win metrics (Word/GDI-compatible). Also covers
+                // FontsUseWinMetrics overrides and missing hhea values.
+                // Without this, fonts that omit USE_TYPO_METRICS (e.g. Segoe UI
+                // Emoji) keep hhea metrics under HarfBuzz/svp and accumulate
+                // ~3pt/line Y drift vs MS Word PDF output.
+                fAscent = nWinAscent * fScale;
+                fDescent = nWinDescent * fScale;
+                fExtLeading = 0;
+
+                // If head yMin is deeper than usWinDescent, Word's next-line
+                // positions match a taller line box while the baseline still
+                // sits on Win ascent. Put the overflow into external leading
+                // (not descent) so this line's baseline stays put — see
+                // Segoe UI Semibold titles (~6pt body Y gap vs MS Word PDF).
+                auto aHead(pFace->GetRawFontData(HB_TAG('h', 'e', 'a', 'd')));
+                if (!aHead.empty())
+                {
+                    SvMemoryStream aHeadStream(const_cast<uint8_t*>(aHead.data()), aHead.size(),
+                                               StreamMode::READ);
+                    aHeadStream.SetEndian(SvStreamEndian::BIG);
+                    if (aHeadStream.Seek(vcl::HEAD_xMin_offset) == vcl::HEAD_xMin_offset)
+                    {
+                        sal_Int16 nXMin = 0, nYMin = 0, nXMax = 0, nYMax = 0;
+                        aHeadStream.ReadInt16(nXMin);
+                        aHeadStream.ReadInt16(nYMin);
+                        aHeadStream.ReadInt16(nXMax);
+                        aHeadStream.ReadInt16(nYMax);
+                        (void)nXMin;
+                        (void)nXMax;
+                        (void)nYMax;
+                        if (nYMin < 0
+                            && static_cast<hb_position_t>(-nYMin) > nWinDescent)
+                        {
+                            const double fExtra
+                                = ((-nYMin) - nWinDescent) * fScale;
+                            SAL_INFO("vcl.gdi.fontmetric",
+                                     "Add ext leading for head yMin overflow: "
+                                         << GetFamilyName() << " extra=" << fExtra);
+                            fExtLeading += fExtra;
+                        }
+                    }
+                }
             }
         }
     }

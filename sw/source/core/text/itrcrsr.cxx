@@ -163,6 +163,20 @@ void SwTextMargin::CtorInitTextMargin( SwTextFrame *pNewFrame, SwTextSizeInfo *p
 
     auto stMetrics = GetFnt()->GetFontUnitMetrics();
 
+    // MS Word / WPS: when the section has no active character grid (docGrid
+    // type default/absent), *Chars paragraph indents use a fixed 200-twip
+    // (10pt) character unit — the same pitch used when writers emit paired
+    // w:left / w:leftChars (e.g. left=8600, leftChars=4300). Resolving via
+    // CJK font height (often 12pt from w:sz) yields 43*12=516pt instead of
+    // 430pt, which collapses side-column text and pushes following content.
+    if (pNode->getIDocumentSettingAccess()->get(
+            DocumentSettingId::MS_WORD_COMP_GRID_METRICS))
+    {
+        SwTextGridItem const* const pGrid = GetGridItem(m_pFrame->FindPageFrame());
+        if (!pGrid || pGrid->GetGridType() == SwTextGrid::NONE)
+            stMetrics = SvxFontUnitMetrics(stMetrics.m_dEmTwips, /*ic*/ 200.0);
+    }
+
     SvxFirstLineIndentItem const& rFirstLine(pNode->GetSwAttrSet().GetFirstLineIndent());
     SvxTextLeftMarginItem const& rTextLeftMargin(pNode->GetSwAttrSet().GetTextLeftMargin());
     SvxRightMarginItem const& rRightMargin(pNode->GetSwAttrSet().GetRightMargin());

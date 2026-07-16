@@ -101,6 +101,7 @@
 #include <utility>
 #include <xmloff/odffields.hxx>
 #include <rtl/uri.hxx>
+#include <tools/color.hxx>
 #include <tools/stream.hxx>
 #include <tools/UnitConversion.hxx>
 #include <unotools/ucbstreamhelper.hxx>
@@ -6253,6 +6254,51 @@ void DomainMapper_Impl::AttachTextBoxContentToShape(const css::uno::Reference<cs
     {
         TOOLS_WARN_EXCEPTION("writerfilter.dmapper", "Exception while trying to attach textboxes!");
         return;
+    }
+
+    // Word paints COL_AUTO as black in a noFill textbox. LO's auto-color can
+    // resolve to white when a dark sibling (e.g. WPS FreeForm in the same group)
+    // is treated as the text background, making the text invisible on a light page.
+    try
+    {
+        drawing::FillStyle eFill = drawing::FillStyle_SOLID;
+        xProps->getPropertyValue(u"FillStyle"_ustr) >>= eFill;
+        if (eFill == drawing::FillStyle_NONE)
+        {
+            uno::Reference<text::XTextFrame> xFrame(xTextBox);
+            uno::Reference<container::XEnumerationAccess> xParaAccess(xFrame->getText(),
+                                                                     uno::UNO_QUERY);
+            if (xParaAccess.is())
+            {
+                uno::Reference<container::XEnumeration> xParas = xParaAccess->createEnumeration();
+                while (xParas->hasMoreElements())
+                {
+                    uno::Reference<container::XEnumerationAccess> xRunAccess(xParas->nextElement(),
+                                                                            uno::UNO_QUERY);
+                    if (!xRunAccess.is())
+                        continue;
+                    uno::Reference<container::XEnumeration> xRuns = xRunAccess->createEnumeration();
+                    while (xRuns->hasMoreElements())
+                    {
+                        uno::Reference<beans::XPropertySet> xRun(xRuns->nextElement(),
+                                                                uno::UNO_QUERY);
+                        if (!xRun.is())
+                            continue;
+                        Color aColor = COL_AUTO;
+                        if ((xRun->getPropertyValue(u"CharColor"_ustr) >>= aColor)
+                            && aColor == COL_AUTO)
+                        {
+                            xRun->setPropertyValue(u"CharColor"_ustr, uno::Any(COL_BLACK));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    catch (const uno::Exception&)
+    {
+        TOOLS_WARN_EXCEPTION("writerfilter.dmapper",
+                             "Exception while fixing noFill textbox auto color!");
     }
 
     // If attaching is successful, then do the linking
