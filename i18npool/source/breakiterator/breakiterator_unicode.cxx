@@ -471,11 +471,45 @@ sal_Int32 SAL_CALL BreakIterator_Unicode::endOfSentence( const OUString& Text, s
     return nStartPos;
 }
 
+namespace
+{
+/** Characters Word may hang past the right margin (w:overflowPunct / default on).
+ *  Keep this to terminal/closing punctuation; hyphens stay break opportunities. */
+bool isWesternHangingPunctuation(sal_uInt32 c)
+{
+    switch (c)
+    {
+        case '.':
+        case ',':
+        case ':':
+        case ';':
+        case '!':
+        case '?':
+        case ')':
+        case ']':
+        case '}':
+        case '"':
+        case '\'':
+        case 0x2019: // ’
+        case 0x201D: // ”
+        case 0x00BB: // »
+        case 0x203A: // ›
+            return true;
+        default:
+        {
+            const int32_t lb = u_getIntPropertyValue(static_cast<UChar32>(c), UCHAR_LINE_BREAK);
+            return lb == U_LB_CLOSE_PUNCTUATION || lb == U_LB_CLOSE_PARENTHESIS
+                   || lb == U_LB_EXCLAMATION;
+        }
+    }
+}
+}
+
 LineBreakResults SAL_CALL BreakIterator_Unicode::getLineBreak(
         const OUString& Text, sal_Int32 nStartPos,
         const lang::Locale& rLocale, sal_Int32 nMinBreakPos,
         const LineBreakHyphenationOptions& hOptions,
-        const LineBreakUserOptions& /*rOptions*/ )
+        const LineBreakUserOptions& rOptions )
 {
     LineBreakResults lbr;
 
@@ -483,6 +517,23 @@ LineBreakResults SAL_CALL BreakIterator_Unicode::getLineBreak(
         lbr.breakIndex = Text.getLength();
         lbr.breakType = BreakType::WORDBOUNDARY;
         return lbr;
+    }
+
+    // Word overflowPunct / ParaIsHangingPunctuation: if only punctuation overflows the
+    // line, hang it in the margin instead of wrapping the preceding word (CJK hanging
+    // is handled in BreakIterator_CJK; this covers Latin/etc.).
+    if (rOptions.allowPunctuationOutsideMargin)
+    {
+        sal_Int32 nHangPos = nStartPos;
+        const sal_uInt32 c = Text.iterateCodePoints(&nHangPos, 0);
+        if (isWesternHangingPunctuation(c))
+        {
+            sal_Int32 nNextPos = nStartPos;
+            Text.iterateCodePoints(&nNextPos);
+            lbr.breakIndex = nNextPos;
+            lbr.breakType = BreakType::HANGINGPUNCTUATION;
+            return lbr;
+        }
     }
 
     loadICUBreakIterator(rLocale, LOAD_LINE_BREAKITERATOR, 0, lineRule, Text);

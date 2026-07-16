@@ -8,6 +8,7 @@
  */
 
 #include <com/sun/star/i18n/XBreakIterator.hpp>
+#include <com/sun/star/i18n/BreakType.hpp>
 #include <com/sun/star/i18n/CharacterIteratorMode.hpp>
 #include <com/sun/star/i18n/ScriptType.hpp>
 #include <com/sun/star/i18n/WordType.hpp>
@@ -107,6 +108,31 @@ void TestBreakIterator::testLineBreaking()
             i18n::LineBreakResults aResult = m_xBreak->getLineBreak(aTest, strlen("(some text here"), aLocale, 0, aHyphOptions, aUserOptions);
             CPPUNIT_ASSERT_EQUAL_MESSAGE("Expected a break at the start of the word", static_cast<sal_Int32>(11), aResult.breakIndex);
         }
+    }
+
+    // Word w:overflowPunct (default on): Latin terminal punctuation may hang past the
+    // margin so the preceding word is not wrapped when only '.' would overflow.
+    {
+        aLocale.Language = "en";
+        aLocale.Country = "US";
+
+        OUString const aTest(
+            u"Whether you need to make it shorter, longer, or change format, I've got you covered."_ustr);
+        sal_Int32 const nPeriod = aTest.getLength() - 1;
+        CPPUNIT_ASSERT_EQUAL(u'.', aTest[nPeriod]);
+
+        i18n::LineBreakUserOptions aHangOptions;
+        aHangOptions.allowPunctuationOutsideMargin = true;
+        i18n::LineBreakResults aHang
+            = m_xBreak->getLineBreak(aTest, nPeriod, aLocale, 0, aHyphOptions, aHangOptions);
+        CPPUNIT_ASSERT_EQUAL_MESSAGE("Period should hang past the margin", aTest.getLength(),
+                                     aHang.breakIndex);
+        CPPUNIT_ASSERT_EQUAL(i18n::BreakType::HANGINGPUNCTUATION, aHang.breakType);
+
+        i18n::LineBreakResults aNoHang
+            = m_xBreak->getLineBreak(aTest, nPeriod, aLocale, 0, aHyphOptions, aUserOptions);
+        CPPUNIT_ASSERT_EQUAL_MESSAGE("Without hanging, wrap before covered",
+                                     aTest.lastIndexOf(' ') + 1, aNoHang.breakIndex);
     }
 
     //See https://bugs.libreoffice.org/show_bug.cgi?id=49849
