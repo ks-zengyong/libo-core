@@ -431,6 +431,14 @@ bool SwTextFly::IsAnyObj( const SwRect &rRect ) const
         {
             const SwAnchoredObject* pObj = (*pSorted)[i];
 
+            // Wrap-through (Word wrapNone) does not affect text layout.
+            // FormatEmpty must still use EmptyHeight for spacer paragraphs that
+            // geometrically overlap such objects; otherwise empty height is lost
+            // and following text/images sit too high (e.g. 2-column wrapNone layouts).
+            const SwFormatSurround& rSur = pObj->GetFrameFormat()->GetSurround();
+            if (css::text::WrapTextMode_THROUGH == rSur.GetSurround())
+                continue;
+
             const SwRect aBound( pObj->GetObjRectWithSpaces() );
 
             // Optimization

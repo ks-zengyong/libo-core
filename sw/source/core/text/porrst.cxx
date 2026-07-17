@@ -25,12 +25,14 @@
 #include <editeng/fontitem.hxx>
 #include <vcl/svapp.hxx>
 #include <comphelper/scopeguard.hxx>
+#include <o3tl/numeric.hxx>
 
 #include <viewsh.hxx>
 #include <viewopt.hxx>
 #include <ndtxt.hxx>
 #include <pagefrm.hxx>
 #include <paratr.hxx>
+#include <fmtautofmt.hxx>
 #include <SwPortionHandler.hxx>
 #include "porrst.hxx"
 #include "inftxt.hxx"
@@ -202,7 +204,31 @@ bool SwBreakPortion::Format( SwTextFormatInfo &rInf )
 {
     const SwLinePortion *pRoot = rInf.GetRoot();
     Width( 0 );
-    Height( pRoot->Height() );
+
+    // Soft breaks (DOCX w:br textWrapping / CH_BREAK) carry run formatting.
+    // Word sizes that line from the break run's w:sz (logical font size), which
+    // is often larger than the paragraph style left on the root. Prefer the
+    // Seek()'d font size; keep metric ascent in proportion so we don't pick up
+    // external leading the way GetTextHeight() can (blank-page overshoot).
+    sal_uInt16 nHeight = pRoot->Height();
+    sal_uInt16 nAscent = pRoot->GetAscent();
+    if (rInf.GetFont())
+    {
+        const sal_uInt16 nFontSize
+            = o3tl::narrowing<sal_uInt16>(rInf.GetFont()->GetHeight());
+        if (nFontSize > nHeight)
+        {
+            const sal_uInt16 nMetricHeight = rInf.GetTextHeight();
+            nHeight = nFontSize;
+            if (nMetricHeight)
+                nAscent = o3tl::narrowing<sal_uInt16>(
+                    (sal_uInt32(rInf.GetAscent()) * nFontSize) / nMetricHeight);
+            else
+                nAscent = rInf.GetAscent();
+        }
+    }
+    Height(nHeight);
+    SetAscent(nAscent);
     m_nTextHeight = Height();
 
     // See if this is a clearing break. If so, calculate how much we need to "jump down" so the next
@@ -218,15 +244,14 @@ bool SwBreakPortion::Format( SwTextFormatInfo &rInf )
         SwTextFly& rTextFly = rInf.GetTextFly();
         if (rTextFly.IsOn())
         {
-            SwTwips nHeight = rTextFly.GetMaxBottom(*this, rInf) - rInf.Y();
-            if (nHeight > Height())
+            SwTwips nClearHeight = rTextFly.GetMaxBottom(*this, rInf) - rInf.Y();
+            if (nClearHeight > Height())
             {
-                Height(nHeight, /*bText=*/false);
+                Height(nClearHeight, /*bText=*/false);
             }
         }
     }
 
-    SetAscent( pRoot->GetAscent() );
     if (rInf.GetIdx() + TextFrameIndex(1) == TextFrameIndex(rInf.GetText().getLength()))
         rInf.SetNewLine( true );
     return true;
@@ -377,6 +402,16 @@ SwTwips SwTextFrame::EmptyHeight() const
         pFnt->CheckFontCacheId( pSh, pFnt->GetActual() );
     }
 
+    // Word: empty-paragraph height follows paragraph-mark formatting
+    // (w:pPr/w:rPr), stored as ListAutoFormat — not only the style default.
+    // DOCX spacers often put the real size (e.g. 18pt) only on the mark.
+    if (pIDSA->get(DocumentSettingId::APPLY_PARAGRAPH_MARK_FORMAT_TO_EMPTY_LINE_AT_END_OF_PARAGRAPH))
+    {
+        SwFormatAutoFormat const& rListAutoFormat{rTextNode.GetAttr(RES_PARATR_LIST_AUTOFMT)};
+        if (std::shared_ptr<SfxItemSet> const& pMarkSet{rListAutoFormat.GetStyleHandle()})
+            pFnt->SetDiffFnt(pMarkSet.get(), pIDSA);
+    }
+
     if ( IsVertical() )
         pFnt->SetVertical( 2700_deg10 );
 
@@ -413,6 +448,18 @@ SwTwips SwTextFrame::EmptyHeight() const
         pFnt->ChgPhysFnt( pSh, *pOut );
         nRet = pFnt->GetHeight( pSh, *pOut );
     }
+
+    // Word: even when docGrid/@type is omitted/default (no snap), linePitch is
+    // still the minimum line unit for empty paragraphs (tc01_sample 2-column
+    // wrapNone spacers). Use the page style grid base height as a floor.
+    if (const SwPageFrame* pPage = const_cast<SwTextFrame*>(this)->FindPageFrame())
+    {
+        const SwTextGridItem& rGrid = pPage->GetPageDesc()->GetMaster().GetTextGrid();
+        const SwTwips nGridBase = rGrid.GetBaseHeight() + rGrid.GetRubyHeight();
+        if (nGridBase > nRet)
+            nRet = nGridBase;
+    }
+
     return nRet;
 }
 

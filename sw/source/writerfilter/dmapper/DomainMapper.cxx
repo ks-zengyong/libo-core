@@ -4931,6 +4931,16 @@ void DomainMapper::lcl_utext(const sal_Unicode *const data_, size_t len)
                     aBreakType == style::BreakType_COLUMN_BOTH;
             }
 
+            // Word: a column break on the section-ending paragraph does not open a
+            // new column after the section; wrapNone anchors on that para stay in
+            // the last column. Writer would otherwise start a new column/page and
+            // spill the image (e.g. Co-Edit picture) onto the next page.
+            if (m_pImpl->GetParaSectpr() && bIsColumnBreak && pContext)
+            {
+                pContext->Erase(PROP_BREAK_TYPE);
+                bIsColumnBreak = false;
+            }
+
             bool bRemove = (!m_pImpl->GetParaChanged() && m_pImpl->GetRemoveThisPara()) ||
                            (!IsRTFImport() && !m_pImpl->GetParaChanged() && m_pImpl->GetParaSectpr()
                             && !bSingleParagraphAfterRedline

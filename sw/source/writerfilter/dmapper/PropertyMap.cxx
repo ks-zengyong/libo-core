@@ -881,8 +881,11 @@ uno::Reference< text::XTextColumns > SectionPropertyMap::ApplyColumnProperties( 
         xColumnContainer->setPropertyValue( sTextColumns, uno::Any( xColumns ) );
         // Set the columns to be unbalanced if that compatibility option is set or this is the last section.
         m_xColumnContainer = xColumnContainer;
-        if ( rDM_Impl.GetSettingsTable()->GetNoColumnBalance() || rDM_Impl.GetIsLastSectionGroup() )
-            DontBalanceTextColumns();
+        // Word also does not balance continuous multi-column sections the same way when
+        // wrapNone floats + spacer paragraphs define vertical alignment across columns
+        // (tc01_sample Format Conversion / Co-Edit). Always disable balancing for imported
+        // multi-column sections; noColumnBalance / last-section remain covered by this.
+        DontBalanceTextColumns();
     }
     catch ( const uno::Exception& )
     {
